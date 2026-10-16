@@ -82,6 +82,39 @@ html,body{margin:0;height:100%;background:#0d1030;color:var(--ink);font-family:v
 #shot img{max-width:100%;max-height:72vh;border-radius:12px;box-shadow:0 10px 40px rgba(0,0,0,.6);-webkit-touch-callout:default;user-select:auto;-webkit-user-select:auto}
 #shot p{margin:0;font-size:13px;color:var(--ink-dim);text-align:center}
 #shot .close{appearance:none;border:1px solid var(--line);background:transparent;color:var(--ink);padding:12px 28px;border-radius:999px;font:700 14px var(--round);cursor:pointer}
+#btnHome{position:fixed;z-index:3;left:calc(12px + env(safe-area-inset-left,0px));top:calc(12px + env(safe-area-inset-top,0px));
+  appearance:none;border:1px solid var(--line);background:var(--veil);color:var(--ink);border-radius:999px;padding:9px 14px 9px 10px;
+  font:700 13px var(--round);display:flex;align-items:center;gap:4px;cursor:pointer;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+#btnHome svg{width:18px;height:18px}
+#btnHome:focus-visible{outline:3px solid var(--pink);outline-offset:3px}
+@media (max-width:480px){#hint{top:calc(62px + env(safe-area-inset-top,0px))}}
+.about-link{appearance:none;border:0;background:transparent;color:var(--navy);font:700 13px var(--round);text-decoration:underline;text-underline-offset:3px;cursor:pointer;padding:6px}
+.about-link:focus-visible,.about .close-x:focus-visible,.about .btn:focus-visible{outline:3px solid var(--pink);outline-offset:3px}
+
+/* 説明ページ */
+.about{position:fixed;inset:0;z-index:8;overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y;color:var(--navy);
+  background:linear-gradient(180deg,#e6f2ff 0%,var(--cream) 60%)}
+.about .wrap{max-width:640px;margin:0 auto;box-sizing:border-box;display:flex;flex-direction:column;gap:22px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 40px}
+.about .top{display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:1;
+  background:linear-gradient(180deg,#e6f2ff 70%,rgba(230,242,255,0));padding-block:6px 10px}
+.about .top b{font-size:15px}
+.about .close-x{appearance:none;border:0;background:var(--navy);color:#fff;border-radius:999px;padding:9px 16px;font:700 13px var(--round);cursor:pointer}
+.about figure{margin:0}
+.about figure img{display:block;width:100%;height:auto;border-radius:14px;box-shadow:0 8px 24px rgba(31,47,143,.18);user-select:auto;-webkit-user-select:auto}
+.about figcaption{font-size:11px;color:var(--muted);margin-top:6px;text-align:center}
+.about h2{font-size:24px;font-weight:800;margin:0;text-wrap:balance}
+.about h3{font-size:16px;font-weight:800;margin:0 0 10px;display:flex;align-items:center;gap:8px}
+.about h3 i{font-style:normal;display:grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--pink);color:#fff;font-size:12px;flex:none}
+.about p{margin:0;font-size:14px;line-height:1.85;color:#2d3670}
+.about .lead{font-size:15px}
+.about .card{background:#fff;border-radius:16px;padding:16px;box-shadow:0 4px 14px rgba(31,47,143,.08)}
+.about ol,.about ul{margin:0;padding-left:1.3em;display:flex;flex-direction:column;gap:8px;font-size:14px;line-height:1.7;color:#2d3670}
+.about dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:8px 12px;font-size:14px;line-height:1.6}
+.about dt{font-weight:800;white-space:nowrap}
+.about dd{margin:0;color:#2d3670;min-width:0}
+.about .note{font-size:12px}
+.about .btn{align-self:center}
 @media (prefers-reduced-motion:reduce){#flash{transition:none}}
 /* 横向きのときは、操作ボタンを右端に縦に並べてパレードを隠さない */
 @media (orientation:landscape) and (max-height:520px){
@@ -98,6 +131,7 @@ html,body{margin:0;height:100%;background:#0d1030;color:var(--ink);font-family:v
 <div id="sky" hidden></div>
 <canvas id="gl"></canvas>
 
+<button id="btnHome" hidden aria-label="最初の画面にもどる"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>もどる</button>
 <div id="hint" hidden></div>
 <div id="arrow" hidden><svg viewBox="0 0 46 46"><circle cx="23" cy="23" r="21" fill="rgba(12,14,30,.6)" stroke="#9fd6ff" stroke-width="2"/><path d="M15 15 L33 23 L15 31 L20 23 Z" fill="#9fd6ff"/></svg></div>
 
@@ -149,7 +183,56 @@ html,body{margin:0;height:100%;background:#0d1030;color:var(--ink);font-family:v
     </div>
 
     <button class="btn" id="btnStart">はじめる<small>START</small></button>
+    <button class="about-link" id="btnAbout">innocent world と遊び方について / About</button>
     <p class="note">カメラと傾きセンサーを使います。許可を求められたら「許可」を押してください。<br>Camera and motion access will be requested.</p>
+  </div>
+</section>
+
+<section class="about" id="about" hidden aria-label="innocent world について">
+  <div class="wrap">
+    <div class="top"><b>innocent world について</b><button class="close-x" id="btnAboutClose">閉じる</button></div>
+    <figure>
+      <img src="poster.jpg" alt="innocent world のイメージ。絵本のゲート、村の広場、ARパレード、花火のフィナーレ" width="1400" height="933">
+      <figcaption>innocent world のイメージ</figcaption>
+    </figure>
+    <h2>ここは、やさしさでできた世界。</h2>
+    <p class="lead">どこか懐かしくて、どこまでも新しい。絵本のような村や不思議な場所をめぐりながら、出会い、冒険し、そして少しだけやさしくなる。あなたのスマートフォンが、この世界の扉になります。</p>
+
+    <div class="card">
+      <h3><i>★</i>このページでできること</h3>
+      <dl>
+        <dt>火の鳥</dt><dd>羽ばたくたびに、羽から火の粉がこぼれ落ちます。</dd>
+        <dt>光のクジラ</dt><dd>星をちりばめた体で、夜空をゆったり泳ぎます。</dd>
+        <dt>光の蝶</dt><dd>色とりどりの蝶の群れが、ひらひら舞います。</dd>
+        <dt>フィナーレ花火</dt><dd>スターマインやハートの花火が夜空を彩ります。</dd>
+        <dt>パレード</dt><dd>旗手やバンド、ダンサー、電飾の山車が音楽とともに行進します。</dd>
+      </dl>
+    </div>
+
+    <div class="card">
+      <h3><i>1</i>遊び方</h3>
+      <ol>
+        <li>見たいものを選んで「はじめる」を押します。</li>
+        <li>カメラと傾きセンサーの確認が出たら「許可」を押します。</li>
+        <li>スマホを動かして、まわりを見わたしてみましょう。</li>
+        <li>画面をタップすると、キャラクターが応えてくれます。</li>
+        <li>中央の丸いボタンで写真が撮れます。画像を長押しすると保存できます。</li>
+        <li>左上の「もどる」で、この最初の画面に戻れます。</li>
+      </ol>
+    </div>
+
+    <div class="card">
+      <h3><i>!</i>ご注意</h3>
+      <ul>
+        <li>画面を見ながら歩くときは、足元やまわりの人に気をつけてください。</li>
+        <li>SafariまたはChromeで開いてください。LINEなどアプリの中のブラウザでは、カメラが使えないことがあります。</li>
+        <li>パレードと花火は、スマホを横向きにすると広く見られます。</li>
+        <li>音が出ます。音を消したいときは、右側（縦向きでは下）のスピーカーボタンを押してください。</li>
+      </ul>
+    </div>
+
+    <p class="note">Open in Safari or Chrome, allow camera and motion access, then look around. Tap the screen to make the characters respond. Please watch your step while using AR.</p>
+    <button class="btn" id="btnAboutStart">はじめる<small>START</small></button>
   </div>
 </section>
 
@@ -1056,6 +1139,7 @@ function createParade(){
         c.place(start, f, 0, {start, dir:state.dir.clone(), fwd:f.clone(), speed:PARADE.speed, offset:LEAD - u.back, cycle:state.cycle, t0:state.t0});
       });
     },
+    hide(){ root.visible = false; },
     tap(){
       cheerT = 1.0; soundChime();
       C.phoenix.tap(); C.whale.tap(); C.butterflies.tap();
@@ -1127,6 +1211,10 @@ function playStep(i, time){
   note('square', mf(ch[[0,1,2,1][k % 4]] + 24), time, 0.11, 0.06, out);
   const m = MELODY[i % 64];
   if(m){ note('triangle', mf(m), time, 0.32, 0.22, out); note('sine', mf(m+12), time, 0.25, 0.05, out); }
+}
+function stopMusic(){
+  if(Music.timer){ clearInterval(Music.timer); Music.timer = null; }
+  if(Music.gain){ try{ Music.gain.disconnect(); }catch(e){} Music.gain = null; }
 }
 function startMusic(){
   if(!audio || Music.timer) return;
@@ -1475,32 +1563,55 @@ async function startCamera(){
   await video.play().catch(()=>{});
   camOn = true;
 }
-$('btnStart').addEventListener('click', async ()=>{
+let sensorsReady = false;
+$('btnStart').addEventListener('click', startExperience);
+async function startExperience(){
   const sel = document.querySelector('input[name="mode"]:checked');
   mode = sel ? sel.value : 'phoenix';
-  initAudio();
-  // iPhone は傾きセンサーの許可をタップ直後に求める必要がある
-  if(typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function'){
-    try{ await DeviceOrientationEvent.requestPermission(); }catch(e){}
+  $('about').hidden = true;
+  if(!audio) initAudio();
+  else if(audio.state === 'suspended') audio.resume();
+  if(!sensorsReady){
+    sensorsReady = true;
+    // iPhone は傾きセンサーの許可をタップ直後に求める必要がある
+    if(typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function'){
+      try{ await DeviceOrientationEvent.requestPermission(); }catch(e){}
+    }
+    window.addEventListener('deviceorientation', onOri);
+    try{ await startCamera(); }
+    catch(e){
+      $('sky').hidden = false;
+      toast(window.isSecureContext ? 'カメラが使えないため、夜空の背景で表示しています。' : 'カメラを使うには https のURLで開いてください。いまは夜空の背景で表示しています。', 6000);
+    }
   }
-  window.addEventListener('deviceorientation', onOri);
-  try{ await startCamera(); }
-  catch(e){
-    $('sky').hidden = false;
-    toast(window.isSecureContext ? 'カメラが使えないため、夜空の背景で表示しています。' : 'カメラを使うには https のURLで開いてください。いまは夜空の背景で表示しています。', 6000);
-  }
-  $('start').hidden = true; $('hud').hidden = false; hint.hidden = false; setHint('look');
+  $('start').hidden = true; $('hud').hidden = false; $('btnHome').hidden = false; hint.hidden = false; hintState = ''; setHint('look');
   running = true;
   if(mode === 'parade'){
     startMusic();
     try{ await Promise.race([document.fonts.ready, new Promise(r=>setTimeout(r,1500))]); }catch(e){}
   }
   setTimeout(()=>{
+    if(!running) return;
     placeAll();
     if(!gotOri) toast('画面をドラッグすると見回せます', 4000);
     else if(mode === 'parade' && window.innerHeight > window.innerWidth) toast('スマホを横向きにすると、パレードが広く見えます', 5000);
   }, 600);
-});
+}
+// 最初の画面にもどる：表示中のものをすべて片付ける（カメラはつないだまま）
+function goHome(){
+  running = false; placedAt = -1;
+  Object.values(C).forEach(c=>{ c.root.visible = false; });
+  if(Parade) Parade.hide();
+  stopMusic();
+  for(let i=0;i<N;i++){ pLife[i] = 1; pPos[i*3+1] = -999; }
+  pGeo.attributes.position.needsUpdate = true;
+  arrow.hidden = true; hint.hidden = true; $('hud').hidden = true; $('btnHome').hidden = true; $('toast').hidden = true; $('shot').hidden = true;
+  $('start').hidden = false; $('start').scrollTop = 0;
+}
+$('btnHome').addEventListener('click', goHome);
+$('btnAbout').addEventListener('click', ()=>{ $('about').hidden = false; $('about').scrollTop = 0; });
+$('btnAboutClose').addEventListener('click', ()=>{ $('about').hidden = true; });
+$('btnAboutStart').addEventListener('click', ()=>{ $('about').hidden = true; startExperience(); });
 $('btnRecall').addEventListener('click', ()=>placeAll());
 $('btnSound').addEventListener('click', ()=>{
   muted = !muted;
