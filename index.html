@@ -1304,7 +1304,7 @@ const _hp = new THREE.Vector3();
 
 // 行進の並び：3幕構成。row(前との間隔m, …同じ列に並ぶもの)
 let FLAG_TEX = null;
-const MUSIC_LOOP = 152;   // 曲の長さ（秒）。行列全体がちょうどこの時間で通り過ぎる
+const MUSIC_LOOP = 76*4*60/116;   // 曲の長さ（76小節・116拍/分＝約157秒）。行列全体がちょうどこの時間で通り過ぎる
 function createParade(){
   FLAG_TEX = flagTex();
   const root = new THREE.Group(); root.visible = false; scene.add(root);
@@ -1490,8 +1490,8 @@ function playTheme(){
     if(!Music.gain){ Music.gain = audio.createGain(); Music.gain.connect(audio.destination); }
     Music.gain.gain.value = muted ? 0 : 0.9;
     themeSrc = audio.createBufferSource(); themeSrc.buffer = buf; themeSrc.loop = true;
-    // MP3 は頭に無音が入ることがあるので、音の始まりを探してちょうど1曲分（152秒）でループさせる
-    const LOOP_SEC = 152, d = buf.getChannelData(0);
+    // MP3 は頭に無音が入ることがあるので、音の始まりを探してちょうど1曲分でループさせる
+    const LOOP_SEC = MUSIC_LOOP, d = buf.getChannelData(0);
     let start = 0; const lim = Math.min(d.length, buf.sampleRate);
     while(start < lim && Math.abs(d[start]) < 1e-3) start++;
     if(start >= lim) start = 0;
