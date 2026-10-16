@@ -4,6 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>innocent world ARパレード</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#1f2f8f">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="innocent world">
+<link rel="apple-touch-icon" href="icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;800&display=swap">
@@ -239,6 +246,7 @@ html,body{margin:0;height:100%;background:#0d1030;color:var(--ink);font-family:v
         <li>画面を見ながら歩くときは、足元やまわりの人に気をつけてください。</li>
         <li>SafariまたはChromeで開いてください。LINEなどアプリの中のブラウザでは、カメラが使えないことがあります。</li>
         <li>パレードと花火は、スマホを横向きにすると広く見られます。</li>
+        <li>「はじめる」を押すと全画面になります。iPhoneは全画面にならないため、Safariの共有ボタンから「ホーム画面に追加」して、ホーム画面のアイコンから開くと全画面で楽しめます。</li>
         <li>音が出ます。音を消したいときは、右側（縦向きでは下）のスピーカーボタンを押してください。</li>
       </ul>
     </div>
@@ -1488,7 +1496,7 @@ gl.addEventListener('pointermove', e=>{
   if(!gotOri){ yaw += (e.clientX-lastX)*0.005; pitch = Math.max(-1.2, Math.min(1.2, pitch + (e.clientY-lastY)*0.005)); }
   lastX=e.clientX; lastY=e.clientY;
 });
-gl.addEventListener('pointerup', ()=>{ if(dragging && moved < 12) tapAll(); dragging=false; });
+gl.addEventListener('pointerup', ()=>{ goFullscreen(); if(dragging && moved < 12) tapAll(); dragging=false; });
 gl.addEventListener('pointercancel', ()=>{ dragging=false; });
 
 let placedAt = -1;
@@ -1577,7 +1585,18 @@ async function startCamera(){
 }
 let sensorsReady = false;
 $('btnStart').addEventListener('click', startExperience);
+// 全画面表示：ブラウザの決まりで、タップなどの操作の直後にしか切り替えられない
+function isFullscreen(){ return !!(document.fullscreenElement || document.webkitFullscreenElement); }
+function goFullscreen(){
+  if(isFullscreen()) return;
+  const el = document.documentElement;
+  try{
+    if(el.requestFullscreen) el.requestFullscreen({navigationUI:'hide'}).catch(()=>{});
+    else if(el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+  }catch(e){}
+}
 async function startExperience(){
+  goFullscreen();   // await より前に呼ぶ（タップの直後である必要があるため）
   const sel = document.querySelector('input[name="mode"]:checked');
   mode = sel ? sel.value : 'phoenix';
   $('about').hidden = true;
