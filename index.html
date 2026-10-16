@@ -131,6 +131,15 @@ html,body{margin:0;height:100%;background:#0d1030;color:var(--ink);font-family:v
 .about .note{font-size:12px}
 .about .btn{align-self:center}
 @media (prefers-reduced-motion:reduce){#flash{transition:none}}
+.about figure img{cursor:zoom-in}
+#zoom{position:fixed;inset:0;z-index:9;background:rgba(6,7,20,.94);overflow:hidden;touch-action:none}
+#zimg{position:absolute;left:0;top:0;transform-origin:0 0;max-width:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;will-change:transform}
+#zoom .zbar{position:absolute;left:0;right:0;bottom:0;display:flex;justify-content:space-between;align-items:center;gap:12px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-block:12px calc(14px + env(safe-area-inset-bottom,0px));background:linear-gradient(0deg,rgba(6,7,20,.85),rgba(6,7,20,0));color:#f6f1e6;font-size:12px}
+#zclose{appearance:none;border:1px solid rgba(246,241,230,.4);background:rgba(12,14,30,.7);color:#f6f1e6;border-radius:999px;padding:10px 20px;font:700 14px var(--round);cursor:pointer}
+#zclose:focus-visible{outline:3px solid var(--pink);outline-offset:3px}
+@supports (-webkit-touch-callout:none){ @media (display-mode:standalone){ #zoom{bottom:calc(-1 * env(safe-area-inset-top,0px))} } }
 /* iPhone のホーム画面から開いたとき：画面最上部の時計の帯まで使うので、その分を足して全面を覆う */
 @supports (-webkit-touch-callout:none){
   @media (display-mode:standalone){
@@ -222,8 +231,8 @@ html,body{margin:0;height:100%;background:#0d1030;color:var(--ink);font-family:v
   <div class="wrap">
     <div class="top"><b>innocent world について</b><button class="close-x" id="btnAboutClose">閉じる</button></div>
     <figure>
-      <img src="poster.jpg" alt="innocent world のイメージ。絵本のゲート、村の広場、ARパレード、花火のフィナーレ" width="1400" height="933">
-      <figcaption>innocent world のイメージ</figcaption>
+      <img id="posterImg" role="button" tabindex="0" src="poster.jpg" alt="innocent world のイメージ。絵本のゲート、村の広場、ARパレード、花火のフィナーレ" width="1400" height="933">
+      <figcaption>画像をタップすると拡大して読めます / Tap to zoom</figcaption>
     </figure>
     <h2>ここは、やさしさでできた世界。</h2>
     <p class="lead">どこか懐かしくて、どこまでも新しい。絵本のような村や不思議な場所をめぐりながら、出会い、冒険し、そして少しだけやさしくなる。あなたのスマートフォンが、この世界の扉になります。</p>
@@ -266,6 +275,14 @@ html,body{margin:0;height:100%;background:#0d1030;color:var(--ink);font-family:v
     <button class="btn" id="btnAboutStart">はじめる<small>START</small></button>
   </div>
 </section>
+
+<div id="zoom" hidden role="dialog" aria-label="画像の拡大表示">
+  <img id="zimg" src="poster-large.jpg" alt="innocent world のイメージ（拡大表示）" draggable="false">
+  <div class="zbar">
+    <span>2本指で拡大・ダブルタップでズーム</span>
+    <button id="zclose">閉じる</button>
+  </div>
+</div>
 
 <section id="shot" hidden>
   <img id="shotImg" alt="ARパレードで撮った写真">
@@ -1688,6 +1705,57 @@ function goHome(){
 $('btnHome').addEventListener('click', goHome);
 $('btnAbout').addEventListener('click', ()=>{ $('about').hidden = false; $('about').scrollTop = 0; });
 $('btnAboutClose').addEventListener('click', ()=>{ $('about').hidden = true; });
+
+/* ---------- 画像の拡大表示（ピンチ・ドラッグ・ダブルタップ） ---------- */
+(function(){
+  const box = $('zoom'), img = $('zimg');
+  let k = 1, fit = 1, tx = 0, ty = 0, iw = 1400, ih = 933;
+  const pts = new Map(); let lastDist = 0, lastMid = null, lastTap = 0, moved = 0;
+  const vw = ()=>box.clientWidth, vh = ()=>box.clientHeight;
+  function clamp(){
+    const W = iw*k, H = ih*k;
+    tx = W <= vw() ? (vw()-W)/2 : Math.min(0, Math.max(vw()-W, tx));
+    ty = H <= vh() ? (vh()-H)/2 : Math.min(0, Math.max(vh()-H, ty));
+  }
+  function draw(){ clamp(); img.style.transform = `translate(${tx}px,${ty}px) scale(${k})`; }
+  function zoomAt(nk, x, y){
+    nk = Math.max(fit, Math.min(fit*6, nk));
+    tx = x - (x - tx)*(nk/k); ty = y - (y - ty)*(nk/k); k = nk; draw();
+  }
+  function reset(){ iw = img.naturalWidth || 1536; ih = img.naturalHeight || 1024; fit = Math.min(vw()/iw, vh()/ih); k = fit; tx = ty = 0; draw(); }
+  function open(){ box.hidden = false; requestAnimationFrame(reset); }
+  function close(){ box.hidden = true; pts.clear(); }
+  const poster = $('posterImg');
+  poster.addEventListener('click', open);
+  poster.addEventListener('keydown', e=>{ if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); open(); } });
+  $('zclose').addEventListener('click', close);
+  window.addEventListener('resize', ()=>{ if(!box.hidden) reset(); });
+  box.addEventListener('pointerdown', e=>{
+    if(e.target.closest('.zbar')) return;
+    box.setPointerCapture(e.pointerId); pts.set(e.pointerId, {x:e.clientX, y:e.clientY}); moved = 0;
+    if(pts.size === 2){ const [a,b] = [...pts.values()]; lastDist = Math.hypot(a.x-b.x, a.y-b.y); lastMid = {x:(a.x+b.x)/2, y:(a.y+b.y)/2}; }
+  });
+  box.addEventListener('pointermove', e=>{
+    const p = pts.get(e.pointerId); if(!p) return;
+    const dx = e.clientX - p.x, dy = e.clientY - p.y; p.x = e.clientX; p.y = e.clientY; moved += Math.abs(dx) + Math.abs(dy);
+    if(pts.size === 1){ tx += dx; ty += dy; draw(); }
+    else if(pts.size === 2){
+      const [a,b] = [...pts.values()], d = Math.hypot(a.x-b.x, a.y-b.y), mid = {x:(a.x+b.x)/2, y:(a.y+b.y)/2};
+      if(lastDist > 0){ tx += mid.x - lastMid.x; ty += mid.y - lastMid.y; zoomAt(k*d/lastDist, mid.x, mid.y); }
+      lastDist = d; lastMid = mid;
+    }
+  });
+  const up = e=>{
+    if(!pts.has(e.pointerId)) return;
+    pts.delete(e.pointerId); if(pts.size < 2) lastDist = 0;
+    if(pts.size === 0 && moved < 10){
+      const now = performance.now();
+      if(now - lastTap < 320){ zoomAt(k > fit*1.5 ? fit : fit*2.8, e.clientX, e.clientY); lastTap = 0; } else lastTap = now;
+    }
+  };
+  box.addEventListener('pointerup', up); box.addEventListener('pointercancel', up);
+  box.addEventListener('wheel', e=>{ e.preventDefault(); zoomAt(k*Math.exp(-e.deltaY*0.002), e.clientX, e.clientY); }, {passive:false});
+})();
 $('btnAboutStart').addEventListener('click', ()=>{ $('about').hidden = true; startExperience(); });
 $('btnRecall').addEventListener('click', ()=>placeAll());
 $('btnSound').addEventListener('click', ()=>{
