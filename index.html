@@ -321,13 +321,13 @@ function resize(){
   renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
 }
 window.addEventListener('resize', resize); resize();
-// パレード中に縦横を切り替えたら、その画面幅でパレードを始め直す
+// パレード中に縦横を切り替えたら、行進の位置と音楽はそのままに、新しい画面幅に合わせて並び直す
 let lastLandscape = window.innerWidth > window.innerHeight, reTimer = null;
 window.addEventListener('resize', ()=>{
   const ls = window.innerWidth > window.innerHeight;
   if(ls === lastLandscape) return; lastLandscape = ls;
   clearTimeout(reTimer);
-  reTimer = setTimeout(()=>{ if(typeof Parade !== 'undefined' && Parade && mode === 'parade' && placedAt >= 0) placeAll(); }, 500);
+  reTimer = setTimeout(()=>{ if(typeof Parade !== 'undefined' && Parade && mode === 'parade' && placedAt >= 0 && running) Parade.relayout(); }, 400);
 });
 
 /* ---------- 共通の道具 ---------- */
@@ -1252,6 +1252,84 @@ function balloonFloat(){
   return W;
 }
 
+// パレードのしめくくり：innocent world の電飾看板の山車
+function signTex(){
+  return canvasTex(1600, 460, (x,w,h)=>{
+    const g = x.createLinearGradient(0,0,0,h); g.addColorStop(0,'#1f2f8f'); g.addColorStop(1,'#2a1f6e');
+    x.fillStyle = g; x.fillRect(0,0,w,h);
+    x.strokeStyle = '#ffd25a'; x.lineWidth = 14; x.strokeRect(16,16,w-32,h-32);
+    x.strokeStyle = 'rgba(255,210,90,.45)'; x.lineWidth = 4; x.strokeRect(40,40,w-80,h-80);
+    x.textAlign = 'center'; x.textBaseline = 'middle';
+    x.shadowColor = 'rgba(255,220,140,.9)'; x.shadowBlur = 36;
+    x.fillStyle = '#ffffff'; x.font = `800 210px ${FONT}`; x.fillText(CONFIG.eventName, w/2, 190);
+    x.shadowBlur = 18; x.fillStyle = '#ffd25a'; x.font = `700 64px ${FONT}`; x.fillText('イノセント ワールド', w/2, 350);
+    x.shadowBlur = 0;
+    [[110,110,26],[w-110,110,26],[110,h-110,18],[w-110,h-110,18]].forEach(([cx,cy,r])=>{ x.fillStyle = '#ffd25a'; starPath(x,cx,cy,r); x.fill(); });
+  });
+}
+function thanksTex(){
+  return canvasTex(900, 220, (x,w,h)=>{
+    x.fillStyle = '#fff8e8'; x.fillRect(0,0,w,h);
+    x.strokeStyle = '#e23d72'; x.lineWidth = 10; x.strokeRect(10,10,w-20,h-20);
+    x.fillStyle = '#e23d72'; x.textAlign = 'center'; x.textBaseline = 'middle';
+    x.font = `800 74px ${FONT}`; x.fillText('ありがとう　またどこかで', w/2, 92);
+    x.fillStyle = '#1f2f8f'; x.font = `700 44px ${FONT}`; x.fillText('Thank you, see you again!', w/2, 168);
+  });
+}
+function moonTex(){
+  return canvasTex(256, 256, (x)=>{
+    const g = x.createRadialGradient(128,128,40,128,128,128); g.addColorStop(0,'rgba(255,240,180,.5)'); g.addColorStop(1,'rgba(255,240,180,0)');
+    x.fillStyle = g; x.fillRect(0,0,256,256);
+    x.fillStyle = '#ffe9a0'; x.beginPath(); x.arc(128,128,70,0,Math.PI*2); x.fill();
+    x.globalCompositeOperation = 'destination-out'; x.beginPath(); x.arc(160,108,62,0,Math.PI*2); x.fill();
+  });
+}
+function finaleFloat(){
+  const W = wagon(4.6, 2.3, 0x1f2f8f, 0xffd25a), g = W.g, pts = W.pts;
+  // 舞台とアーチ
+  add(g, BOXG, mat(0xfff2d8, 0.2), [1.9,0.12,4.2], [0,0.97,0]);
+  [-1,1].forEach(s=>{ add(g, BOXG, mat(0xe6b65c,0.5), [0.14,2.9,0.14], [0.35,2.4,s*2.0]); add(g, SPH, mat(0xffd25a,1.4), [0.13,0.13,0.13], [0.35,3.95,s*2.0]); });
+  // 看板（観客側を向く）
+  const sign = new THREE.Mesh(new THREE.PlaneGeometry(4.0, 1.15), new THREE.MeshBasicMaterial({map:signTex()}));
+  sign.rotation.y = Math.PI/2; sign.position.set(0.45, 3.35, 0); g.add(sign);
+  add(g, BOXG, mat(0x23307f,0.2), [0.08,1.25,4.1], [0.38,3.35,0]);
+  const sp = [];
+  for(let z=-2.05; z<=2.051; z+=0.13){ sp.push(V(0.5, 3.97, z)); sp.push(V(0.5, 2.73, z)); }
+  for(let y=2.73; y<=3.971; y+=0.13){ sp.push(V(0.5, y, -2.05)); sp.push(V(0.5, y, 2.05)); }
+  const signLights = bulbs(g, sp, {size:0.2});
+  // 「ありがとう」の札
+  const th = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 0.54), new THREE.MeshBasicMaterial({map:thanksTex()}));
+  th.rotation.y = Math.PI/2; th.position.set(1.17, 0.62, 0); g.add(th);
+  // 月と星
+  const moon = new THREE.Sprite(new THREE.SpriteMaterial({map:moonTex(), transparent:true, depthWrite:false}));
+  moon.scale.set(1.3,1.3,1); moon.position.set(0.3, 4.7, -1.2); g.add(moon);
+  const stars = [];
+  [[0.3,4.6,0.6,0.22],[0.3,5.0,1.5,0.16],[0.3,4.3,-0.3,0.12],[0.3,5.2,-0.2,0.14],[0.3,4.45,1.9,0.12]].forEach(([x,y,z,s])=>{
+    const st = add(g, new THREE.OctahedronGeometry(1), mat(0xffd25a, 1.3), [s,s,s*0.35], [x,y,z]); stars.push(st);
+    glowSprite(g, 'rgba(255,220,120,.7)', s*6, [x,y,z]);
+  });
+  // ハートの飾り
+  const heartShape = new THREE.Shape(); heartShape.moveTo(0,-0.3);
+  heartShape.bezierCurveTo(-0.5,0.05,-0.25,0.42,0,0.18); heartShape.bezierCurveTo(0.25,0.42,0.5,0.05,0,-0.3);
+  const heart = new THREE.Mesh(new THREE.ShapeGeometry(heartShape), mat(0xff6fb5, 1.2));
+  heart.rotation.y = Math.PI/2; heart.position.set(0.6, 4.3, 0); heart.scale.setScalar(1.3); g.add(heart);
+  glowSprite(g, 'rgba(255,120,190,.6)', 2.2, [0.6,4.3,0]);
+  // 手を振る人たち
+  [[0.15,-1.3,0xff7fb8],[0.15,1.3,0x5ad8ff],[0.1,0,0xffd25a]].forEach(([x,z,c])=>{
+    const r = person({role:'rider', suit:c, trim:0xffffff, skirt:true}); r.g.position.set(x,1.03,z); g.add(r.g); W.people.push(r);
+  });
+  glowSprite(g, 'rgba(255,220,150,.3)', 6, [0.4,3.4,0]);
+  const wp = V(0,0,0), CC = [col(0xffd25a), col(0xff7fb8), col(0x7fe6ff), col(0xffffff)];
+  W.update = (t, dt, flash)=>{
+    signLights(t, flash);
+    stars.forEach((s,i)=>{ s.rotation.x = t*1.5 + i; });
+    heart.scale.setScalar(1.3 + Math.sin(t*4)*0.08);
+    if(Math.random() < dt*14){ sign.getWorldPosition(wp); wp.y += 0.9;
+      spawn(wp, (Math.random()-.5)*3, 2 + Math.random()*1.5, (Math.random()-.5)*3, 1.6, CC[(Math.random()*4)|0], 1.6, 0); }
+  };
+  return W;
+}
+
 // 人の追加の役：トランペット・リボン・ランタン
 function addRoleProps(P, o){
   const R = P.arms[1].userData.hand;
@@ -1356,7 +1434,8 @@ function createParade(){
   row(1.3, ...pair(BATON));
   row(3.6, {float:balloonFloat});
   row(3.6, ...pair(HORN));
-  row(1.6, {lane:0, make:FLAG});
+  row(4.2, {float:finaleFloat});
+  row(3.6, {lane:0, make:FLAG});
   const total = cur;
 
   const units = [];
@@ -1367,13 +1446,14 @@ function createParade(){
     else { const p = u.make(); wrap.add(p.g); units.push({u, wrap, people:[p]}); }
   });
   let LEAD = 0, H = 0;
-  const state = {start:V(0,0,0), dir:V(0,0,0), fwd:V(0,0,0), t0:0, cycle:1, groundY:0, speed:1, L:0};
+  const state = {start:V(0,0,0), dir:V(0,0,0), fwd:V(0,0,0), right:V(1,0,0), t0:0, cycle:1, groundY:0, speed:1, L:0};
   let cheerT = 0;
   const tmp = V(0,0,0), proj = V(0,0,0), wp = V(0,0,0), CONF = [col(0xffd25a), col(0xff7fb8), col(0x7fe6ff), col(0xffffff)];
   const sAt = (u, t)=>((((t - state.t0)*state.speed + LEAD - u.back) % state.cycle) + state.cycle) % state.cycle;
   return {
     total,
-    start(f, right){
+    relayout(){ if(root.visible) this.start(state.fwd.clone(), state.right.clone(), true); },
+    start(f, right, keep){
       // 画面に見えている横幅から入口・出口を決め、行列全体がちょうど曲の長さで通り過ぎる速さにする
       const tanH = Math.tan(camera.fov*Math.PI/360) * camera.aspect;
       H = (CONFIG.paradeDistance - 0.6)*tanH + 2.4;
@@ -1382,7 +1462,8 @@ function createParade(){
       state.cycle = 2*H + total + PARADE.gap;
       state.speed = state.cycle / MUSIC_LOOP;
       LEAD = L - H;
-      state.dir.copy(right).negate(); state.fwd.copy(f); state.t0 = clock.elapsedTime;
+      state.dir.copy(right).negate(); state.fwd.copy(f); state.right.copy(right);
+      if(!keep) state.t0 = clock.elapsedTime;   // keep のときは同じ時刻を基準にする＝曲の何秒目かに対応した位置のまま
       state.groundY = camera.position.y - CONFIG.eyeHeight;
       state.start.copy(camera.position).addScaledVector(f, CONFIG.paradeDistance).addScaledVector(right, L);
       root.visible = true;
@@ -1395,7 +1476,7 @@ function createParade(){
         if(u.fly === 'whale') c.root.scale.setScalar(1.0);
         c.place(start, f, 0, {start, dir:state.dir.clone(), fwd:f.clone(), speed:state.speed, offset:LEAD - u.back, cycle:state.cycle, t0:state.t0});
       });
-      restartTheme();   // 先頭の登場と曲のイントロをそろえる
+      if(!keep) restartTheme();   // 先頭の登場と曲のイントロをそろえる
     },
     hide(){ root.visible = false; Object.values(flyers).forEach(c=>{ c.root.visible = false; }); },
     tap(){
@@ -1488,7 +1569,9 @@ function playTheme(){
     if(!buf){ if(!Music.timer) startSynthMusic(); return; }
     if(Music.timer){ clearInterval(Music.timer); Music.timer = null; }
     if(!Music.gain){ Music.gain = audio.createGain(); Music.gain.connect(audio.destination); }
-    Music.gain.gain.value = muted ? 0 : 0.9;
+    // 数秒かけて音量を上げる（いきなり鳴らさない）
+    const gp = Music.gain.gain, now = audio.currentTime;
+    gp.cancelScheduledValues(now); gp.setValueAtTime(0.0001, now); gp.linearRampToValueAtTime(muted ? 0.0001 : 0.9, now + 4);
     themeSrc = audio.createBufferSource(); themeSrc.buffer = buf; themeSrc.loop = true;
     // MP3 は頭に無音が入ることがあるので、音の始まりを探してちょうど1曲分でループさせる
     const LOOP_SEC = MUSIC_LOOP, d = buf.getChannelData(0);
@@ -1978,7 +2061,7 @@ $('btnAboutStart').addEventListener('click', ()=>{ $('about').hidden = true; sta
 $('btnRecall').addEventListener('click', ()=>placeAll());
 $('btnSound').addEventListener('click', ()=>{
   muted = !muted;
-  if(Music.gain) Music.gain.gain.value = muted ? 0 : (themeSrc ? 0.9 : 0.28);
+  if(Music.gain){ const gp = Music.gain.gain; gp.cancelScheduledValues(audio.currentTime); gp.setValueAtTime(muted ? 0 : (themeSrc ? 0.9 : 0.28), audio.currentTime); }
   $('icoSound').innerHTML = muted
     ? '<path d="M4 9v6h4l5 4V5L8 9z"/><path d="M17 9l5 6M22 9l-5 6"/>'
     : '<path d="M4 9v6h4l5 4V5L8 9z"/><path d="M17 8.5a5 5 0 0 1 0 7"/>';
