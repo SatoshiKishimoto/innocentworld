@@ -1343,7 +1343,7 @@ const CHARS = {
 const _charTex = {};
 function charTex(k){
   if(!_charTex[k]){
-    const t = new THREE.TextureLoader().load('characters/' + k + '.png');
+    const t = new THREE.TextureLoader().load('characters/' + k + '.png');   // k は 'esper' や 'esper_body' など
     t.magFilter = THREE.NearestFilter; t.minFilter = THREE.NearestFilter; t.generateMipmaps = false; t.encoding = THREE.sRGBEncoding;
     t.wrapS = THREE.RepeatWrapping; t.repeat.x = -1; t.offset.x = 1;   // 進む向き（左）を向くように左右反転
     _charTex[k] = t;
@@ -1353,7 +1353,7 @@ function charTex(k){
 function character(k, o){
   o = o || {};
   const info = CHARS[k], g = new THREE.Group();
-  const sp = new THREE.Sprite(new THREE.SpriteMaterial({map:charTex(k), transparent:true, alphaTest:0.35, depthTest:false}));
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({map:charTex(ARMS[k] && o.onFloat ? k + '_body' : k), transparent:true, alphaTest:0.35, depthTest:false}));
   sp.renderOrder = 10;   // 住人はいつも手前に描く（山車の飾りや人の陰に隠れない）
   sp.center.set(0.5, 0); sp.scale.set(info.h*info.a, info.h, 1);
   const baseY = o.y || 0; sp.position.y = baseY; g.add(sp);
@@ -1362,27 +1362,16 @@ function character(k, o){
   return {g, sp, k, info, baseY, phase:Math.random()*6, trail:!!o.trail, onFloat:!!o.onFloat};
 }
 const _cw = new THREE.Vector3(), _TRAIL = {luna:[col(0x9fe8ff), col(0xffffff), col(0xffc8f0)], flora:[col(0xffb0d8), col(0xb8ff9a), col(0xfff0a0)], ryu:[col(0xb8ff9a), col(0xffe080)]};
-// 手を振る腕（ドット絵）。キャラクターごとに手の色を変える
-const HAND = {esper:'#f6c9a0', mimi:'#ffffff', lily:'#f9d2b0', luke:'#f2c49c', niko:'#ffffff', ryu:'#6cc05a', luna:'#f9d6c0', flora:'#f9d6c0', mock:'#a8743e', jiiji:'#f0c8a6'};
-const SLEEVE = {esper:'#2d55c8', mimi:'#ffffff', lily:'#ff7fb0', luke:'#3a3a9a', niko:'#f0a040', ryu:'#6cc05a', luna:'#ffb0e0', flora:'#8fdc7a', mock:'#8a5a2e', jiiji:'#8a5a32'};
-const _handTex = {};
-function handTex(k){
-  if(_handTex[k]) return _handTex[k];
-  const c = document.createElement('canvas'); c.width = 10; c.height = 16; const x = c.getContext('2d');
-  const O = '#2a1a2a', H = HAND[k] || '#f6c9a0', S = SLEEVE[k] || H;
-  const px = (cx, cy, col)=>{ x.fillStyle = col; x.fillRect(cx, cy, 1, 1); };
-  const rows = [   // . 透明 / o 線 / h 手 / s そで
-    '..oooo....','.ohhhho...','ohhhhhho..','ohhhhhhoo.','ohhhhhhho.','ohhhhhho..','.ohhhhho..','..ohhho...',
-    '..ossso...','..ossso...','..ossso...','..ossso...','..ossso...','..ossso...','..ossso...','..ooooo...'];
-  rows.forEach((r,y)=>[...r].forEach((ch,xx)=>{ if(ch === 'o') px(xx,y,O); else if(ch === 'h') px(xx,y,H); else if(ch === 's') px(xx,y,S); }));
-  const t = new THREE.CanvasTexture(c); t.magFilter = THREE.NearestFilter; t.minFilter = THREE.NearestFilter; t.generateMipmaps = false; t.encoding = THREE.sRGBEncoding;
-  return (_handTex[k] = t);
-}
+// 手を振る腕：元の絵から腕を切り取った部品（characters/*_arm.png）を、肩を支点に動かす。体は腕を抜いた絵（*_body.png）
+// rect=元の絵での腕の範囲, pivot=肩の位置（どちらも2倍サイズの画像のピクセル）, raise=上げる角度, amp=振る幅
+const ARMS = {"esper": {"w": 172, "h": 224, "rect": [0, 124, 28, 168], "pivot": [26, 136], "raise": 2.0, "amp": 0.45}, "mimi": {"w": 132, "h": 210, "rect": [0, 120, 20, 160], "pivot": [20, 128], "raise": 2.0, "amp": 0.45}, "lily": {"w": 184, "h": 226, "rect": [0, 128, 34, 172], "pivot": [32, 134], "raise": 2.1, "amp": 0.45}, "luke": {"w": 230, "h": 222, "rect": [16, 0, 58, 222], "pivot": [52, 140], "raise": 0.15, "amp": 0.22}, "niko": {"w": 206, "h": 202, "rect": [0, 88, 30, 136], "pivot": [28, 124], "raise": 0.3, "amp": 0.45}, "luna": {"w": 242, "h": 204, "rect": [8, 68, 60, 124], "pivot": [54, 116], "raise": 0.35, "amp": 0.4}, "flora": {"w": 218, "h": 194, "rect": [24, 100, 60, 136], "pivot": [56, 108], "raise": 1.8, "amp": 0.45}, "mock": {"w": 220, "h": 232, "rect": [0, 112, 44, 180], "pivot": [40, 140], "raise": 1.4, "amp": 0.4}, "jiiji": {"w": 238, "h": 224, "rect": [0, 0, 54, 224], "pivot": [50, 148], "raise": 0.12, "amp": 0.2}};
 function addWave(C){
-  const s = new THREE.Sprite(new THREE.SpriteMaterial({map:handTex(C.k), transparent:true, alphaTest:0.4, depthTest:false}));
-  s.renderOrder = 11; s.center.set(0.5, 0.05);
-  const hh = C.info.h*0.36; s.scale.set(hh*10/16, hh, 1);
-  C.g.add(s); C.hand = s;
+  const A = ARMS[C.k]; if(!A) return;
+  const [x0,y0,x1,y1] = A.rect, [px,py] = A.pivot;
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({map:charTex(C.k + '_arm'), transparent:true, alphaTest:0.35, depthTest:false}));
+  s.renderOrder = 11;
+  s.center.set((x1 - px)/(x1 - x0), (y1 - py)/(y1 - y0));   // 左右反転して表示するので、肩の位置も反転
+  C.g.add(s); C.arm = s; C.armInfo = A;
 }
 function animChar(C, t, dist, cheer, dt){
   const h = C.info.h;
@@ -1399,9 +1388,14 @@ function animChar(C, t, dist, cheer, dt){
     C.sp.material.rotation = Math.sin(w)*(C.onFloat ? 0.05 : 0.07);
     const sq = 1 - Math.max(0, Math.cos(w*2))*0.03; C.sp.scale.set(h*C.info.a/sq, h*sq, 1);
   }
-  if(C.hand){   // 進む向き（画面の左）側の肩から、手を大きく振る
-    C.hand.position.set(0, C.sp.position.y + h*0.5, h*C.info.a*0.36);
-    C.hand.material.rotation = 0.45 + Math.sin(t*7 + C.phase)*0.5 + cheer*0.3;
+  if(C.arm){   // 切り取った腕を、肩の位置に合わせて置き、振る
+    const A = C.armInfo, sx = C.sp.scale.x / A.w, sy = C.sp.scale.y / A.h;
+    C.arm.scale.set((A.rect[2] - A.rect[0])*sx, (A.rect[3] - A.rect[1])*sy, 1);
+    const dx = (0.5 - A.pivot[0]/A.w) * C.sp.scale.x;   // 画面の右へのずれ（左右反転ずみ）
+    C.arm.position.set(0, C.sp.position.y + (A.h - A.pivot[1])*sy, -dx);
+    C.arm.material.rotation = A.raise + Math.sin(t*6.5 + C.phase)*A.amp + cheer*0.25 + C.sp.material.rotation;
+  } else if(C.onFloat){   // 腕を切り取れないキャラクター（リュウ）は、うれしそうに体をゆらす
+    C.sp.material.rotation = Math.sin(t*3.2 + C.phase)*0.12;
   }
 }
 
