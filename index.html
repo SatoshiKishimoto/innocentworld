@@ -1244,12 +1244,39 @@ function playStep(i, time){
   const m = MELODY[i % 64];
   if(m){ note('triangle', mf(m), time, 0.32, 0.22, out); note('sine', mf(m+12), time, 0.25, 0.05, out); }
 }
+// パレードのテーマ（music/parade.mp3）。読み込めないときは下の簡易BGMで代用する
+let themeBytes = null, themeBuf = null, themeSrc = null, wantTheme = false;
+fetch('music/parade.mp3').then(r=>r.ok ? r.arrayBuffer() : null).then(b=>{ themeBytes = b; if(wantTheme) playTheme(); }).catch(()=>{});
+function decodeTheme(){
+  if(themeBuf || !themeBytes || !audio) return Promise.resolve(themeBuf);
+  return new Promise(res=>{ audio.decodeAudioData(themeBytes.slice(0), b=>{ themeBuf = b; res(b); }, ()=>res(null)); });
+}
+function playTheme(){
+  if(!wantTheme || themeSrc || !audio) return;
+  decodeTheme().then(buf=>{
+    if(!wantTheme || themeSrc) return;
+    if(!buf){ if(!Music.timer) startSynthMusic(); return; }
+    if(Music.timer){ clearInterval(Music.timer); Music.timer = null; }
+    if(!Music.gain){ Music.gain = audio.createGain(); Music.gain.connect(audio.destination); }
+    Music.gain.gain.value = muted ? 0 : 0.9;
+    themeSrc = audio.createBufferSource(); themeSrc.buffer = buf; themeSrc.loop = true;
+    themeSrc.connect(Music.gain); themeSrc.start();
+  });
+}
 function stopMusic(){
+  wantTheme = false;
+  if(themeSrc){ try{ themeSrc.stop(); }catch(e){} themeSrc = null; }
   if(Music.timer){ clearInterval(Music.timer); Music.timer = null; }
   if(Music.gain){ try{ Music.gain.disconnect(); }catch(e){} Music.gain = null; }
 }
 function startMusic(){
-  if(!audio || Music.timer) return;
+  if(!audio) return;
+  wantTheme = true;
+  if(themeBytes) playTheme();
+  else setTimeout(()=>{ if(wantTheme && !themeSrc && !Music.timer) startSynthMusic(); }, 2500);
+}
+function startSynthMusic(){
+  if(!audio || Music.timer || themeSrc) return;
   Music.gain = audio.createGain(); Music.gain.gain.value = muted ? 0 : 0.28; Music.gain.connect(audio.destination);
   Music.next = audio.currentTime + 0.15; Music.step = 0;
   const sixteenth = 60/118/4;
@@ -1658,7 +1685,7 @@ $('btnAboutStart').addEventListener('click', ()=>{ $('about').hidden = true; sta
 $('btnRecall').addEventListener('click', ()=>placeAll());
 $('btnSound').addEventListener('click', ()=>{
   muted = !muted;
-  if(Music.gain) Music.gain.gain.value = muted ? 0 : 0.28;
+  if(Music.gain) Music.gain.gain.value = muted ? 0 : (themeSrc ? 0.9 : 0.28);
   $('icoSound').innerHTML = muted
     ? '<path d="M4 9v6h4l5 4V5L8 9z"/><path d="M17 9l5 6M22 9l-5 6"/>'
     : '<path d="M4 9v6h4l5 4V5L8 9z"/><path d="M17 8.5a5 5 0 0 1 0 7"/>';
