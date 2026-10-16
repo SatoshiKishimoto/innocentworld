@@ -10,3 +10,7 @@
 - `music/parade.mp3`：ループ用（約157秒）。最後から最初へ切れ目なくつながります。ARパレードで使用
 - `music/parade_full.mp3`：1曲版（約2分40秒）。最後が「じゃーん！」で終わります。会場で1回流すとき用
 - `music/compose.py`：作曲・音源生成スクリプト（`python3 music/compose.py` で作り直せます）
+
+## フィナーレ花火の音楽（オリジナル曲）
+- `music/fireworks.mp3`：花火モードで1回だけ流れる曲（約68秒）。花火の打ち上げは、この曲の拍に合わせてあります
+- `music/fireworks.py`：作曲・音源生成スクリプト（`python3 music/fireworks.py`）

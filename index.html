@@ -131,7 +131,7 @@ html,body{margin:0;height:100%;background:#0d1030;color:var(--ink);font-family:v
 .about .note{font-size:12px}
 .about .btn{align-self:center}
 @media (prefers-reduced-motion:reduce){#flash{transition:none}}
-.about figure img{cursor:zoom-in}
+.about figure img.zoomable{cursor:zoom-in}
 #zoom{position:fixed;inset:0;z-index:9;background:rgba(6,7,20,.94);overflow:hidden;touch-action:none}
 #zimg{position:absolute;left:0;top:0;transform-origin:0 0;max-width:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;will-change:transform}
 #zoom .zbar{position:absolute;left:0;right:0;bottom:0;display:flex;justify-content:space-between;align-items:center;gap:12px;
@@ -231,11 +231,20 @@ html,body{margin:0;height:100%;background:#0d1030;color:var(--ink);font-family:v
   <div class="wrap">
     <div class="top"><b>innocent world について</b><button class="close-x" id="btnAboutClose">閉じる</button></div>
     <figure>
-      <img id="posterImg" role="button" tabindex="0" src="poster.jpg" alt="innocent world のイメージ。絵本のゲート、村の広場、ARパレード、花火のフィナーレ" width="1400" height="933">
+      <img class="zoomable" data-full="poster-large.jpg" role="button" tabindex="0" src="poster.jpg" alt="innocent world のイメージ。絵本のゲート、村の広場、ARパレード、花火のフィナーレ" width="1400" height="933">
       <figcaption>画像をタップすると拡大して読めます / Tap to zoom</figcaption>
     </figure>
     <h2>ここは、やさしさでできた世界。</h2>
     <p class="lead">どこか懐かしくて、どこまでも新しい。絵本のような村や不思議な場所をめぐりながら、出会い、冒険し、そして少しだけやさしくなる。あなたのスマートフォンが、この世界の扉になります。</p>
+
+    <div class="card">
+      <h3><i>♥</i>innocent world の住人たち</h3>
+      <p>エスパーやミミ、リリィたち innocent world の仲間が、ARパレードでみなさんをお出迎えします。それぞれのキャラクターに、この世界のどこかで出会えるかもしれません。</p>
+      <figure style="margin-top:12px">
+        <img class="zoomable" data-full="characters-large.jpg" role="button" tabindex="0" src="characters.jpg" alt="innocent world の住人たち。エスパー、ミミ、リリィ、ルーク、ニコ、リュウ、ルナ、フローラ、モック、じいじの紹介" width="1400" height="933">
+        <figcaption>画像をタップすると拡大して読めます / Tap to zoom</figcaption>
+      </figure>
+    </div>
 
     <div class="card">
       <h3><i>★</i>このページでできること</h3>
@@ -243,7 +252,7 @@ html,body{margin:0;height:100%;background:#0d1030;color:var(--ink);font-family:v
         <dt>火の鳥</dt><dd>羽ばたくたびに、羽から火の粉がこぼれ落ちます。</dd>
         <dt>光のクジラ</dt><dd>星をちりばめた体で、夜空をゆったり泳ぎます。</dd>
         <dt>光の蝶</dt><dd>色とりどりの蝶の群れが、ひらひら舞います。</dd>
-        <dt>フィナーレ花火</dt><dd>スターマインやハートの花火が夜空を彩ります。</dd>
+        <dt>フィナーレ花火</dt><dd>フィナーレの音楽に合わせて、スターマインやハートの花火が夜空を彩ります（約1分）。</dd>
         <dt>パレード</dt><dd>エスパーやミミ、リリィたち innocent world の住人が、電飾の山車やマーチングバンドといっしょに行進します。</dd>
       </dl>
     </div>
@@ -277,7 +286,7 @@ html,body{margin:0;height:100%;background:#0d1030;color:var(--ink);font-family:v
 </section>
 
 <div id="zoom" hidden role="dialog" aria-label="画像の拡大表示">
-  <img id="zimg" src="poster-large.jpg" alt="innocent world のイメージ（拡大表示）" draggable="false">
+  <img id="zimg" src="poster-large.jpg" alt="拡大表示" draggable="false">
   <div class="zbar">
     <span>2本指で拡大・ダブルタップでズーム</span>
     <button id="zclose">閉じる</button>
@@ -1658,8 +1667,37 @@ function restartTheme(){
   try{ themeSrc.stop(); }catch(e){}
   themeSrc = null; playTheme();
 }
+// 花火の音楽（music/fireworks.mp3）。1回だけ流す
+let fwBytes = null, fwBuf = null, fwSrc = null, fwToken = 0;
+fetch('music/fireworks.mp3').then(r=>r.ok ? r.arrayBuffer() : null).then(b=>{ fwBytes = b; }).catch(()=>{});
+function playFireworksMusic(onStart){
+  stopMusic();
+  const my = ++fwToken;
+  let started = false;
+  const go = (buf)=>{
+    if(started || my !== fwToken) return; started = true;
+    if(buf && audio){
+      Music.gain = audio.createGain(); Music.gain.gain.value = muted ? 0 : 0.95; Music.gain.connect(audio.destination);
+      fwSrc = audio.createBufferSource(); fwSrc.buffer = buf; fwSrc.connect(Music.gain); fwSrc.start();
+    }
+    onStart();
+  };
+  if(!audio){ go(null); return; }
+  if(audio.state === 'suspended') audio.resume();
+  const tryDecode = ()=>{
+    if(fwBuf) return go(fwBuf);
+    if(!fwBytes) return false;
+    audio.decodeAudioData(fwBytes.slice(0), b=>{ fwBuf = b; go(b); }, ()=>go(null));
+    return true;
+  };
+  if(tryDecode() === false){
+    const t0 = performance.now();
+    const iv = setInterval(()=>{ if(my !== fwToken){ clearInterval(iv); return; } if(fwBytes || performance.now() - t0 > 3000){ clearInterval(iv); if(tryDecode() === false) go(null); } }, 100);
+  }
+}
 function stopMusic(){
-  wantTheme = false;
+  wantTheme = false; fwToken++;
+  if(fwSrc){ try{ fwSrc.stop(); }catch(e){} fwSrc = null; }
   if(themeSrc){ try{ themeSrc.stop(); }catch(e){} themeSrc = null; }
   if(Music.timer){ clearInterval(Music.timer); Music.timer = null; }
   if(Music.gain){ try{ Music.gain.disconnect(); }catch(e){} Music.gain = null; }
@@ -1808,6 +1846,46 @@ function createFireworks(){
     q.push({at:t + tt + 0.5, x:0, vx:0, h:12, type:'crown', pal});
     mine = q;
   }
+  // 音楽（music/fireworks.mp3：108拍/分）に合わせた打ち上げ表。at は打ち上げる時刻（秒）、開く瞬間が拍に重なる
+  const BEAT = 60/108, BARS = BEAT*4, FLY = 1.3;
+  let show = null, showStart = 0, showEnded = false, cueIdx = 0;
+  function buildShow(){
+    const q = [], add = (burst, type, x, h, o)=>q.push(Object.assign({at:burst - FLY, type, x, h, T:FLY}, o||{}));
+    const bt = (bar, beat)=>bar*BARS + beat*BEAT;
+    // イントロ：静かに3発
+    add(bt(2,0), 'kiku', 0, 12); add(bt(3,0), 'peony', -10, 9); add(bt(3,2), 'peony', 10, 9);
+    // 主題：小節の頭に1発、3拍目に小さめを1発。フレーズの終わりはしだれ柳
+    const A = ['peony','ring','double','willow','change','butterfly','star','willow'];
+    for(let i=0;i<8;i++){
+      const bar = 4 + i, side = i % 2 ? 1 : -1;
+      add(bt(bar,0), A[i], side*(4 + Math.random()*6), [9, 13, 16][i % 3]);
+      if(i % 4 !== 3) add(bt(bar,2), i % 2 ? 'kiku' : 'peony', -side*(8 + Math.random()*6), 6 + Math.random()*3, {small:true});
+    }
+    // 盛り上がり：スターマイン（だんだん速く・高く）
+    const bases = [-18,-9,0,9,18]; let k = 0;
+    for(let tt = bt(12,0); tt < bt(16,0) - 0.2; k++){
+      const prog = (tt - bt(12,0)) / (4*BARS);
+      tt += 0.26 - prog*0.17 + Math.random()*0.05;
+      q.push({at:tt - 0.8, type: k % 11 === 10 ? 'crackle' : (k % 5 === 4 ? 'kiku' : 'peony'), x:bases[k % 5], h:3 + prog*6 + Math.random()*4,
+              T:0.8, vx:((k*7) % 9 - 4)*2.2, small:true, quiet:Math.random() < 0.6});
+    }
+    // 転調した主題：大玉を小節の頭に、拍ごとにいろいろな花火
+    add(bt(16,0), 'crown', 0, 15);
+    const B = ['big','heart','double','saturn','big','smile','rings2','big'], F = ['peony','kiku','change','palm','senrin','bees'];
+    for(let i=0;i<8;i++){
+      const bar = 16 + i;
+      if(i > 0) add(bt(bar,0), B[i], (Math.random()*2-1)*6, 13 + Math.random()*4);
+      for(let b=1;b<4;b++) add(bt(bar,b), F[(i*3 + b) % F.length], (b % 2 ? -1 : 1)*(7 + Math.random()*8), [6, 10, 14][b-1] + Math.random()*2, {small: b === 2});
+    }
+    // グランドフィナーレ：半拍ごとの連発 → 最後の和音で一斉に
+    for(let b=0;b<12;b++){
+      add(bt(24,0) + b*BEAT, b % 3 ? 'big' : 'crown', (Math.random()*2-1)*14, 9 + Math.random()*8);
+      add(bt(24,0) + b*BEAT + BEAT/2, F[b % F.length], (Math.random()*2-1)*16, 6 + Math.random()*6, {small:true, quiet:true});
+    }
+    [-14,-5,5,14].forEach((x,i)=>add(bt(27,0), i % 2 ? 'big' : 'crown', x, 12 + (i % 2)*3, {quiet:i > 0}));
+    [-16,-8,0,8,16].forEach((x,i)=>add(bt(27,0) + BARS*1.25, i === 2 ? 'big' : 'willow', x, 14 + (i === 2 ? 3 : 0), {quiet:i > 0}));
+    return q.sort((a,b)=>a.at - b.at);
+  }
   const wp = V(0,0,0), TRAIL = col(0xffd9a0), TAIL = col(0xffb070);
   return {
     name:'花火', root, focus:()=>wp.copy(center).setY(groundY + 11),
@@ -1815,17 +1893,31 @@ function createFireworks(){
     place(c, f){
       fwd.copy(f); right.set(-f.z, 0, f.x);
       center.copy(camera.position).addScaledVector(f, 42); groundY = camera.position.y - CONFIG.eyeHeight;
-      root.visible = true; const t = clock.elapsedTime;
-      next = t + 0.3; mineAt = t + 10; finaleAt = t + 26; finaleLeft = 0; mine = null;
+      root.visible = true;
+      // 音楽が始まった瞬間から、打ち上げ表どおりに上げる（音楽がないときもそのまま始める）
+      mineAt = finaleAt = next = Infinity; finaleLeft = 0; mine = null; show = null; showEnded = false; cueIdx = 0;
+      playFireworksMusic(()=>{ show = buildShow(); showStart = clock.elapsedTime; cueIdx = 0; });
     },
     tap(){ launch('heart', -6 + Math.random()*4, 7, 0); launch(Math.random()<0.5?'big':'butterfly', 6 + Math.random()*8, 16, 2); },
     update(t, dt){
       if(!root.visible) return;
-      // 打ち上げプログラム：単発 → 10秒でスターマイン → 26秒でグランドフィナーレ（以後くり返し）
+      // 音楽に合わせた打ち上げ
+      if(show){
+        const st = t - showStart;
+        while(cueIdx < show.length && show[cueIdx].at <= st){
+          const c = show[cueIdx++];
+          launch(c.type, c.x, c.h, (Math.random()*2-1)*5, {T:c.T, vx:c.vx||0, small:!!c.small, quiet:!!c.quiet});
+        }
+        if(cueIdx >= show.length && !showEnded && st > show[show.length-1].at + 6){
+          showEnded = true; next = t + 3;   // 終わったあとは、ときどき静かに上がる
+          toast('もう一度はじめから見るときは、くるっと矢印のボタンを押してください', 6000);
+        }
+      }
+      if(showEnded && t >= next){ randomShell(false); next = t + 2.5 + Math.random()*2.5; }
       if(!mine && t >= mineAt){ startMine(t); mineAt = t + 30; }
       if(mine){ while(mine.length && mine[0].at <= t){ const m = mine.shift(); launch(m.type, m.x, m.h, 0, {vx:m.vx, T:0.75 + Math.random()*0.25, pal:m.pal, small:m.type !== 'crown', quiet:Math.random()<0.6}); } if(!mine.length) mine = null; }
       if(t >= finaleAt && finaleLeft === 0) finaleLeft = 18;
-      if(!mine && t >= next){
+      if(!showEnded && !mine && t >= next){
         if(finaleLeft > 0){ randomShell(true); finaleLeft--; next = t + 0.18 + Math.random()*0.2; if(finaleLeft === 0){ finaleAt = t + 30; next = t + 3.5; } }
         else { randomShell(false); if(Math.random() < 0.3) randomShell(false); next = t + 0.7 + Math.random()*1.0; }
       }
@@ -2094,11 +2186,16 @@ $('btnAboutClose').addEventListener('click', ()=>{ $('about').hidden = true; });
     tx = x - (x - tx)*(nk/k); ty = y - (y - ty)*(nk/k); k = nk; draw();
   }
   function reset(){ iw = img.naturalWidth || 1536; ih = img.naturalHeight || 1024; fit = Math.min(vw()/iw, vh()/ih); k = fit; tx = ty = 0; draw(); }
-  function open(){ box.hidden = false; requestAnimationFrame(reset); }
+  function open(src, alt){
+    box.hidden = false;
+    if(src && !img.src.endsWith(src)){ img.onload = ()=>reset(); img.src = src; img.alt = alt || ''; }
+    requestAnimationFrame(reset);
+  }
   function close(){ box.hidden = true; pts.clear(); }
-  const poster = $('posterImg');
-  poster.addEventListener('click', open);
-  poster.addEventListener('keydown', e=>{ if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); open(); } });
+  document.querySelectorAll('.zoomable').forEach(el=>{
+    el.addEventListener('click', ()=>open(el.dataset.full, el.alt));
+    el.addEventListener('keydown', e=>{ if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); open(el.dataset.full, el.alt); } });
+  });
   $('zclose').addEventListener('click', close);
   window.addEventListener('resize', ()=>{ if(!box.hidden) reset(); });
   box.addEventListener('pointerdown', e=>{
@@ -2131,7 +2228,7 @@ $('btnAboutStart').addEventListener('click', ()=>{ $('about').hidden = true; sta
 $('btnRecall').addEventListener('click', ()=>placeAll());
 $('btnSound').addEventListener('click', ()=>{
   muted = !muted;
-  if(Music.gain){ const gp = Music.gain.gain; gp.cancelScheduledValues(audio.currentTime); gp.setValueAtTime(muted ? 0 : (themeSrc ? 0.9 : 0.28), audio.currentTime); }
+  if(Music.gain){ const gp = Music.gain.gain; gp.cancelScheduledValues(audio.currentTime); gp.setValueAtTime(muted ? 0 : (fwSrc ? 0.95 : themeSrc ? 0.9 : 0.28), audio.currentTime); }
   $('icoSound').innerHTML = muted
     ? '<path d="M4 9v6h4l5 4V5L8 9z"/><path d="M17 9l5 6M22 9l-5 6"/>'
     : '<path d="M4 9v6h4l5 4V5L8 9z"/><path d="M17 8.5a5 5 0 0 1 0 7"/>';
