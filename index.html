@@ -51,6 +51,12 @@ html,body{margin:0;height:100%;background:#0d1030;color:var(--ink);font-family:v
 #toast{position:fixed;z-index:4;left:50%;transform:translateX(-50%);bottom:calc(112px + env(safe-area-inset-bottom,0px));
   max-width:min(88vw,420px);padding:10px 14px;border-radius:12px;background:var(--veil);border:1px solid var(--line);
   font-size:13px;line-height:1.5;text-align:center}
+#btnAgain{position:fixed;z-index:4;left:50%;transform:translateX(-50%);bottom:calc(112px + env(safe-area-inset-bottom,0px));
+  appearance:none;border:0;border-radius:999px;padding:14px 34px;font:800 16px/1 var(--round);color:#fff;background:var(--navy);
+  box-shadow:0 8px 24px rgba(0,0,0,.4);cursor:pointer;text-align:center}
+#btnAgain small{display:block;font-weight:500;font-size:10px;margin-top:5px;letter-spacing:.14em;opacity:.8}
+#btnAgain:focus-visible{outline:3px solid var(--pink);outline-offset:3px}
+@media (orientation:landscape) and (max-height:520px){#btnAgain{bottom:calc(24px + env(safe-area-inset-bottom,0px))}}
 #flash{position:fixed;inset:0;z-index:5;background:#fff;opacity:0;pointer-events:none;transition:opacity .35s}
 
 /* はじまりの画面（昼の絵本の世界） */
@@ -177,6 +183,7 @@ html,body{margin:0;height:100%;background:#0d1030;color:var(--ink);font-family:v
 </div>
 
 <div id="toast" hidden></div>
+<button id="btnAgain" hidden>もう一度見る<small>Watch again</small></button>
 <div id="flash"></div>
 
 <section id="start">
@@ -1896,6 +1903,7 @@ function createFireworks(){
       root.visible = true;
       // 音楽が始まった瞬間から、打ち上げ表どおりに上げる（音楽がないときもそのまま始める）
       mineAt = finaleAt = next = Infinity; finaleLeft = 0; mine = null; show = null; showEnded = false; cueIdx = 0;
+      $('btnAgain').hidden = true;
       playFireworksMusic(()=>{ show = buildShow(); showStart = clock.elapsedTime; cueIdx = 0; });
     },
     tap(){ launch('heart', -6 + Math.random()*4, 7, 0); launch(Math.random()<0.5?'big':'butterfly', 6 + Math.random()*8, 16, 2); },
@@ -1909,15 +1917,14 @@ function createFireworks(){
           launch(c.type, c.x, c.h, (Math.random()*2-1)*5, {T:c.T, vx:c.vx||0, small:!!c.small, quiet:!!c.quiet});
         }
         if(cueIdx >= show.length && !showEnded && st > show[show.length-1].at + 6){
-          showEnded = true; next = t + 3;   // 終わったあとは、ときどき静かに上がる
-          toast('もう一度はじめから見るときは、くるっと矢印のボタンを押してください', 6000);
+          showEnded = true;   // 音楽が終わったら花火もおしまい。自動では上げない
+          $('btnAgain').hidden = false;
         }
       }
-      if(showEnded && t >= next){ randomShell(false); next = t + 2.5 + Math.random()*2.5; }
       if(!mine && t >= mineAt){ startMine(t); mineAt = t + 30; }
       if(mine){ while(mine.length && mine[0].at <= t){ const m = mine.shift(); launch(m.type, m.x, m.h, 0, {vx:m.vx, T:0.75 + Math.random()*0.25, pal:m.pal, small:m.type !== 'crown', quiet:Math.random()<0.6}); } if(!mine.length) mine = null; }
       if(t >= finaleAt && finaleLeft === 0) finaleLeft = 18;
-      if(!showEnded && !mine && t >= next){
+      if(!show && !mine && t >= next){
         if(finaleLeft > 0){ randomShell(true); finaleLeft--; next = t + 0.18 + Math.random()*0.2; if(finaleLeft === 0){ finaleAt = t + 30; next = t + 3.5; } }
         else { randomShell(false); if(Math.random() < 0.3) randomShell(false); next = t + 0.7 + Math.random()*1.0; }
       }
@@ -2162,10 +2169,11 @@ function goHome(){
   stopMusic();
   for(let i=0;i<N;i++){ pLife[i] = 1; pPos[i*3+1] = -999; }
   pGeo.attributes.position.needsUpdate = true;
-  arrow.hidden = true; hint.hidden = true; $('hud').hidden = true; $('btnHome').hidden = true; $('toast').hidden = true; $('shot').hidden = true;
+  arrow.hidden = true; hint.hidden = true; $('hud').hidden = true; $('btnAgain').hidden = true; $('btnHome').hidden = true; $('toast').hidden = true; $('shot').hidden = true;
   $('start').hidden = false; $('start').scrollTop = 0;
 }
 $('btnHome').addEventListener('click', goHome);
+$('btnAgain').addEventListener('click', ()=>{ $('btnAgain').hidden = true; placeAll(); });
 $('btnAbout').addEventListener('click', ()=>{ $('about').hidden = false; $('about').scrollTop = 0; });
 $('btnAboutClose').addEventListener('click', ()=>{ $('about').hidden = true; });
 
