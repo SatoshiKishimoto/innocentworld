@@ -1178,6 +1178,63 @@ function windmillFloat(){
   W.update = (t, dt, flash)=>{ hub.rotation.x = -t*0.9; bladeLights(t, flash); };
   return W;
 }
+// メリーゴーラウンドの木馬：横から見た形を厚みのある立体にし、たてがみ・しっぽ・鞍・金の飾りをつける（前を +x に向く）
+let _horseGeo = null;
+function horseGeos(){
+  if(_horseGeo) return _horseGeo;
+  const ext = (pts, depth, bevel)=>{
+    const sh = new THREE.Shape(); sh.moveTo(pts[0][0], pts[0][1]);
+    sh.splineThru(pts.slice(1).map(p=>new THREE.Vector2(p[0], p[1]))); sh.closePath();
+    const g = new THREE.ExtrudeGeometry(sh, {depth, bevelEnabled:true, bevelThickness:bevel, bevelSize:bevel*0.8, bevelSegments:3, curveSegments:24});
+    g.translate(0, 0, -depth/2); g.computeVertexNormals(); return g;
+  };
+  const body = ext([[-0.30,0.05],[-0.34,0.13],[-0.30,0.21],[-0.18,0.25],[-0.02,0.24],[0.10,0.24],[0.17,0.31],[0.22,0.40],[0.27,0.48],
+                    [0.32,0.52],[0.38,0.51],[0.45,0.45],[0.52,0.38],[0.54,0.33],[0.51,0.30],[0.44,0.31],[0.37,0.33],[0.32,0.29],
+                    [0.28,0.19],[0.24,0.08],[0.17,0.01],[0.04,-0.02],[-0.12,-0.02],[-0.24,0.00]], 0.1, 0.035);
+  const mane = ext([[0.31,0.53],[0.27,0.56],[0.25,0.50],[0.20,0.50],[0.20,0.43],[0.14,0.41],[0.15,0.34],[0.09,0.31],[0.12,0.25],
+                    [0.18,0.30],[0.22,0.38],[0.27,0.46]], 0.05, 0.015);
+  const tail = ext([[-0.31,0.18],[-0.42,0.20],[-0.50,0.12],[-0.48,0.02],[-0.53,-0.08],[-0.45,-0.06],[-0.42,0.04],[-0.37,0.10],[-0.32,0.12]], 0.05, 0.015);
+  const saddle = ext([[-0.16,0.24],[-0.14,0.30],[-0.08,0.28],[0.00,0.28],[0.06,0.31],[0.08,0.25],[0.02,0.21],[-0.10,0.21]], 0.16, 0.012);
+  _horseGeo = {body, mane, tail, saddle, leg:new THREE.CylinderGeometry(0.028, 0.034, 1, 10), joint:new THREE.SphereGeometry(0.036, 10, 8),
+               hoof:new THREE.CylinderGeometry(0.036, 0.04, 0.05, 10), ear:new THREE.ConeGeometry(0.022, 0.07, 8), eye:new THREE.SphereGeometry(0.013, 8, 6)};
+  return _horseGeo;
+}
+function carouselHorse(bodyC, maneC, saddleC){
+  const G = horseGeos(), h = new THREE.Group();
+  const bodyM = mat(bodyC, 0.08), maneM = mat(maneC, 0.45), gold = mat(0xd9a43a, 0.5), saddleM = mat(saddleC, 0.4);
+  h.add(new THREE.Mesh(G.body, bodyM));
+  [-1,1].forEach(s=>{ const mn = new THREE.Mesh(G.mane, maneM); mn.position.z = s*0.022; h.add(mn); });
+  h.add(new THREE.Mesh(G.tail, maneM));
+  const sd = new THREE.Mesh(G.saddle, saddleM); h.add(sd);
+  [-1,1].forEach(s=>{
+    const e = new THREE.Mesh(G.eye, mat(0x1a1020, 0.05)); e.position.set(0.44, 0.43, s*0.065); h.add(e);
+    const ear = new THREE.Mesh(G.ear, bodyM); ear.position.set(0.33, 0.56, s*0.03); ear.rotation.z = -0.25; h.add(ear);
+    // 手綱と胸の金飾り
+    const rein = new THREE.Mesh(G.leg, gold); rein.scale.set(0.35, 0.28, 0.35); rein.position.set(0.40, 0.33, s*0.07); rein.rotation.z = -1.1; h.add(rein);
+    const strap = new THREE.Mesh(G.leg, gold); strap.scale.set(0.4, 0.3, 0.4); strap.position.set(-0.03, 0.12, s*0.075); h.add(strap);
+  });
+  [[0.47,0.36],[0.25,0.15],[0.20,0.06]].forEach(([x,y])=>{ const j = new THREE.Mesh(G.joint, gold); j.position.set(x, y, 0); j.scale.set(0.7,0.7,2.2); h.add(j); });
+  // 脚：前脚は跳ね上げ、後ろ脚はうしろへ伸ばす（ギャロップの形）
+  const legM = bodyM;
+  const limb = (pts, z)=>{
+    for(let i=0;i<pts.length-1;i++){
+      const a = new THREE.Vector3(pts[i][0], pts[i][1], z), b = new THREE.Vector3(pts[i+1][0], pts[i+1][1], z);
+      const m = new THREE.Mesh(G.leg, legM), d = b.clone().sub(a);
+      m.scale.set(1, d.length(), 1); m.position.copy(a).add(b).multiplyScalar(0.5);
+      m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), d.normalize()); h.add(m);
+      if(i > 0){ const j = new THREE.Mesh(G.joint, legM); j.position.copy(a); h.add(j); }
+    }
+    const last = pts[pts.length-1], prev = pts[pts.length-2];
+    const hf = new THREE.Mesh(G.hoof, gold); hf.position.set(last[0], last[1], z);
+    hf.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), new THREE.Vector3(last[0]-prev[0], last[1]-prev[1], 0).normalize()); h.add(hf);
+  };
+  limb([[0.20,0.06],[0.32,-0.02],[0.30,-0.16]], 0.04);
+  limb([[0.18,0.06],[0.27,-0.06],[0.21,-0.18]], -0.04);
+  limb([[-0.22,0.06],[-0.30,-0.08],[-0.42,-0.20]], 0.04);
+  limb([[-0.20,0.06],[-0.26,-0.10],[-0.34,-0.24]], -0.04);
+  return h;
+}
+
 function carouselFloat(){
   const W = wagon(3.8, 2.2, 0x9b3f8f, 0xffd25a), g = W.g, pts = W.pts;
   const spin = new THREE.Group(); spin.position.y = 0.9; g.add(spin);
@@ -1187,24 +1244,19 @@ function carouselFloat(){
   add(spin, CYLG, mat(0xffffff, 0.5), [1.42,0.12,1.42], [0,2.22,0]);
   add(spin, SPH, mat(0xffd25a, 1.2), [0.12,0.12,0.12], [0,3.0,0]);
   const horses = [], sp = [];
-  const HC = [0xffffff, 0xffd0ea, 0xd0f0ff, 0xfff0c0, 0xe0d8ff, 0xffe0d0];
+  const HC = [[0xf3eee6,0xff5fa8,0x3f6fe0],[0xf6d6e6,0x8f5fe0,0xffc23a],[0xd8ecf8,0x2fb8e8,0xff5fa8],[0xf6e8c8,0xff9a2a,0x9b3f8f],[0xe6dcf6,0xff6fb5,0x2fc8c8],[0xd6f0e0,0x2fae78,0xe23d72]];
   for(let k=0;k<6;k++){
     const a = k/6*Math.PI*2, x = Math.cos(a)*0.95, z = Math.sin(a)*0.95;
     add(spin, CYLG, mat(0xe6b65c, 0.6), [0.025,2.1,0.025], [x,1.15,z]);
-    const h = new THREE.Group(); h.position.set(x, 0.9, z); h.rotation.y = -a; spin.add(h);
-    const hm = mat(HC[k], 0.3);
-    add(h, BOXG, hm, [0.16,0.18,0.42], [0,0,0]);
-    add(h, BOXG, hm, [0.12,0.26,0.12], [0,0.17,0.2], [-0.4,0,0]);
-    add(h, BOXG, hm, [0.11,0.11,0.22], [0,0.3,0.28]);
-    [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([sx,sz])=>add(h, BOXG, hm, [0.04,0.26,0.04], [sx*0.05,-0.18,sz*0.15]));
-    add(h, BOXG, mat(0xff7fb8, 0.7), [0.17,0.04,0.2], [0,0.1,-0.02]);
+    const [bc, mc, sc] = HC[k];
+    const h = carouselHorse(bc, mc, sc); h.position.set(x, 0.9, z); h.rotation.y = Math.PI/2 - a; h.scale.setScalar(1.35); spin.add(h);
     horses.push({h, ph:k});
   }
   for(let k=0;k<28;k++){ const a = k/28*Math.PI*2; sp.push(V(Math.cos(a)*1.43, 2.22, Math.sin(a)*1.43)); }
   for(let k=0;k<8;k++){ const a = k/8*Math.PI*2; line(sp, V(0,2.95,0), V(Math.cos(a)*1.4, 2.25, Math.sin(a)*1.4)); }
   const spinLights = bulbs(spin, sp);
   glowSprite(g, 'rgba(255,190,230,.25)', 5, [0,2.2,0]);
-  W.update = (t, dt, flash)=>{ spin.rotation.y = t*0.7; horses.forEach(o=>{ o.h.position.y = 0.95 + Math.sin(t*2.4 + o.ph*1.05)*0.18; }); spinLights(t, flash); };
+  W.update = (t, dt, flash)=>{ spin.rotation.y = t*0.7; horses.forEach(o=>{ const b = Math.sin(t*2.4 + o.ph*1.05); o.h.position.y = 1.2 + b*0.15; o.h.rotation.z = Math.cos(t*2.4 + o.ph*1.05)*0.08; }); spinLights(t, flash); };
   return W;
 }
 function forestFloat(){
@@ -1340,13 +1392,24 @@ function signTex(){
     [[110,110,26],[w-110,110,26],[110,h-110,18],[w-110,h-110,18]].forEach(([cx,cy,r])=>{ x.fillStyle = '#ffd25a'; starPath(x,cx,cy,r); x.fill(); });
   });
 }
-function thanksTex(){
-  return canvasTex(1280, 300, (x,w,h)=>{
-    x.fillStyle = '#fff8e8'; x.fillRect(0,0,w,h);
-    x.strokeStyle = '#e23d72'; x.lineWidth = 14; x.strokeRect(12,12,w-24,h-24);
-    x.fillStyle = '#e23d72'; x.textAlign = 'center'; x.textBaseline = 'middle';
-    x.font = `800 150px ${FONT}`; x.fillText('せかいは、ひとつ', w/2, 128);
-    x.fillStyle = '#1f2f8f'; x.font = `700 58px ${FONT}`; x.fillText('One World, Together', w/2, 240);
+function neonTex(){
+  return canvasTex(1400, 380, (x,w,h)=>{
+    x.fillStyle = '#0c0a24'; x.fillRect(0,0,w,h);
+    const tube = (draw, color, glow)=>{
+      // ネオン管：外側の光 → 色の管 → 白く光る芯
+      x.save(); x.shadowColor = glow; x.lineJoin = 'round'; x.lineCap = 'round';
+      [[48,22,0.5],[22,13,0.8],[8,7,1]].forEach(([blur,lw,a])=>{ x.shadowBlur = blur; x.globalAlpha = a; x.strokeStyle = color; x.lineWidth = lw; draw('stroke'); });
+      x.shadowBlur = 6; x.globalAlpha = 1; x.strokeStyle = '#fff6fb'; x.lineWidth = 2.6; draw('stroke');
+      x.restore();
+    };
+    // 角の丸い枠（水色）
+    const frame = (m)=>{ const r = 40, a = 22, b = 22, W = w-44, H = h-44; x.beginPath(); x.moveTo(a+r,b); x.arcTo(a+W,b,a+W,b+H,r); x.arcTo(a+W,b+H,a,b+H,r); x.arcTo(a,b+H,a,b,r); x.arcTo(a,b,a+W,b,r); x.closePath(); x[m](); };
+    tube(frame, '#4fe3ff', '#4fe3ff');
+    x.textAlign = 'center'; x.textBaseline = 'middle';
+    x.font = `800 168px ${FONT}`;
+    tube(m=>{ x[m+'Text']('せかいは ひとつ', w/2, 160); }, '#ff4fa8', '#ff4fa8');
+    x.font = `700 60px ${FONT}`;
+    tube(m=>{ x[m+'Text']('One World, Together', w/2, 300); }, '#ffd25a', '#ffb02e');
   });
 }
 function moonTex(){
@@ -1370,9 +1433,12 @@ function finaleFloat(){
   for(let z=-2.05; z<=2.051; z+=0.13){ sp.push(V(0.5, 3.97, z)); sp.push(V(0.5, 2.73, z)); }
   for(let y=2.73; y<=3.971; y+=0.13){ sp.push(V(0.5, y, -2.05)); sp.push(V(0.5, y, 2.05)); }
   const signLights = bulbs(g, sp, {size:0.2});
-  // 「せかいは、ひとつ」の札
-  const th = new THREE.Mesh(new THREE.PlaneGeometry(3.3, 0.77), new THREE.MeshBasicMaterial({map:thanksTex()}));
-  th.rotation.y = Math.PI/2; th.position.set(1.2, 0.5, 0); g.add(th);
+  // 「せかいは ひとつ」のネオンサイン
+  const th = new THREE.Mesh(new THREE.PlaneGeometry(3.5, 0.95), new THREE.MeshBasicMaterial({map:neonTex(), toneMapped:false}));
+  th.rotation.y = Math.PI/2; th.position.set(1.22, 0.55, 0); g.add(th);
+  const neonGlow = glowSprite(g, 'rgba(255,90,180,.55)', 3.2, [1.4, 0.55, 0]);
+  neonGlow.scale.set(4.2, 1.6, 1);
+  let neonNext = 2, neonOff = 0;
   // 月と星
   const moon = new THREE.Sprite(new THREE.SpriteMaterial({map:moonTex(), transparent:true, depthWrite:false}));
   moon.scale.set(1.3,1.3,1); moon.position.set(0.3, 4.7, -1.2); g.add(moon);
@@ -1395,6 +1461,12 @@ function finaleFloat(){
   const wp = V(0,0,0), CC = [col(0xffd25a), col(0xff7fb8), col(0x7fe6ff), col(0xffffff)];
   W.update = (t, dt, flash)=>{
     signLights(t, flash);
+    // ネオンのちらつき：ときどき一瞬消えかかる
+    if(t > neonNext){ neonOff = 0.18 + Math.random()*0.2; neonNext = t + 3 + Math.random()*5; }
+    let nb = 1;
+    if(neonOff > 0){ neonOff -= dt; nb = Math.random() < 0.5 ? 0.35 : 1; }
+    nb *= 0.94 + 0.06*Math.sin(t*50) + (flash > 0 ? 0.2 : 0);
+    th.material.color.setScalar(Math.min(1.2, nb)); neonGlow.material.opacity = 0.75*nb;
     stars.forEach((s,i)=>{ s.rotation.x = t*1.5 + i; });
     heart.scale.setScalar(1.3 + Math.sin(t*4)*0.08);
     if(Math.random() < dt*14){ sign.getWorldPosition(wp); wp.y += 0.9;
