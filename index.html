@@ -976,6 +976,7 @@ function animPerson(P, t, dist, cheer){
     P.g.rotation.y = k < 1 ? (k*k*(3-2*k))*Math.PI*2 : 0;
   }
   else if(P.role === 'baton'){ L.rotation.set(-s*0.45,0,0); R.rotation.set(-0.9,0,0); P.baton.rotation.z = t*9; }
+  else if(animRole(P, t, s)){}
   else if(P.role === 'rider'){ L.rotation.set(0,0,-0.25); R.rotation.set(0,0, 2.5 + Math.sin(t*6 + P.phase)*0.35); }
   else { L.rotation.x = -s*0.45; R.rotation.x = s*0.45; }
   if(cheer > 0.05 && P.role !== 'drum'){ L.rotation.set(0,0,-2.7); R.rotation.set(0,0,2.7); }
@@ -1122,57 +1123,264 @@ function carriage(bodyC){
   return W;
 }
 
-// 行進の並び（back＝先頭からの距離 m、lane＝奥行き方向のずれ m）
+function windmillFloat(){
+  const W = wagon(3.6, 2.0, 0x2f7d4f, 0xffd25a), g = W.g, pts = W.pts;
+  const cream = mat(0xf1dfbd, 0.15), red = mat(0xd8323c, 0.35), wood = mat(0x8a5a33, 0.15);
+  add(g, CYLG, cream, [0.55,1.9,0.55], [0,1.85,0]);
+  add(g, CONEG, red, [0.7,0.75,0.7], [0,3.17,0]);
+  add(g, BOXG, mat(0x3a2a55,0.1), [0.02,0.5,0.32], [0.55,1.2,0]);
+  add(g, BOXG, mat(0xffd25a,1.3), [0.02,0.25,0.2], [0.5,2.2,0]);
+  const hub = new THREE.Group(); hub.position.set(0.72, 2.75, 0); g.add(hub);
+  add(hub, SPH, wood, [0.12,0.12,0.12], [0,0,0]);
+  const bp = [];
+  for(let k=0;k<4;k++){
+    const bl = new THREE.Group(); bl.rotation.x = k*Math.PI/2; hub.add(bl);
+    add(bl, BOXG, wood, [0.04,1.5,0.06], [0,0.8,0]);
+    add(bl, BOXG, red, [0.03,1.15,0.34], [0,0.95,0.2]);
+    for(let y=0.3; y<=1.55; y+=0.15){ bp.push(new THREE.Vector3(0.04, y, 0).applyAxisAngle(V(1,0,0), k*Math.PI/2)); bp.push(new THREE.Vector3(0.04, y, 0.38).applyAxisAngle(V(1,0,0), k*Math.PI/2)); }
+  }
+  const bladeLights = bulbs(hub, bp);
+  ring(pts, 0, 2.8, 0, 0.71);
+  [-1,-0.5,0,0.5,1].forEach(a=>line(pts, V(0,3.55,0), V(Math.cos(a)*0.71, 2.8, Math.sin(a)*0.71)));
+  [-0.7,0,0.7].forEach(a=>line(pts, V(Math.cos(a)*0.56,0.95,Math.sin(a)*0.56), V(Math.cos(a)*0.56,2.78,Math.sin(a)*0.56)));
+  // 花壇
+  [[0.8,-1.3],[0.8,1.3],[-0.8,1.3],[-0.8,-1.3]].forEach(([x,z],i)=>[0,1,2].forEach(j=>
+    add(g, SPH, mat([0xff7fb8,0xffd25a,0x7fe6ff][(i+j)%3], 0.8), [0.12,0.1,0.12], [x + (j-1)*0.15, 1.0, z])));
+  W.update = (t, dt, flash)=>{ hub.rotation.x = -t*0.9; bladeLights(t, flash); };
+  return W;
+}
+function carouselFloat(){
+  const W = wagon(3.8, 2.2, 0x9b3f8f, 0xffd25a), g = W.g, pts = W.pts;
+  const spin = new THREE.Group(); spin.position.y = 0.9; g.add(spin);
+  add(spin, CYLG, mat(0xfff2d8, 0.3), [1.25,0.12,1.25], [0,0.06,0]);
+  add(spin, CYLG, mat(0xe6b65c, 0.6), [0.12,2.2,0.12], [0,1.2,0]);
+  add(spin, CONEG, mat(0xff7fb0, 0.4), [1.4,0.7,1.4], [0,2.6,0]);
+  add(spin, CYLG, mat(0xffffff, 0.5), [1.42,0.12,1.42], [0,2.22,0]);
+  add(spin, SPH, mat(0xffd25a, 1.2), [0.12,0.12,0.12], [0,3.0,0]);
+  const horses = [], sp = [];
+  const HC = [0xffffff, 0xffd0ea, 0xd0f0ff, 0xfff0c0, 0xe0d8ff, 0xffe0d0];
+  for(let k=0;k<6;k++){
+    const a = k/6*Math.PI*2, x = Math.cos(a)*0.95, z = Math.sin(a)*0.95;
+    add(spin, CYLG, mat(0xe6b65c, 0.6), [0.025,2.1,0.025], [x,1.15,z]);
+    const h = new THREE.Group(); h.position.set(x, 0.9, z); h.rotation.y = -a; spin.add(h);
+    const hm = mat(HC[k], 0.3);
+    add(h, BOXG, hm, [0.16,0.18,0.42], [0,0,0]);
+    add(h, BOXG, hm, [0.12,0.26,0.12], [0,0.17,0.2], [-0.4,0,0]);
+    add(h, BOXG, hm, [0.11,0.11,0.22], [0,0.3,0.28]);
+    [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([sx,sz])=>add(h, BOXG, hm, [0.04,0.26,0.04], [sx*0.05,-0.18,sz*0.15]));
+    add(h, BOXG, mat(0xff7fb8, 0.7), [0.17,0.04,0.2], [0,0.1,-0.02]);
+    horses.push({h, ph:k});
+  }
+  for(let k=0;k<28;k++){ const a = k/28*Math.PI*2; sp.push(V(Math.cos(a)*1.43, 2.22, Math.sin(a)*1.43)); }
+  for(let k=0;k<8;k++){ const a = k/8*Math.PI*2; line(sp, V(0,2.95,0), V(Math.cos(a)*1.4, 2.25, Math.sin(a)*1.4)); }
+  const spinLights = bulbs(spin, sp);
+  glowSprite(g, 'rgba(255,190,230,.25)', 5, [0,2.2,0]);
+  W.update = (t, dt, flash)=>{ spin.rotation.y = t*0.7; horses.forEach(o=>{ o.h.position.y = 0.95 + Math.sin(t*2.4 + o.ph*1.05)*0.18; }); spinLights(t, flash); };
+  return W;
+}
+function forestFloat(){
+  const W = wagon(3.8, 2.2, 0x2c6b3a, 0xb8ff9a), g = W.g, pts = W.pts;
+  const leaf = [mat(0x2f9a52, 0.3), mat(0x4bbf6a, 0.3)], trunk = mat(0x7a4c2e, 0.1);
+  [[0,-0.9,1.25],[0.2,0.4,1.0],[-0.3,1.3,0.8]].forEach(([x,z,s],i)=>{
+    add(g, CYLG, trunk, [0.1*s,0.7*s,0.1*s], [x,0.9+0.35*s,z]);
+    for(let k=0;k<3;k++) add(g, CONEG, leaf[k%2], [0.6*s*(1-k*0.22),0.8*s,0.6*s*(1-k*0.22)], [x,0.9+0.9*s+k*0.45*s,z]);
+    for(let k=0;k<26;k++){ const a = k*0.75, hh = k/26, r = 0.6*s*(1-hh*0.8);   // らせん状の電飾
+      pts.push(V(x + Math.cos(a)*r, 0.9 + 0.6*s + hh*1.7*s, z + Math.sin(a)*r)); }
+  });
+  // きのこ
+  [[0.7,-0.2,0xe23d72],[0.6,0.9,0xff8a3a],[0.75,-1.5,0xe23d72]].forEach(([x,z,c])=>{
+    add(g, CYLG, mat(0xfff2dc,0.3), [0.07,0.25,0.07], [x,1.02,z]);
+    add(g, SPH, mat(c,0.5), [0.2,0.12,0.2], [x,1.16,z]);
+    [[0.08,0.05],[-0.06,-0.08],[0,0.1]].forEach(([dx,dz])=>add(g, SPH, mat(0xffffff,0.8), [0.03,0.02,0.03], [x+dx,1.26,z+dz]));
+  });
+  // うさぎ
+  const bunnies = [];
+  [[0.65,0.25],[0.55,-0.85]].forEach(([x,z],i)=>{
+    const b = new THREE.Group(); b.position.set(x, 0.9, z); b.rotation.y = Math.PI/2*0.6; g.add(b);
+    const w = mat(0xffffff, 0.45), pk = mat(0xffb0c8, 0.5);
+    add(b, SPH, w, [0.18,0.2,0.16], [0,0.2,0]);
+    add(b, SPH, w, [0.15,0.14,0.14], [0,0.48,0.02]);
+    [-1,1].forEach(s=>{ add(b, SPH, w, [0.04,0.15,0.03], [0.06*s,0.7,-0.01], [0,0,s*0.15]); add(b, SPH, pk, [0.022,0.1,0.01], [0.06*s,0.7,0.02], [0,0,s*0.15]); });
+    [-1,1].forEach(s=>add(b, SPH, mat(0x1a1020,0.05), [0.02,0.02,0.02], [0.055*s,0.5,0.13]));
+    bunnies.push({b, ph:i*1.3});
+  });
+  W.update = (t)=>{ bunnies.forEach(o=>{ o.b.position.y = 0.9 + Math.abs(Math.sin(t*3 + o.ph))*0.25; }); };
+  return W;
+}
+function swanFloat(){
+  const W = wagon(3.8, 2.0, 0x1f5fa8, 0x7fe6ff), g = W.g, pts = W.pts;
+  const white = mat(0xffffff, 0.35);
+  const hull = add(g, SPH, white, [0.75,0.45,1.5], [0,1.15,-0.1]);
+  add(g, SPH, white, [0.35,0.5,0.9], [0.55,1.35,-0.4], [0,0,-0.5]);
+  add(g, SPH, white, [0.35,0.5,0.9], [-0.55,1.35,-0.4], [0,0,0.5]);
+  const neck = [];
+  for(let k=0;k<9;k++){ const u = k/8; const m = add(g, SPH, white, [0.13,0.13,0.13], [0, 1.3 + Math.sin(u*Math.PI*0.9)*1.1, 1.0 + Math.sin(u*Math.PI)*0.35 - u*0.15]); neck.push(m); }
+  add(g, SPH, white, [0.16,0.15,0.2], [0,2.43,0.95]);
+  add(g, CONEG, mat(0xff9a3a,0.5), [0.06,0.22,0.06], [0,2.4,1.18], [Math.PI/2,0,0]);
+  [-1,1].forEach(s=>add(g, SPH, mat(0x111111,0.05), [0.025,0.025,0.025], [0.12*s,2.48,1.02]));
+  const r = person({role:'rider', suit:0xff7fb8, trim:0xffffff, noShadow:true}); r.g.position.set(0,0.75,-0.4); g.add(r.g); W.people.push(r);
+  for(let z=-1.7; z<=1.7; z+=0.12){ pts.push(V(1.05, 0.72 + Math.sin(z*5)*0.1, z)); pts.push(V(-1.05, 0.72 + Math.sin(z*5)*0.1, z)); }
+  for(let k=0;k<22;k++){ const a = k/22*Math.PI*2; pts.push(V(Math.cos(a)*0.77, 1.18, -0.1 + Math.sin(a)*1.52)); }
+  const fount = [V(0.9,1.0,1.6), V(-0.9,1.0,1.6), V(0.9,1.0,-1.6), V(-0.9,1.0,-1.6)].map(p=>{ const o = new THREE.Object3D(); o.position.copy(p); g.add(o); return o; });
+  const wp = V(0,0,0), WC = [col(0x9fe8ff), col(0xffffff), col(0xb8c8ff)];
+  W.update = (t, dt)=>{
+    neck.forEach((m,k)=>{ m.position.x = Math.sin(t*1.2 + k*0.3)*0.03*k; });
+    if(Math.random() < dt*30){ const f = fount[(Math.random()*4)|0]; f.getWorldPosition(wp);
+      spawn(wp, (Math.random()-.5)*0.6, 2.4 + Math.random()*0.8, (Math.random()-.5)*0.6, 1.1, WC[(Math.random()*3)|0], 3.5, 0); }
+  };
+  return W;
+}
+function balloonFloat(){
+  const W = wagon(3.4, 2.0, 0xd8323c, 0xffd25a), g = W.g, pts = W.pts;
+  add(g, BOXG, mat(0x9a6a3a,0.2), [0.9,0.55,0.9], [0,1.18,0]);
+  add(g, BOXG, mat(0xe6b65c,0.6), [0.95,0.06,0.95], [0,1.46,0]);
+  const bal = new THREE.Group(); bal.position.y = 3.15; g.add(bal);
+  const geo = new THREE.SphereGeometry(1, 24, 18);
+  const STRIPE = [col(0xff6fb5), col(0xffd25a), col(0x6fe0ff), col(0xffffff), col(0xb48cff), col(0x7dffb8)];
+  const pa = geo.attributes.position, ca = new Float32Array(pa.count*3), vv = V(0,0,0);
+  for(let i=0;i<pa.count;i++){ vv.fromBufferAttribute(pa, i); const a = Math.atan2(vv.z, vv.x); const c = STRIPE[(Math.floor((a+Math.PI)/(Math.PI*2)*12)) % STRIPE.length]; ca.set([c.r,c.g,c.b], i*3); }
+  geo.setAttribute('color', new THREE.BufferAttribute(ca,3));
+  const bm = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({vertexColors:true, emissive:0x553344, emissiveIntensity:0.4, roughness:.5}));
+  bm.scale.set(1.05,1.25,1.05); bal.add(bm);
+  add(bal, CONEG, mat(0xff6fb5,0.3), [0.55,0.6,0.55], [0,-1.35,0], [Math.PI,0,0]);
+  [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([sx,sz])=>line(pts, V(sx*0.44,1.5,sz*0.44), V(sx*0.5,2.0,sz*0.5), 0.12));
+  const bp = []; for(let k=0;k<12;k++){ const a = k/12*Math.PI*2; for(let j=-6;j<=6;j++){ const el = j/6*1.25; bp.push(V(Math.cos(a)*Math.cos(el)*1.07, Math.sin(el)*1.3, Math.sin(a)*Math.cos(el)*1.07)); } }
+  const balLights = bulbs(bal, bp);
+  const flame = glowSprite(g, 'rgba(255,170,60,.9)', 0.9, [0,1.75,0]);
+  const r = person({role:'rider', suit:0x23307f, trim:0xffd25a, hat:'top', hatColor:0xd8323c, noShadow:true}); r.g.position.set(0,0.65,0); g.add(r.g); W.people.push(r);
+  W.update = (t, dt, flash)=>{ bal.position.y = 3.15 + Math.sin(t*1.1)*0.12; bal.rotation.y = t*0.2; const f = 0.8 + Math.random()*0.4; flame.scale.set(f, f*1.2, 1); balLights(t, flash); };
+  return W;
+}
+
+// 人の追加の役：トランペット・リボン・ランタン
+function addRoleProps(P, o){
+  const R = P.arms[1].userData.hand;
+  if(o.role === 'horn'){
+    const h = new THREE.Group(); h.position.set(0, 0.72, 0.14); P.up.add(h);
+    add(h, CYLG, mat(0xe6b65c, 0.8), [0.022,0.42,0.022], [0,0,0.2], [Math.PI/2,0,0]);
+    add(h, CONEG, mat(0xffd25a, 0.9), [0.08,0.14,0.08], [0,0,0.45], [-Math.PI/2,0,0]);
+    P.horn = h;
+  } else if(o.role === 'ribbon'){
+    const stick = new THREE.Group(); R.add(stick);
+    add(stick, CYLG, mat(0xffffff, 0.5), [0.012,0.45,0.012], [0,0.15,0.1], [0.6,0,0]);
+    const seg = 14, geo = new THREE.PlaneGeometry(0.07, 1.6, 1, seg);
+    const rib = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({color:o.ribbon||0xff7fb8, side:THREE.DoubleSide, transparent:true, opacity:0.9, blending:THREE.AdditiveBlending, depthWrite:false}));
+    rib.frustumCulled = false; P.up.add(rib);
+    P.ribbon = {rib, geo, base:geo.attributes.position.array.slice(0), seg};
+  } else if(o.role === 'lantern'){
+    const holder = new THREE.Group(); holder.rotation.x = 0.5; R.add(holder);
+    add(holder, CYLG, mat(0x8a5a33, 0.2), [0.015,1.3,0.015], [0,0.45,0]);
+    const lan = new THREE.Group(); lan.position.set(0,1.05,0.22); holder.add(lan);
+    add(lan, CYLG, mat(0xd8323c, 0.4), [0.1,0.03,0.1], [0,0.12,0]);
+    add(lan, SPH, mat(o.lanternColor||0xffc860, 1.6), [0.11,0.13,0.11], [0,0,0]);
+    add(lan, CYLG, mat(0xd8323c, 0.4), [0.1,0.03,0.1], [0,-0.12,0]);
+    glowSprite(lan, 'rgba(255,200,120,.9)', 0.9, [0,0,0]);
+    P.lantern = lan;
+  }
+}
+function animRole(P, t, s){
+  const L = P.arms[0], R = P.arms[1];
+  if(P.role === 'horn'){
+    const b = Math.sin(t*Math.PI*2)*0.04;
+    L.rotation.set(-1.25 + b, 0, -0.35); R.rotation.set(-1.3 + b, 0, 0.3); P.horn.rotation.x = -0.15 + b;
+  } else if(P.role === 'ribbon'){
+    const a = t*5 + P.phase;
+    L.rotation.set(-s*0.4, 0, -0.25); R.rotation.set(-1.2 + Math.sin(a)*0.7, 0, 0.9 + Math.cos(a)*0.6);
+    const r = P.ribbon, arr = r.geo.attributes.position.array;
+    R.userData.hand.getWorldPosition(_hp); P.up.worldToLocal(_hp);
+    for(let i=0;i<arr.length/3;i++){
+      const by = r.base[i*3+1], u = (0.8 - by)/1.6;   // 0：持ち手側 → 1：先
+      arr[i*3]   = _hp.x + r.base[i*3] + Math.sin(a - u*4)*0.35*u + 0.15*u;
+      arr[i*3+1] = _hp.y + 0.3 - u*0.9 + Math.cos(a*0.7 - u*3)*0.25*u;
+      arr[i*3+2] = _hp.z - u*1.1 + Math.sin(a*0.5 - u*5)*0.2*u;
+    }
+    r.geo.attributes.position.needsUpdate = true;
+  } else if(P.role === 'lantern'){
+    L.rotation.set(-s*0.45, 0, 0); R.rotation.set(-0.7, 0, 0.1); P.lantern.rotation.x = Math.sin(t*3 + P.phase)*0.25;
+  } else return false;
+  return true;
+}
+const _hp = new THREE.Vector3();
+
+// 行進の並び：3幕構成。row(前との間隔m, …同じ列に並ぶもの)
 let FLAG_TEX = null;
+const MUSIC_LOOP = 152;   // 曲の長さ（秒）。行列全体がちょうどこの時間で通り過ぎる
 function createParade(){
   FLAG_TEX = flagTex();
   const root = new THREE.Group(); root.visible = false; scene.add(root);
   const navy = 0x23307f, gold = 0xe6b65c;
-  const P = (role, o)=>person(Object.assign({role}, o));
-  const plan = [
-    {back:0,    lane:-0.6, make:()=>P('flag', {suit:navy, trim:gold, pants:0xf2f2f2, hat:'shako', hatColor:navy})},
-    {back:0,    lane: 0.6, make:()=>P('flag', {suit:navy, trim:gold, pants:0xf2f2f2, hat:'shako', hatColor:navy})},
-    {back:1.5,  fly:'butterflies', d:-1.5, lift:0.4},
-    {back:2.5,  lane:-0.6, make:()=>P('drum', {suit:0xf4f1ea, trim:gold, pants:navy, hat:'shako', hatColor:0xd8323c})},
-    {back:2.5,  lane: 0.6, make:()=>P('drum', {suit:0xf4f1ea, trim:gold, pants:navy, hat:'shako', hatColor:0xd8323c})},
-    {back:3.8,  lane:-0.6, make:()=>P('drum', {suit:0xf4f1ea, trim:gold, pants:navy, hat:'shako', hatColor:0xd8323c})},
-    {back:3.8,  lane: 0.6, make:()=>P('drum', {suit:0xf4f1ea, trim:gold, pants:navy, hat:'shako', hatColor:0xd8323c})},
-    {back:7.4,  float:bookFloat},
-    {back:10.9, lane:-0.6, make:()=>P('dance', {suit:0xff7fb8, trim:0xffffff, pants:0xf6dcc6, skirt:true})},
-    {back:10.9, lane: 0.6, make:()=>P('dance', {suit:0x5ad8ff, trim:0xffffff, pants:0xf6dcc6, skirt:true})},
-    {back:12.2, lane:-0.6, make:()=>P('dance', {suit:0x5ad8ff, trim:0xffffff, pants:0xf6dcc6, skirt:true})},
-    {back:12.2, lane: 0.6, make:()=>P('dance', {suit:0xff7fb8, trim:0xffffff, pants:0xf6dcc6, skirt:true})},
-    {back:11.5, fly:'phoenix', d:0, lift:2.4},
-    {back:15.9, float:castleFloat},
-    {back:19.3, lane:-0.6, make:()=>P('baton', {suit:0xffd25a, trim:0xffffff, pants:0xffffff, hat:'top', hatColor:navy})},
-    {back:19.3, lane: 0.6, make:()=>P('baton', {suit:0xffd25a, trim:0xffffff, pants:0xffffff, hat:'top', hatColor:navy})},
-    {back:22.6, float:locomotive},
-    {back:25.0, float:()=>carriage(0x2fb3a8)},
-    {back:27.0, float:()=>carriage(0xffb84a)},
-    {back:25.5, fly:'whale', d:5, lift:4.0},
-    {back:30.0, lane:0,    make:()=>P('flag', {suit:navy, trim:gold, pants:0xf2f2f2, hat:'shako', hatColor:navy})}
-  ];
+  const P = (role, o)=>()=>{ const p = person(Object.assign({role}, o)); addRoleProps(p, Object.assign({role}, o)); return p; };
+  const FLAG = P('flag', {suit:navy, trim:gold, pants:0xf2f2f2, hat:'shako', hatColor:navy});
+  const DRUM = P('drum', {suit:0xf4f1ea, trim:gold, pants:navy, hat:'shako', hatColor:0xd8323c});
+  const HORN = P('horn', {suit:0xd8323c, trim:gold, pants:0xf2f2f2, hat:'shako', hatColor:0xf4f1ea});
+  const DANCE = c=>P('dance', {suit:c, trim:0xffffff, pants:0xf6dcc6, skirt:true});
+  const RIBBON = c=>P('ribbon', {suit:0xffffff, trim:c, pants:0xf6dcc6, skirt:true, ribbon:c});
+  const BATON = P('baton', {suit:0xffd25a, trim:0xffffff, pants:0xffffff, hat:'top', hatColor:navy});
+  const LANTERN = c=>P('lantern', {suit:0x3a2a7a, trim:0xffd25a, pants:0x2a2050, lanternColor:c});
+  const PINK = 0xff7fb8, CYAN = 0x5ad8ff, GOLDC = 0xffd25a, MINT = 0x7dffb8, VIO = 0xb48cff;
+
+  // 空を飛ぶ仲間（パレード専用に用意）
+  const flyers = { bf1:createButterflies(), bf2:createButterflies(), phoenix:createPhoenix(), whale:createWhale() };
+
+  const plan = []; let cur = 0;
+  const row = (gap, ...items)=>{ cur += gap; items.forEach(it=>plan.push(Object.assign({back:cur}, it))); };
+  const pair = (make)=>[{lane:-0.6, make}, {lane:0.6, make}];
+  // 第1幕：はじまりの行進
+  row(0,   ...pair(FLAG));
+  row(1.5, {fly:'bf1', d:-1.5, lift:0.4});
+  row(1.2, ...pair(DRUM)); row(1.3, ...pair(DRUM));
+  row(3.6, {float:bookFloat});
+  row(3.5, {lane:-0.6, make:DANCE(PINK)}, {lane:0.6, make:DANCE(CYAN)});
+  row(1.3, {lane:-0.6, make:DANCE(CYAN)}, {lane:0.6, make:DANCE(PINK)});
+  row(0,   {fly:'phoenix', d:0, lift:2.4});
+  row(3.7, {float:castleFloat});
+  row(3.4, ...pair(BATON));
+  row(3.3, {float:locomotive}); row(2.4, {float:()=>carriage(0x2fb3a8)}); row(2.0, {float:()=>carriage(0xffb84a)});
+  // 第2幕：村をめぐる
+  row(4.0, {lane:0, make:FLAG});
+  row(1.6, ...pair(HORN)); row(1.3, ...pair(HORN)); row(1.3, ...pair(HORN));
+  row(3.8, {float:windmillFloat});
+  row(3.6, {lane:-0.6, make:RIBBON(PINK)}, {lane:0.6, make:RIBBON(MINT)});
+  row(1.4, {lane:-0.6, make:RIBBON(VIO)}, {lane:0.6, make:RIBBON(GOLDC)});
+  row(0,   {fly:'bf2', d:-1.5, lift:0.6});
+  row(3.8, {float:carouselFloat});
+  row(3.6, {lane:-0.6, make:LANTERN(0xffc860)}, {lane:0.6, make:LANTERN(0xff9fd0)});
+  row(1.3, {lane:-0.6, make:LANTERN(0x9fe8ff)}, {lane:0.6, make:LANTERN(0xffc860)});
+  row(3.8, {float:forestFloat});
+  // 第3幕：やさしさがつながるフィナーレ
+  row(4.0, ...pair(DRUM)); row(1.3, ...pair(DRUM));
+  row(3.6, {float:swanFloat});
+  row(0,   {fly:'whale', d:5, lift:4.0});
+  row(3.6, {lane:-0.6, make:DANCE(GOLDC)}, {lane:0.6, make:DANCE(VIO)});
+  row(1.3, {lane:-0.6, make:DANCE(MINT)}, {lane:0.6, make:DANCE(PINK)});
+  row(1.3, ...pair(BATON));
+  row(3.6, {float:balloonFloat});
+  row(3.6, ...pair(HORN));
+  row(1.6, {lane:0, make:FLAG});
+  const total = cur;
+
   const units = [];
   plan.forEach(u=>{
     if(u.fly) return;
     const wrap = new THREE.Group(); root.add(wrap);
-    if(u.float){ const F = u.float(); wrap.add(F.g); units.push({u, wrap, F, people:F.people, bulbs:bulbs(F.g, F.pts)}); }
+    if(u.float){ const F = u.float(); wrap.add(F.g); const bl = F.pts.length ? bulbs(F.g, F.pts) : ()=>{}; units.push({u, wrap, F, people:F.people, bulbs:bl}); }
     else { const p = u.make(); wrap.add(p.g); units.push({u, wrap, people:[p]}); }
   });
-  const total = 30;
-  let LEAD = 0;
-  const state = {start:V(0,0,0), dir:V(0,0,0), fwd:V(0,0,0), t0:0, cycle:1, groundY:0};
+  let LEAD = 0, H = 0;
+  const state = {start:V(0,0,0), dir:V(0,0,0), fwd:V(0,0,0), t0:0, cycle:1, groundY:0, speed:1, L:0};
   let cheerT = 0;
   const tmp = V(0,0,0), proj = V(0,0,0), wp = V(0,0,0), CONF = [col(0xffd25a), col(0xff7fb8), col(0x7fe6ff), col(0xffffff)];
-  const sAt = (u, t)=>((((t - state.t0)*PARADE.speed + LEAD - u.back) % state.cycle) + state.cycle) % state.cycle;
+  const sAt = (u, t)=>((((t - state.t0)*state.speed + LEAD - u.back) % state.cycle) + state.cycle) % state.cycle;
   return {
+    total,
     start(f, right){
-      // 画面に見えている横幅から、入口・出口を決める（画面のすぐ外から入り、すぐ外へ抜ける）
+      // 画面に見えている横幅から入口・出口を決め、行列全体がちょうど曲の長さで通り過ぎる速さにする
       const tanH = Math.tan(camera.fov*Math.PI/360) * camera.aspect;
-      const H = (CONFIG.paradeDistance - 0.6)*tanH + 2.2;          // 地面の行列が見え始める位置
-      const Hmax = (CONFIG.paradeDistance + 5)*tanH + 3;          // いちばん遠いクジラが見える範囲
-      const L = Hmax + 1;                                          // 折り返し地点（見えない位置）
+      H = (CONFIG.paradeDistance - 0.6)*tanH + 2.4;
+      const Hmax = (CONFIG.paradeDistance + 5)*tanH + 3;
+      const L = Hmax + 1; state.L = L;
       state.cycle = 2*H + total + PARADE.gap;
+      state.speed = state.cycle / MUSIC_LOOP;
       LEAD = L - H;
       state.dir.copy(right).negate(); state.fwd.copy(f); state.t0 = clock.elapsedTime;
       state.groundY = camera.position.y - CONFIG.eyeHeight;
@@ -1180,34 +1388,39 @@ function createParade(){
       root.visible = true;
       plan.forEach(u=>{
         if(!u.fly) return;
-        const c = C[u.fly];
-        const base = u.fly === 'butterflies' ? 0.3 : (u.fly === 'phoenix' ? 0.8 : 2.4);
+        const c = flyers[u.fly];
+        const base = u.fly.startsWith('bf') ? 0.3 : (u.fly === 'phoenix' ? 0.8 : 2.4);
         const start = camera.position.clone().addScaledVector(f, CONFIG.paradeDistance + u.d).addScaledVector(right, L);
         start.y += u.lift - base;
         if(u.fly === 'whale') c.root.scale.setScalar(1.0);
-        c.place(start, f, 0, {start, dir:state.dir.clone(), fwd:f.clone(), speed:PARADE.speed, offset:LEAD - u.back, cycle:state.cycle, t0:state.t0});
+        c.place(start, f, 0, {start, dir:state.dir.clone(), fwd:f.clone(), speed:state.speed, offset:LEAD - u.back, cycle:state.cycle, t0:state.t0});
       });
+      restartTheme();   // 先頭の登場と曲のイントロをそろえる
     },
-    hide(){ root.visible = false; },
+    hide(){ root.visible = false; Object.values(flyers).forEach(c=>{ c.root.visible = false; }); },
     tap(){
       cheerT = 1.0; soundChime();
-      C.phoenix.tap(); C.whale.tap(); C.butterflies.tap();
-      units.forEach(U=>{ if(!U.F) return; U.wrap.getWorldPosition(wp); wp.y += 2.6;
-        for(let k=0;k<50;k++){ const a = Math.random()*Math.PI*2, sp = 1.5 + Math.random()*2.5;
+      Object.values(flyers).forEach(c=>{ if(c.root.visible) c.tap(); });
+      units.forEach(U=>{ if(!U.F || !U.wrap.visible) return; U.wrap.getWorldPosition(wp); wp.y += 2.6;
+        for(let k=0;k<45;k++){ const a = Math.random()*Math.PI*2, sp = 1.5 + Math.random()*2.5;
           spawn(wp, Math.cos(a)*sp, 2 + Math.random()*2.5, Math.sin(a)*sp, 1.6 + Math.random(), CONF[(Math.random()*4)|0], 2.2, 0); } });
     },
     onScreen(){
-      for(const U of units){ proj.copy(U.wrap.position); proj.y += 1.2; proj.project(camera);
+      for(const U of units){ if(!U.wrap.visible) continue; proj.copy(U.wrap.position); proj.y += 1.2; proj.project(camera);
         if(proj.z < 1 && Math.abs(proj.x) < 1.1 && Math.abs(proj.y) < 1.1) return true; }
       return false;
     },
     update(t, dt){
       if(!root.visible) return;
+      Object.values(flyers).forEach(c=>c.update(t, dt));
       cheerT = Math.max(0, cheerT - dt);
       const cheer = cheerT > 0 ? Math.sin(Math.PI*(1 - cheerT)) : 0;
-      const dist = (t - state.t0)*PARADE.speed;
+      const dist = (t - state.t0)*state.speed;
       units.forEach(U=>{
         const s = sAt(U.u, t);
+        // 画面から遠いものは描かない（軽くするため）
+        const near = Math.abs(s - state.L) < H + 5;
+        U.wrap.visible = near; if(!near) return;
         tmp.copy(state.start).addScaledVector(state.dir, s).addScaledVector(state.fwd, U.u.lane || 0);
         tmp.y = state.groundY;
         U.wrap.position.copy(tmp);
@@ -1216,7 +1429,7 @@ function createParade(){
         if(U.F){
           U.F.wheels.forEach(w=>{ w.p.rotation.x = dist / w.r; });
           U.bulbs(t, cheerT);
-          if(U.F.update) U.F.update(t, dt);
+          if(U.F.update) U.F.update(t, dt, cheerT);
         }
       });
     }
@@ -1286,6 +1499,11 @@ function playTheme(){
     if(ls + LOOP_SEC <= buf.duration + 0.01){ themeSrc.loopStart = ls; themeSrc.loopEnd = Math.min(buf.duration, ls + LOOP_SEC); }
     themeSrc.connect(Music.gain); themeSrc.start(0, ls);
   });
+}
+function restartTheme(){
+  if(!themeSrc) return;
+  try{ themeSrc.stop(); }catch(e){}
+  themeSrc = null; playTheme();
 }
 function stopMusic(){
   wantTheme = false;
@@ -1534,8 +1752,8 @@ const MODES = {
                 march:true, list:[]}
 };
 let mode = 'phoenix';
-// speed＝進む速さ(m/秒)、gap＝最後尾が画面から抜けてから先頭が入ってくるまでの距離(m)
-const PARADE = {speed:1.1, gap:3};
+// gap＝最後尾が画面から抜けてから先頭が入ってくるまでの距離(m)。進む速さは曲の長さに合わせて自動で決まる
+const PARADE = {gap:3};
 let Parade = null;
 
 /* ---------- 端末の向き → カメラの向き ---------- */
