@@ -1299,7 +1299,8 @@ function charTex(k){
 function character(k, o){
   o = o || {};
   const info = CHARS[k], g = new THREE.Group();
-  const sp = new THREE.Sprite(new THREE.SpriteMaterial({map:charTex(k), transparent:true, alphaTest:0.35}));
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({map:charTex(k), transparent:true, alphaTest:0.35, depthTest:false}));
+  sp.renderOrder = 10;   // 住人はいつも手前に描く（山車の飾りや人の陰に隠れない）
   sp.center.set(0.5, 0); sp.scale.set(info.h*info.a, info.h, 1);
   const baseY = o.y || 0; sp.position.y = baseY; g.add(sp);
   glowSprite(g, 'rgba(255,240,210,.28)', info.h*1.7, [0, baseY + info.h*0.5, -0.05]);
@@ -1477,14 +1478,14 @@ function createParade(){
   const pair = (make)=>[{lane:-0.6, make}, {lane:0.6, make}];
   // 第1幕：はじまりの行進
   row(0,   ...pair(FLAG));
-  row(1.8, {lane:-0.55, char:'esper'}, {lane:0.6, char:'mimi'});
+  row(1.8, {lane:-1.5, char:'esper'}, {lane:-1.5, char:'mimi', ahead:-1.1});
   row(1.5, {fly:'bf1', d:-1.5, lift:0.4});
   row(1.2, ...pair(DRUM)); row(1.3, ...pair(DRUM));
-  row(3.6, {float:bookFloat, riders:[{k:'jiiji', at:[0.55,0.9,1.15]}]});
-  row(3.5, {lane:-0.75, make:DANCE(PINK)}, {lane:0, char:'lily'}, {lane:0.75, make:DANCE(CYAN)});
+  row(3.6, {float:bookFloat, riders:[{k:'jiiji', at:[0.8,0.9,1.3]}]});
+  row(3.5, {lane:-0.6, make:DANCE(PINK)}, {lane:-1.6, char:'lily', ahead:0.65}, {lane:0.6, make:DANCE(CYAN)});
   row(1.3, {lane:-0.6, make:DANCE(CYAN)}, {lane:0.6, make:DANCE(PINK)});
   row(0,   {fly:'phoenix', d:0, lift:2.4});
-  row(3.7, {float:castleFloat, riders:[{k:'luke', at:[0.75,0.9,-1.45]}]});
+  row(3.7, {float:castleFloat, riders:[{k:'luke', at:[0.9,0.9,-1.35]}]});
   row(3.4, ...pair(BATON));
   row(3.3, {float:locomotive}); row(2.4, {float:()=>carriage(0x2fb3a8)}); row(2.0, {float:()=>carriage(0xffb84a)});
   // 第2幕：村をめぐる
@@ -1498,7 +1499,7 @@ function createParade(){
   row(3.8, {float:carouselFloat});
   row(3.6, {lane:-0.6, make:LANTERN(0xffc860)}, {lane:0.6, make:LANTERN(0xff9fd0)});
   row(1.3, {lane:-0.6, make:LANTERN(0x9fe8ff)}, {lane:0.6, make:LANTERN(0xffc860)});
-  row(3.8, {float:forestFloat, riders:[{k:'mock', at:[0.55,0.9,-1.45]}]});
+  row(3.8, {float:forestFloat, riders:[{k:'mock', at:[0.95,0.9,-0.3]}]});
   // 第3幕：やさしさがつながるフィナーレ
   row(4.0, ...pair(DRUM)); row(1.3, ...pair(DRUM));
   row(3.6, {float:swanFloat});
@@ -1508,9 +1509,9 @@ function createParade(){
   row(3.6, {lane:-0.6, make:DANCE(GOLDC)}, {lane:0.6, make:DANCE(VIO)});
   row(1.3, {lane:-0.6, make:DANCE(MINT)}, {lane:0.6, make:DANCE(PINK)});
   row(1.3, ...pair(BATON));
-  row(2.7, {float:balloonFloat, riders:[{k:'niko', at:[0.05,1.2,0]}]});
+  row(2.7, {float:balloonFloat, riders:[{k:'niko', at:[0.85,0.9,0.6]}]});
   row(3.6, ...pair(HORN));
-  row(4.2, {float:finaleFloat, riders:[{k:'esper', at:[0.7,1.03,0]}, {k:'lily', at:[0.6,1.03,-1.35]}, {k:'mimi', at:[0.7,1.03,1.35]}]});
+  row(4.2, {float:finaleFloat, riders:[{k:'esper', at:[0.9,1.03,0]}, {k:'lily', at:[0.9,1.03,-1.35]}, {k:'mimi', at:[0.9,1.03,1.35]}]});
   row(3.6, {lane:0, make:FLAG});
   const total = cur;
 
@@ -1527,7 +1528,7 @@ function createParade(){
       }
       units.push({u, wrap, F, people:F.people, chars, bulbs:bl});
     }
-    else if(u.char){ const c = character(u.char, {y:u.air || 0}); wrap.add(c.g); units.push({u, wrap, people:[], chars:[c]}); }
+    else if(u.char){ if(u.ahead) u.back += u.ahead; const c = character(u.char, {y:u.air || 0}); wrap.add(c.g); units.push({u, wrap, people:[], chars:[c]}); }
     else { const p = u.make(); wrap.add(p.g); units.push({u, wrap, people:[p], chars:[]}); }
   });
   let LEAD = 0, H = 0;
