@@ -88,8 +88,16 @@ html,body{margin:0;height:100%;background:#0d1030;color:var(--ink);font-family:v
 #btnHome svg{width:18px;height:18px}
 #btnHome:focus-visible{outline:3px solid var(--pink);outline-offset:3px}
 @media (max-width:480px){#hint{top:calc(62px + env(safe-area-inset-top,0px))}}
-.about-link{appearance:none;border:0;background:transparent;color:var(--navy);font:700 13px var(--round);text-decoration:underline;text-underline-offset:3px;cursor:pointer;padding:6px}
-.about-link:focus-visible,.about .close-x:focus-visible,.about .btn:focus-visible{outline:3px solid var(--pink);outline-offset:3px}
+.about-card{appearance:none;width:100%;display:flex;align-items:center;gap:12px;padding:10px 14px 10px 10px;border-radius:18px;
+  background:var(--card);border:2.5px solid var(--pink);box-shadow:0 4px 14px rgba(226,61,114,.18);color:var(--navy);font-family:var(--round);text-align:left;cursor:pointer}
+.about-card img{width:84px;height:56px;object-fit:cover;border-radius:10px;flex:none}
+.about-card .txt{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
+.about-card b{font-size:15px;font-weight:800}
+.about-card span span{font-size:12px;color:var(--muted)}
+.about-card em{font-style:normal;font-size:10px;letter-spacing:.12em;color:var(--pink);font-weight:700}
+.about-card svg{width:22px;height:22px;color:var(--pink);flex:none}
+.about-card:active{transform:scale(.98)}
+.about-card:focus-visible,.about .close-x:focus-visible,.about .btn:focus-visible{outline:3px solid var(--pink);outline-offset:3px}
 
 /* 説明ページ */
 .about{position:fixed;inset:0;z-index:8;overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y;color:var(--navy);
@@ -148,6 +156,11 @@ html,body{margin:0;height:100%;background:#0d1030;color:var(--ink);font-family:v
   <div class="inner">
     <h1 class="brand" id="brand">innocent world</h1>
     <div class="brand-kana">イノセント ワールド</div>
+    <button class="about-card" id="btnAbout" aria-label="innocent world とは？ 遊び方の説明を見る">
+      <img src="poster.jpg" alt="" width="1400" height="933">
+      <span class="txt"><b>innocent world とは？</b><span>世界観と遊び方の説明を見る</span><em>About &amp; How to play</em></span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>
+    </button>
     <div class="badge"><i>★</i>AR パレード</div>
     <p class="ask">だれを呼びますか？ <span style="font-weight:500">Choose who to call</span></p>
 
@@ -183,7 +196,6 @@ html,body{margin:0;height:100%;background:#0d1030;color:var(--ink);font-family:v
     </div>
 
     <button class="btn" id="btnStart">はじめる<small>START</small></button>
-    <button class="about-link" id="btnAbout">innocent world と遊び方について / About</button>
     <p class="note">カメラと傾きセンサーを使います。許可を求められたら「許可」を押してください。<br>Camera and motion access will be requested.</p>
   </div>
 </section>
