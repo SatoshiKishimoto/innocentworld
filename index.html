@@ -129,6 +129,15 @@ html,body{margin:0;height:100%;background:#0d1030;color:var(--ink);font-family:v
 .about h3 i{font-style:normal;display:grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--pink);color:#fff;font-size:12px;flex:none}
 .about p{margin:0;font-size:14px;line-height:1.85;color:#2d3670}
 .about .lead{font-size:15px}
+.about .story{display:flex;flex-direction:column;gap:14px}
+.about .story h2{font-size:clamp(19px,5.6vw,26px);text-wrap:wrap;word-break:keep-all}
+.about .story p{font-size:15px;line-height:2;margin:0}
+.about .story .lead{font-weight:700;color:var(--navy)}
+.about .story .verse{padding:10px 0 10px 16px;border-left:3px solid var(--pink);color:#2d3670}
+.about .story .st-brand,.about .story .st-end{display:flex;flex-direction:column;gap:2px;font-weight:800;font-size:28px;line-height:1.1;color:var(--navy)}
+.about .story .st-brand span,.about .story .st-end span{font-size:13px;font-weight:700;letter-spacing:.2em;color:var(--muted)}
+.about .story .st-end{align-items:center;text-align:center;margin-top:10px;padding-top:18px;border-top:1px solid rgba(31,47,143,.15)}
+.about .story .st-end span{letter-spacing:.08em;font-size:15px;color:var(--pink)}
 .about .card{background:#fff;border-radius:16px;padding:16px;box-shadow:0 4px 14px rgba(31,47,143,.08)}
 .about ol,.about ul{margin:0;padding-left:1.3em;display:flex;flex-direction:column;gap:8px;font-size:14px;line-height:1.7;color:#2d3670}
 .about dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:8px 12px;font-size:14px;line-height:1.6}
@@ -241,8 +250,25 @@ html,body{margin:0;height:100%;background:#0d1030;color:var(--ink);font-family:v
       <img class="zoomable" data-full="poster-large.jpg?v=2" role="button" tabindex="0" src="poster.jpg?v=2" alt="innocent world の案内。絵本の村、主な登場人物（ソラ・エマ・村長オルド・ミミ）、村を歩いて見つけるもの、QRコードの楽しみ方" width="1400" height="933">
       <figcaption>画像をタップすると拡大して読めます / Tap to zoom</figcaption>
     </figure>
-    <h2>ここは、やさしさでできた世界。</h2>
-    <p class="lead">どこか懐かしくて、どこまでも新しい。絵本のような村や不思議な場所をめぐりながら、出会い、冒険し、そして少しだけやさしくなる。あなたのスマートフォンが、この世界の扉になります。</p>
+    <div class="story">
+      <p class="st-brand">innocent world<span>イノセント ワールド</span></p>
+      <h2>ここは、やさしさでできた世界。</h2>
+      <p class="lead">もしも、子どもの頃に読んだ絵本の中へ、本当に入ることができたら。</p>
+      <p>ページを開いた向こうには、色鮮やかな小さな村が広がっています。</p>
+      <p>真っ赤な屋根のパン屋さん。黄色い壁の花屋さん。青い扉の図書館。風に揺れる木々と、ゆっくり回る風車。</p>
+      <p>石畳の小道を歩けば、焼きたてのパンの香りが漂い、広場からは楽しそうな笑い声が聞こえてきます。</p>
+      <p>ここでは、誰もが自分らしく暮らし、何気ない日常の中に小さな幸せを見つけています。</p>
+      <p>けれど、この村には、まだ知られていない不思議な物語があります。</p>
+      <p class="verse">住人との何気ない会話。<br>ふと目に留まった、小さな扉。<br>いつもと少し違う、広場の風景。</p>
+      <p>好奇心のままに歩いていると、思いがけない発見が待っているかもしれません。</p>
+      <p>そして、ある日、現実世界から一人の少年が絵本の中へ迷い込んだことから、この村の運命を変える物語が始まります。</p>
+      <p>innocent worldは、物語を眺めるだけの場所ではありません。</p>
+      <p>村を歩き、住人たちと出会い、隠された秘密を探し、ときには物語の一部になる。</p>
+      <p>そんな体験を通じて、忘れかけていた好奇心や、誰かと一緒に笑う喜びを思い出す場所です。</p>
+      <p>ここには、特別な能力も、難しい知識も必要ありません。<br>必要なのは、ほんの少しの好奇心だけ。</p>
+      <p class="lead">さあ、絵本のページを開いてみませんか。<br>あなたの知らない、けれどどこか懐かしい世界が待っています。</p>
+      <p class="st-end">innocent world<span>ここは、やさしさでできた世界。</span></p>
+    </div>
 
     <div class="card">
       <h3><i>★</i>このページでできること</h3>
