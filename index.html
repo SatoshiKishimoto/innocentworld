@@ -1078,7 +1078,7 @@ function castleFloat(){
 function locomotive(){
   const g = new THREE.Group(), wheels = [], pts = [];
   const red = mat(0xd8323c, 0.3), navy = mat(0x23307f, 0.25), gold = mat(0xe6b65c, 0.6), dark = mat(0x232336, 0.05);
-  skirt(g, 1.25, 2.9, 0x23307f, 0xe6b65c, pts, 0.72, {swag:0xd8323c});
+  add(g, BOXG, dark, [1.1,0.25,2.8], [0,0.58,0]);
   add(g, CYLG, red, [0.45,1.6,0.45], [0,1.12,0.45], [Math.PI/2,0,0]);
   [0.0,0.6,1.25].forEach(z=>add(g, CYLG, gold, [0.47,0.06,0.47], [0,1.12,z], [Math.PI/2,0,0]));
   add(g, SPH, mat(0xfff2b0, 2), [0.1,0.1,0.1], [0,1.45,1.28]);
@@ -1089,12 +1089,19 @@ function locomotive(){
   add(g, BOXG, red, [1.3,0.1,1.15], [0,1.95,-0.85]);
   add(g, BOXG, mat(0xffd25a, 1.2), [0.02,0.35,0.45], [0.56,1.45,-0.85]);
   add(g, CONEG, gold, [0.42,0.35,0.42], [0,0.6,1.45], [Math.PI/2,0,0]);
-
+  [0.9,0.2,-0.6].forEach(z=>[-1,1].forEach(sx=>{
+    const p = new THREE.Group(); p.position.set(sx*0.58, 0.36, z); g.add(p);
+    add(p, CYLG, red, [0.36,0.08,0.36], [0,0,0], [0,0,Math.PI/2]);
+    add(p, CYLG, gold, [0.1,0.1,0.1], [0,0,0], [0,0,Math.PI/2]);
+    add(p, BOXG, gold, [0.09,0.64,0.04], [0,0,0]); add(p, BOXG, gold, [0.09,0.04,0.64], [0,0,0]);
+    wheels.push({p, r:0.36});
+  }));
   line(pts, V(0.66,2.0,-1.42), V(0.66,2.0,-0.28)); line(pts, V(-0.66,2.0,-1.42), V(-0.66,2.0,-0.28));
   line(pts, V(0.66,2.0,-0.28), V(-0.66,2.0,-0.28)); line(pts, V(0.66,2.0,-1.42), V(-0.66,2.0,-1.42));
   line(pts, V(0,1.58,-0.3), V(0,1.58,1.25), 0.2);
   [0.0,0.6,1.25].forEach(z=>{ for(let a=0;a<14;a++){ const an = a/14*Math.PI*2; pts.push(V(Math.cos(an)*0.49, 1.12+Math.sin(an)*0.49, z)); } });
   [-1.42,-0.28].forEach(z=>[0.66,-0.66].forEach(x=>line(pts, V(x,0.75,z), V(x,2.0,z))));
+  line(pts, V(0.56,0.72,-1.4), V(0.56,0.72,1.4), 0.25);
   const chimney = new THREE.Object3D(); chimney.position.set(0,2.2,0.95); g.add(chimney);
   blobShadow(g, 1.9, 3.6); lightPool(g, 4, 5.5, 'rgba(255,200,150,.5)');
   const W = {g, wheels, pts, people:[], len:2.8};
@@ -1107,10 +1114,16 @@ function locomotive(){
 }
 function carriage(bodyC){
   const g = new THREE.Group(), wheels = [], pts = [];
-  skirt(g, 1.3, 1.95, 0x23307f, 0xe6b65c, pts, 0.62, {swag:bodyC});
+  add(g, BOXG, mat(0x232336,0.05), [1.0,0.2,1.9], [0,0.55,0]);
   add(g, BOXG, mat(bodyC,0.3), [1.2,0.6,1.8], [0,0.95,0]);
   add(g, BOXG, mat(0xe6b65c,0.6), [1.26,0.07,1.86], [0,1.27,0]);
   add(g, BOXG, mat(0x232336,0.05), [0.12,0.12,0.4], [0,0.6,1.1]);
+  [0.55,-0.55].forEach(z=>[-1,1].forEach(sx=>{
+    const p = new THREE.Group(); p.position.set(sx*0.62, 0.3, z); g.add(p);
+    add(p, CYLG, mat(0xd8323c,0.3), [0.3,0.08,0.3], [0,0,0], [0,0,Math.PI/2]);
+    add(p, BOXG, mat(0xe6b65c,0.4), [0.09,0.54,0.04], [0,0,0]); add(p, BOXG, mat(0xe6b65c,0.4), [0.09,0.04,0.54], [0,0,0]);
+    wheels.push({p, r:0.3});
+  }));
   const hw = 0.64, hl = 0.94;
   line(pts, V(hw,1.32,-hl), V(hw,1.32,hl), 0.2); line(pts, V(-hw,1.32,-hl), V(-hw,1.32,hl), 0.2);
   line(pts, V(-hw,1.32,hl), V(hw,1.32,hl), 0.2); line(pts, V(-hw,1.32,-hl), V(hw,1.32,-hl), 0.2);
@@ -1311,12 +1324,12 @@ function signTex(){
   });
 }
 function thanksTex(){
-  return canvasTex(900, 220, (x,w,h)=>{
+  return canvasTex(1280, 300, (x,w,h)=>{
     x.fillStyle = '#fff8e8'; x.fillRect(0,0,w,h);
-    x.strokeStyle = '#e23d72'; x.lineWidth = 10; x.strokeRect(10,10,w-20,h-20);
+    x.strokeStyle = '#e23d72'; x.lineWidth = 14; x.strokeRect(12,12,w-24,h-24);
     x.fillStyle = '#e23d72'; x.textAlign = 'center'; x.textBaseline = 'middle';
-    x.font = `800 74px ${FONT}`; x.fillText('ありがとう　またどこかで', w/2, 92);
-    x.fillStyle = '#1f2f8f'; x.font = `700 44px ${FONT}`; x.fillText('Thank you, see you again!', w/2, 168);
+    x.font = `800 150px ${FONT}`; x.fillText('せかいは、ひとつ', w/2, 128);
+    x.fillStyle = '#1f2f8f'; x.font = `700 58px ${FONT}`; x.fillText('One World, Together', w/2, 240);
   });
 }
 function moonTex(){
@@ -1340,9 +1353,9 @@ function finaleFloat(){
   for(let z=-2.05; z<=2.051; z+=0.13){ sp.push(V(0.5, 3.97, z)); sp.push(V(0.5, 2.73, z)); }
   for(let y=2.73; y<=3.971; y+=0.13){ sp.push(V(0.5, y, -2.05)); sp.push(V(0.5, y, 2.05)); }
   const signLights = bulbs(g, sp, {size:0.2});
-  // 「ありがとう」の札
-  const th = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 0.54), new THREE.MeshBasicMaterial({map:thanksTex()}));
-  th.rotation.y = Math.PI/2; th.position.set(1.17, 0.62, 0); g.add(th);
+  // 「せかいは、ひとつ」の札
+  const th = new THREE.Mesh(new THREE.PlaneGeometry(3.3, 0.77), new THREE.MeshBasicMaterial({map:thanksTex()}));
+  th.rotation.y = Math.PI/2; th.position.set(1.2, 0.5, 0); g.add(th);
   // 月と星
   const moon = new THREE.Sprite(new THREE.SpriteMaterial({map:moonTex(), transparent:true, depthWrite:false}));
   moon.scale.set(1.3,1.3,1); moon.position.set(0.3, 4.7, -1.2); g.add(moon);
@@ -1425,7 +1438,7 @@ const _hp = new THREE.Vector3();
 
 // 行進の並び：3幕構成。row(前との間隔m, …同じ列に並ぶもの)
 let FLAG_TEX = null;
-const MUSIC_LOOP = 76*4*60/116;   // 曲の長さ（76小節・116拍/分＝約157秒）。行列全体がちょうどこの時間で通り過ぎる
+const MUSIC_LOOP = 152;   // 曲の長さ（76小節・120拍/分＝152秒）。行列全体がちょうどこの時間で通り過ぎる
 function createParade(){
   FLAG_TEX = flagTex();
   const root = new THREE.Group(); root.visible = false; scene.add(root);
