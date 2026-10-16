@@ -1260,7 +1260,14 @@ function playTheme(){
     if(!Music.gain){ Music.gain = audio.createGain(); Music.gain.connect(audio.destination); }
     Music.gain.gain.value = muted ? 0 : 0.9;
     themeSrc = audio.createBufferSource(); themeSrc.buffer = buf; themeSrc.loop = true;
-    themeSrc.connect(Music.gain); themeSrc.start();
+    // MP3 は頭に無音が入ることがあるので、音の始まりを探してちょうど1曲分（152秒）でループさせる
+    const LOOP_SEC = 152, d = buf.getChannelData(0);
+    let start = 0; const lim = Math.min(d.length, buf.sampleRate);
+    while(start < lim && Math.abs(d[start]) < 1e-3) start++;
+    if(start >= lim) start = 0;
+    const ls = start / buf.sampleRate;
+    if(ls + LOOP_SEC <= buf.duration + 0.01){ themeSrc.loopStart = ls; themeSrc.loopEnd = Math.min(buf.duration, ls + LOOP_SEC); }
+    themeSrc.connect(Music.gain); themeSrc.start(0, ls);
   });
 }
 function stopMusic(){

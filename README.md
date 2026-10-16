@@ -7,5 +7,6 @@
 - 設定（イベント名・距離・速さなど）は `index.html` 内の `CONFIG` と `PARADE` で変更できます
 
 ## パレードのテーマ（オリジナル曲）
-- `music/parade.mp3`：パレードで流れるBGM（約2分35秒・ループ再生）。会場の音響設備でもそのまま使えます
+- `music/parade.mp3`：ループ用（152秒）。最後から最初へ切れ目なくつながります。ARパレードで使用
+- `music/parade_full.mp3`：1曲版（約2分35秒）。最後が「じゃーん！」で終わります。会場で1回流すとき用
 - `music/compose.py`：作曲・音源生成スクリプト（`python3 music/compose.py` で作り直せます）

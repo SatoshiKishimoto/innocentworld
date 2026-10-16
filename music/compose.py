@@ -1,8 +1,9 @@
 """
 innocent world パレードのテーマ（オリジナル曲）
 作曲・音源生成スクリプト。実行すると music/parade.wav と parade.mp3 を作ります。
-  python3 music/compose.py
+  python3 music/compose.py        … ループ用（parade.mp3）と、1曲版（parade_full.mp3）の両方を作ります
 """
+import sys
 import numpy as np
 from scipy.signal import butter, lfilter, fftconvolve
 import subprocess, os
@@ -20,7 +21,7 @@ def m(name):
 def hz(midi): return 440.0 * 2**((midi-69)/12)
 
 CHORD = {'C':[60,64,67],'Am':[57,60,64],'F':[53,57,60],'G':[55,59,62],'G7':[55,59,62,65],
-         'Em':[52,55,59],'Dm':[50,53,57],'C/E':[52,55,60]}
+         'Em':[52,55,59],'Dm':[50,53,57],'C/E':[52,55,60],'D':[50,54,57],'Bb':[58,62,65]}
 
 # ---------------- 曲（メロディは (音名, 16分音符いくつ) で書く。'r' は休符） ----------------
 A = [  # Aメロ 16小節
@@ -96,6 +97,12 @@ SECTIONS = [
              dict(arp=1, pad=1, bass='half', drums='end', lead='brass', glock=1)),
 ]
 
+MODE = sys.argv[1] if len(sys.argv) > 1 else 'loop'
+if MODE == 'loop':
+    # ループ用：最後はニ長調から B♭→C→G7 を通って、自然にイントロ（ハ長調）へ戻る
+    SECTIONS[-1] = ('turn', ['D','Bb','C','G7'],
+        [[('F#5',4),('A5',4),('D6',8)],[('D6',8),('F5',8)],[('E5',4),('G5',4),('C6',8)],[('B5',4),('A5',4),('G5',4),('F5',4)]], 0,
+        dict(arp=1, pad=1, bass='march', drums='full', lead='brass', glock=1, roll=True))
 total_bars = sum(len(s[1]) for s in SECTIONS)
 LEN = int((total_bars*BAR + 3.0) * SR)
 L = np.zeros(LEN); R = np.zeros(LEN); VERB = np.zeros((2, LEN))
@@ -273,7 +280,8 @@ for name, chords, mel, tr, o in SECTIONS:
     t0 += nb*BAR
 
 # 最後の和音をのばす
-for mm in [60,64,67,72]: glock(mm+2+12, t0 - BAR, 0.07)
+if MODE == 'full':
+    for mm in [60,64,67,72]: glock(mm+2+12, t0 - BAR, 0.07)
 
 # ---------------- 残響とマスタリング ----------------
 ir_n = int(2.4*SR); tt = np.arange(ir_n)/SR
@@ -281,15 +289,23 @@ ir = [lp(rng.standard_normal(ir_n), 6000)*np.exp(-tt*2.6) for _ in range(2)]
 wetL = fftconvolve(VERB[0], ir[0])[:LEN]; wetR = fftconvolve(VERB[1], ir[1])[:LEN]
 L += wetL*0.09; R += wetR*0.09
 mix = np.stack([L, R], 1)
+if MODE == 'loop':
+    # 曲の長さちょうどで切り、はみ出した余韻を頭に重ねる（つなぎ目が切れない）
+    loopN = int(round(total_bars*BAR*SR))
+    tail = mix[loopN:]; mix = mix[:loopN].copy(); mix[:len(tail)] += tail
 mix /= np.max(np.abs(mix)) + 1e-9
 mix = np.tanh(mix*1.25)/np.tanh(1.25)  # 軽いソフトクリップで音圧をそろえる
-fade = int(0.02*SR); mix[:fade] *= np.linspace(0, 1, fade)[:, None]
+if MODE == 'full':
+    fade = int(0.02*SR); mix[:fade] *= np.linspace(0, 1, fade)[:, None]
 mix *= 0.92
 
 here = os.path.dirname(os.path.abspath(__file__))
-wav = os.path.join(here, 'parade.wav')
+base = 'parade' if MODE == 'loop' else 'parade_full'
+wav = os.path.join(here, base + '.wav')
 from scipy.io import wavfile
 wavfile.write(wav, SR, (mix*32767).astype(np.int16))
-mp3 = os.path.join(here, 'parade.mp3')
+mp3 = os.path.join(here, base + '.mp3')
 subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-i', wav, '-b:a', '160k', mp3], check=True)
-print(f'done: {total_bars} bars, {len(mix)/SR:.1f} s')
+print(f'done ({MODE}): {total_bars} bars, {len(mix)/SR:.3f} s')
+if len(sys.argv) <= 1:
+    subprocess.run([sys.executable, os.path.abspath(__file__), 'full'], check=True)
