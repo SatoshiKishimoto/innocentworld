@@ -259,7 +259,7 @@ html,body{margin:0;height:100%;background:#0d1030;color:var(--ink);font-family:v
         <dt>火の鳥</dt><dd>羽ばたくたびに、羽から火の粉がこぼれ落ちます。</dd>
         <dt>光のクジラ</dt><dd>星をちりばめた体で、夜空をゆったり泳ぎます。</dd>
         <dt>光の蝶</dt><dd>色とりどりの蝶の群れが、ひらひら舞います。</dd>
-        <dt>フィナーレ花火</dt><dd>フィナーレの音楽に合わせて、スターマインやハートの花火が夜空を彩ります（約1分）。</dd>
+        <dt>フィナーレ花火</dt><dd>フィナーレの音楽に合わせて、スターマインやハートの花火が夜空を彩ります。最後は夜空に「innocent world」の文字が浮かび上がります（約1分）。</dd>
         <dt>パレード</dt><dd>エスパーやミミ、リリィたち innocent world の住人が、電飾の山車やマーチングバンドといっしょに行進します。</dd>
       </dl>
     </div>
@@ -1802,12 +1802,31 @@ function startSynthMusic(){
 /* =========================================================
    キャラクター4：フィナーレの花火
    ========================================================= */
+// 文字の形を点の集まりにする（横幅を1とした座標、中心が0）
+const _textPts = {};
+function textPoints(text, twoLines){
+  const key = text + (twoLines ? '|2' : '');
+  if(_textPts[key]) return _textPts[key];
+  const lines = twoLines && text.includes(' ') ? text.split(' ') : [text];
+  const c = document.createElement('canvas'), x = c.getContext('2d');
+  const fs = 120; x.font = `800 ${fs}px ${FONT}`;
+  const tw = Math.ceil(Math.max(...lines.map(l=>x.measureText(l).width))) + 20, lh = Math.ceil(fs*1.15), th = lh*lines.length + 20;
+  c.width = tw; c.height = th;
+  x.font = `800 ${fs}px ${FONT}`; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillStyle = '#fff';
+  lines.forEach((l,i)=>x.fillText(l, tw/2, 10 + lh*(i + 0.5)));
+  const d = x.getImageData(0, 0, tw, th).data, pts = [];
+  let step = 4;
+  const sample = st=>{ const out = []; for(let yy=0; yy<th; yy+=st) for(let xx=0; xx<tw; xx+=st){ if(d[(yy*tw + xx)*4 + 3] > 140) out.push([(xx - tw/2)/tw, -(yy - th/2)/tw]); } return out; };
+  let out = sample(step);
+  while(out.length > 1100){ step++; out = sample(step); }
+  return (_textPts[key] = out);
+}
 function createFireworks(){
   const N = 10000;
   const pos = new Float32Array(N*3), vel = new Float32Array(N*3), colr = new Float32Array(N*3);
   const base = new Float32Array(N*3), base2 = new Float32Array(N*3), change = new Float32Array(N);
   const life = new Float32Array(N).fill(1), dur = new Float32Array(N).fill(1), grav = new Float32Array(N), drag = new Float32Array(N);
-  const glit = new Uint8Array(N), trail = new Uint8Array(N), jit = new Float32Array(N), seed = new Float32Array(N);
+  const glit = new Uint8Array(N), trail = new Uint8Array(N), hold = new Uint8Array(N), jit = new Float32Array(N), seed = new Float32Array(N);
   for(let i=0;i<N;i++){ pos[i*3+1] = -9999; seed[i] = Math.random()*10; }
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(pos,3)); geo.setAttribute('color', new THREE.BufferAttribute(colr,3));
@@ -1823,7 +1842,7 @@ function createFireworks(){
     base[i*3]=c.r; base[i*3+1]=c.g; base[i*3+2]=c.b;
     const c2 = (o && o.c2) || c; base2[i*3]=c2.r; base2[i*3+1]=c2.g; base2[i*3+2]=c2.b;
     change[i] = (o && o.ch) || 2; life[i]=0; dur[i]=d; grav[i]=g; drag[i]=dr;
-    glit[i] = o && o.gl ? 1 : 0; trail[i] = o && o.tr ? 1 : 0; jit[i] = (o && o.jt) || 0;
+    glit[i] = o && o.gl ? 1 : 0; trail[i] = o && o.tr ? 1 : 0; hold[i] = o && o.hold ? 1 : 0; jit[i] = (o && o.jt) || 0;
   }
   const flashes = [];
   for(let k=0;k<10;k++){
@@ -1902,6 +1921,21 @@ function createFireworks(){
         pts = pts.concat(circle(12, 0.1, 0.1, 0).map(([x,y])=>[x-0.35, y+0.3]), circle(12, 0.1, 0.1, 0).map(([x,y])=>[x+0.35, y+0.3]));
         for(let i=0;i<30;i++){ const a = Math.PI*1.15 + i/29*Math.PI*0.7; pts.push([Math.cos(a)*0.55, Math.sin(a)*0.55 + 0.05]); }
         plane(pts, 9, YELLOW, 2.4); break; }
+      case 'text': {  // 文字の花火：開いた火花が「innocent world」の形に止まり、しばらく浮かぶ
+        const portrait = camera.aspect < 1;   // 縦向きの画面では2行にして大きく見せる
+        const pts = textPoints(CONFIG.eventName, portrait);
+        const dist = camera.position.distanceTo(p);
+        const W = Math.min(64, 2*dist*Math.tan(camera.fov*Math.PI/360)*camera.aspect*(portrait ? 0.86 : 0.62));
+        const dr = 0.95, lam = -60*Math.log(dr);
+        const CA = col(0xff6fb5), CB = col(0xffd25a), CC = col(0x6fe0ff), cc = new THREE.Color();
+        pts.forEach(([x,y])=>{
+          tmpV.set(0,0,0).addScaledVector(right, x*W).addScaledVector(up, y*W);
+          const u = x + 0.5; if(u < 0.5) cc.copy(CA).lerp(CB, u/0.5); else cc.copy(CB).lerp(CC, (u-0.5)/0.5);
+          const j = 0.98 + Math.random()*0.04, sparkle = Math.random() < 0.12;
+          emit(p, tmpV.x*lam*j, tmpV.y*lam*j, tmpV.z*lam*j, 6 + Math.random()*0.8, sparkle ? WHITE : cc, 0.18, dr, {hold:1, gl:sparkle ? 1 : 0});
+        });
+        sphere(60, 5, WHITE, 1.2, 1, 0.95, {gl:1});
+        break; }
       case 'big':     sphere(320, 12, c1, 2.8, 1.6, 0.968); sphere(160, 7, c2, 2.4, 1.5, 0.965, {gl:1}); sphere(80, 3, WHITE, 1.8, 1.2, 0.96, {gl:1}); break;
     }
   }
@@ -1963,7 +1997,9 @@ function createFireworks(){
       add(bt(24,0) + b*BEAT + BEAT/2, F[b % F.length], (Math.random()*2-1)*16, 6 + Math.random()*6, {small:true, quiet:true});
     }
     [-14,-5,5,14].forEach((x,i)=>add(bt(27,0), i % 2 ? 'big' : 'crown', x, 12 + (i % 2)*3, {quiet:i > 0}));
-    [-16,-8,0,8,16].forEach((x,i)=>add(bt(27,0) + BARS*1.25, i === 2 ? 'big' : 'willow', x, 14 + (i === 2 ? 3 : 0), {quiet:i > 0}));
+    // 最後の「ドーン」で、夜空に innocent world の文字が浮かび上がる
+    add(bt(27,0) + BARS*1.25, 'text', 0, 13);
+    [-1,1].forEach((s,i)=>add(bt(27,0) + BARS*1.25 + 0.15, 'willow', s*20, 6, {quiet:true}));
     return q.sort((a,b)=>a.at - b.at);
   }
   const wp = V(0,0,0), TRAIL = col(0xffd9a0), TAIL = col(0xffb070);
@@ -1989,7 +2025,7 @@ function createFireworks(){
           const c = show[cueIdx++];
           launch(c.type, c.x, c.h, (Math.random()*2-1)*5, {T:c.T, vx:c.vx||0, small:!!c.small, quiet:!!c.quiet});
         }
-        if(cueIdx >= show.length && !showEnded && st > show[show.length-1].at + 6){
+        if(cueIdx >= show.length && !showEnded && st > show[show.length-1].at + 9){
           showEnded = true;   // 音楽が終わったら花火もおしまい。自動では上げない
           $('btnAgain').hidden = false;
         }
@@ -2015,7 +2051,8 @@ function createFireworks(){
         if(jit[i]){ vel[i*3] += (Math.random()-.5)*jit[i]*dt; vel[i*3+1] += (Math.random()-.5)*jit[i]*dt; vel[i*3+2] += (Math.random()-.5)*jit[i]*dt; }
         pos[i*3] += vel[i*3]*dt; pos[i*3+1] += vel[i*3+1]*dt; pos[i*3+2] += vel[i*3+2]*dt;
         if(trail[i] && L < 0.8 && Math.random() < 0.55){ wp.set(pos[i*3], pos[i*3+1], pos[i*3+2]); emit(wp, 0, -0.3, 0, 0.45 + Math.random()*0.3, TAIL, 0.6, 0.9, {gl:1}); }
-        let b = Math.pow(1-L, 1.3) * (L < 0.06 ? 1.4 : 0.9);
+        // hold：文字の花火は、形ができたあとしばらく明るいまま保つ
+        let b = hold[i] ? (L < 0.62 ? 0.6 : Math.pow((1-L)/0.38, 1.4)*0.6) : Math.pow(1-L, 1.3) * (L < 0.06 ? 1.4 : 0.9);
         if(glit[i] && L > 0.35) b *= (Math.sin(t*40 + seed[i]*13) > 0.2 ? 1.6 : 0.15);
         const B = L > change[i] ? base2 : base;
         colr[i*3] = B[i*3]*b; colr[i*3+1] = B[i*3+1]*b; colr[i*3+2] = B[i*3+2]*b;
