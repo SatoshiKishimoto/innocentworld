@@ -131,6 +131,17 @@ html,body{margin:0;height:100%;background:#0d1030;color:var(--ink);font-family:v
 .about .note{font-size:12px}
 .about .btn{align-self:center}
 @media (prefers-reduced-motion:reduce){#flash{transition:none}}
+/* iPhone のホーム画面から開いたとき：画面最上部の時計の帯まで使うので、その分を足して全面を覆う */
+@supports (-webkit-touch-callout:none){
+  @media (display-mode:standalone){
+    #cam,#sky,#gl,#start,.about,#shot,#flash{bottom:calc(-1 * env(safe-area-inset-top,0px))}
+    #cam,#gl{height:calc(100% + env(safe-area-inset-top,0px))}
+    html,body{background:#0d1030}
+  }
+}
+#start .inner{padding-top:calc(28px + env(safe-area-inset-top,0px));padding-bottom:calc(28px + env(safe-area-inset-bottom,0px))}
+.about .wrap{padding-top:calc(20px + env(safe-area-inset-top,0px));padding-bottom:calc(40px + env(safe-area-inset-bottom,0px))}
+.about .top{top:0;margin-top:calc(-1 * env(safe-area-inset-top,0px));padding-top:calc(6px + env(safe-area-inset-top,0px))}
 /* 横向きのときは、操作ボタンを右端に縦に並べてパレードを隠さない */
 @media (orientation:landscape) and (max-height:520px){
   .hud{left:auto;top:0;bottom:0;right:0;flex-direction:column;gap:14px;padding-bottom:0;
@@ -288,7 +299,8 @@ scene.add(new THREE.HemisphereLight(0xfff4e0, 0x5a3050, 1.25));
 const sun = new THREE.DirectionalLight(0xffe2b8, 1.1); sun.position.set(3, 7, 4); scene.add(sun);
 const fill = new THREE.DirectionalLight(0xffffff, 0.35); fill.position.set(0, 1, 2); camera.add(fill); scene.add(camera);
 function resize(){
-  const w = window.innerWidth, h = window.innerHeight;
+  const cv = document.getElementById('gl');
+  const w = cv.clientWidth || window.innerWidth, h = cv.clientHeight || window.innerHeight;
   renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
 }
 window.addEventListener('resize', resize); resize();
