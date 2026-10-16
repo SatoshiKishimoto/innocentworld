@@ -218,7 +218,7 @@ html,body{margin:0;height:100%;background:#0d1030;color:var(--ink);font-family:v
       <label class="choice wide">
         <input type="radio" name="mode" id="mParade" value="parade">
         <svg viewBox="0 0 52 52"><g fill="#ffd25a"><path d="M14 8l2.4 5 5.5.8-4 3.9 1 5.5-4.9-2.6-4.9 2.6 1-5.5-4-3.9 5.5-.8z"/></g><g fill="#ff9fd0"><path d="M36 20l2 4 4.4.6-3.2 3.1.8 4.4-4-2.1-4 2.1.8-4.4-3.2-3.1 4.4-.6z"/></g><g fill="#7fe6ff"><path d="M20 32l1.8 3.6 4 .6-2.9 2.8.7 4-3.6-1.9-3.6 1.9.7-4-2.9-2.8 4-.6z"/></g></svg>
-        <div class="txt"><b>パレード</b><em>PARADE</em><span>人と乗り物と仲間たちが行進</span></div>
+        <div class="txt"><b>パレード</b><em>PARADE</em><span>innocent world の住人たちが行進</span></div>
       </label>
     </div>
 
@@ -244,7 +244,7 @@ html,body{margin:0;height:100%;background:#0d1030;color:var(--ink);font-family:v
         <dt>光のクジラ</dt><dd>星をちりばめた体で、夜空をゆったり泳ぎます。</dd>
         <dt>光の蝶</dt><dd>色とりどりの蝶の群れが、ひらひら舞います。</dd>
         <dt>フィナーレ花火</dt><dd>スターマインやハートの花火が夜空を彩ります。</dd>
-        <dt>パレード</dt><dd>旗手やバンド、ダンサー、電飾の山車が音楽とともに行進します。</dd>
+        <dt>パレード</dt><dd>エスパーやミミ、リリィたち innocent world の住人が、電飾の山車やマーチングバンドといっしょに行進します。</dd>
       </dl>
     </div>
 
@@ -1252,6 +1252,49 @@ function balloonFloat(){
   return W;
 }
 
+// innocent world の住人たち（ポスターのドット絵をそのまま使う）
+const CHARS = {
+  esper:{h:1.6, a:0.768}, mimi:{h:1.1, a:0.629}, lily:{h:1.55, a:0.814}, luke:{h:1.65, a:1.036}, niko:{h:1.2, a:1.02},
+  ryu:{h:1.6, a:1.211, fly:true}, luna:{h:1.2, a:1.186, fly:true}, flora:{h:1.2, a:1.124, fly:true}, mock:{h:2.3, a:0.948}, jiiji:{h:1.65, a:1.062}
+};
+const _charTex = {};
+function charTex(k){
+  if(!_charTex[k]){
+    const t = new THREE.TextureLoader().load('characters/' + k + '.png');
+    t.magFilter = THREE.NearestFilter; t.minFilter = THREE.NearestFilter; t.generateMipmaps = false; t.encoding = THREE.sRGBEncoding;
+    t.wrapS = THREE.RepeatWrapping; t.repeat.x = -1; t.offset.x = 1;   // 進む向き（左）を向くように左右反転
+    _charTex[k] = t;
+  }
+  return _charTex[k];
+}
+function character(k, o){
+  o = o || {};
+  const info = CHARS[k], g = new THREE.Group();
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({map:charTex(k), transparent:true, alphaTest:0.35}));
+  sp.center.set(0.5, 0); sp.scale.set(info.h*info.a, info.h, 1);
+  const baseY = o.y || 0; sp.position.y = baseY; g.add(sp);
+  glowSprite(g, 'rgba(255,240,210,.28)', info.h*1.7, [0, baseY + info.h*0.5, -0.05]);
+  if(!o.noShadow && !(o.y > 0.5)) blobShadow(g, info.h*0.7, info.h*0.5);
+  return {g, sp, k, info, baseY, phase:Math.random()*6, trail:!!o.trail, onFloat:!!o.onFloat};
+}
+const _cw = new THREE.Vector3(), _TRAIL = {luna:[col(0x9fe8ff), col(0xffffff), col(0xffc8f0)], flora:[col(0xffb0d8), col(0xb8ff9a), col(0xfff0a0)], ryu:[col(0xb8ff9a), col(0xffe080)]};
+function animChar(C, t, dist, cheer, dt){
+  const h = C.info.h;
+  if(C.info.fly){
+    C.sp.position.y = C.baseY + Math.sin(t*1.7 + C.phase)*0.28 + cheer*0.5;
+    C.sp.material.rotation = Math.sin(t*1.3 + C.phase)*0.1;
+    const fl = 1 + Math.sin(t*9 + C.phase)*0.03; C.sp.scale.set(h*C.info.a*fl, h/fl, 1);
+    if(Math.random() < dt*18){ C.sp.getWorldPosition(_cw); _cw.y += h*0.45; const pal = _TRAIL[C.k] || _TRAIL.luna;
+      spawn(_cw, (Math.random()-.5)*0.4 + 0.5, -0.3 - Math.random()*0.3, (Math.random()-.5)*0.4, 1.4, pal[(Math.random()*pal.length)|0], 0.4, 0); }
+  } else {
+    const w = (C.onFloat ? t*2.2 : dist*3.0) + C.phase;
+    const hop = Math.abs(Math.sin(w))*(C.onFloat ? 0.05 : 0.1) + cheer*0.45;
+    C.sp.position.y = C.baseY + hop;
+    C.sp.material.rotation = Math.sin(w)*(C.onFloat ? 0.05 : 0.07);
+    const sq = 1 - Math.max(0, Math.cos(w*2))*0.03; C.sp.scale.set(h*C.info.a/sq, h*sq, 1);
+  }
+}
+
 // パレードのしめくくり：innocent world の電飾看板の山車
 function signTex(){
   return canvasTex(1600, 460, (x,w,h)=>{
@@ -1405,36 +1448,40 @@ function createParade(){
   const pair = (make)=>[{lane:-0.6, make}, {lane:0.6, make}];
   // 第1幕：はじまりの行進
   row(0,   ...pair(FLAG));
+  row(1.8, {lane:-0.55, char:'esper'}, {lane:0.6, char:'mimi'});
   row(1.5, {fly:'bf1', d:-1.5, lift:0.4});
   row(1.2, ...pair(DRUM)); row(1.3, ...pair(DRUM));
-  row(3.6, {float:bookFloat});
-  row(3.5, {lane:-0.6, make:DANCE(PINK)}, {lane:0.6, make:DANCE(CYAN)});
+  row(3.6, {float:bookFloat, riders:[{k:'jiiji', at:[0.55,0.9,1.15]}]});
+  row(3.5, {lane:-0.75, make:DANCE(PINK)}, {lane:0, char:'lily'}, {lane:0.75, make:DANCE(CYAN)});
   row(1.3, {lane:-0.6, make:DANCE(CYAN)}, {lane:0.6, make:DANCE(PINK)});
   row(0,   {fly:'phoenix', d:0, lift:2.4});
-  row(3.7, {float:castleFloat});
+  row(3.7, {float:castleFloat, riders:[{k:'luke', at:[0.75,0.9,-1.45]}]});
   row(3.4, ...pair(BATON));
   row(3.3, {float:locomotive}); row(2.4, {float:()=>carriage(0x2fb3a8)}); row(2.0, {float:()=>carriage(0xffb84a)});
   // 第2幕：村をめぐる
   row(4.0, {lane:0, make:FLAG});
   row(1.6, ...pair(HORN)); row(1.3, ...pair(HORN)); row(1.3, ...pair(HORN));
   row(3.8, {float:windmillFloat});
+  row(0,   {lane:-0.4, char:'ryu', air:3.7});
   row(3.6, {lane:-0.6, make:RIBBON(PINK)}, {lane:0.6, make:RIBBON(MINT)});
   row(1.4, {lane:-0.6, make:RIBBON(VIO)}, {lane:0.6, make:RIBBON(GOLDC)});
   row(0,   {fly:'bf2', d:-1.5, lift:0.6});
   row(3.8, {float:carouselFloat});
   row(3.6, {lane:-0.6, make:LANTERN(0xffc860)}, {lane:0.6, make:LANTERN(0xff9fd0)});
   row(1.3, {lane:-0.6, make:LANTERN(0x9fe8ff)}, {lane:0.6, make:LANTERN(0xffc860)});
-  row(3.8, {float:forestFloat});
+  row(3.8, {float:forestFloat, riders:[{k:'mock', at:[0.55,0.9,-1.45]}]});
   // 第3幕：やさしさがつながるフィナーレ
   row(4.0, ...pair(DRUM)); row(1.3, ...pair(DRUM));
   row(3.6, {float:swanFloat});
+  row(-0.9, {lane:-0.3, char:'luna', air:2.5});
+  row(1.8, {lane:0.2, char:'flora', air:2.9});
   row(0,   {fly:'whale', d:5, lift:4.0});
   row(3.6, {lane:-0.6, make:DANCE(GOLDC)}, {lane:0.6, make:DANCE(VIO)});
   row(1.3, {lane:-0.6, make:DANCE(MINT)}, {lane:0.6, make:DANCE(PINK)});
   row(1.3, ...pair(BATON));
-  row(3.6, {float:balloonFloat});
+  row(2.7, {float:balloonFloat, riders:[{k:'niko', at:[0.05,1.2,0]}]});
   row(3.6, ...pair(HORN));
-  row(4.2, {float:finaleFloat});
+  row(4.2, {float:finaleFloat, riders:[{k:'esper', at:[0.7,1.03,0]}, {k:'lily', at:[0.6,1.03,-1.35]}, {k:'mimi', at:[0.7,1.03,1.35]}]});
   row(3.6, {lane:0, make:FLAG});
   const total = cur;
 
@@ -1442,8 +1489,17 @@ function createParade(){
   plan.forEach(u=>{
     if(u.fly) return;
     const wrap = new THREE.Group(); root.add(wrap);
-    if(u.float){ const F = u.float(); wrap.add(F.g); const bl = F.pts.length ? bulbs(F.g, F.pts) : ()=>{}; units.push({u, wrap, F, people:F.people, bulbs:bl}); }
-    else { const p = u.make(); wrap.add(p.g); units.push({u, wrap, people:[p]}); }
+    if(u.float){
+      const F = u.float(); wrap.add(F.g); const bl = F.pts.length ? bulbs(F.g, F.pts) : ()=>{};
+      const chars = [];
+      if(u.riders){   // 住人が乗るときは、もとの乗り手と入れかえる
+        F.people.forEach(p=>F.g.remove(p.g)); F.people.length = 0;
+        u.riders.forEach(r=>{ const c = character(r.k, {y:r.at[1], noShadow:true, onFloat:true}); c.g.position.set(r.at[0], 0, r.at[2]); F.g.add(c.g); chars.push(c); });
+      }
+      units.push({u, wrap, F, people:F.people, chars, bulbs:bl});
+    }
+    else if(u.char){ const c = character(u.char, {y:u.air || 0}); wrap.add(c.g); units.push({u, wrap, people:[], chars:[c]}); }
+    else { const p = u.make(); wrap.add(p.g); units.push({u, wrap, people:[p], chars:[]}); }
   });
   let LEAD = 0, H = 0;
   const state = {start:V(0,0,0), dir:V(0,0,0), fwd:V(0,0,0), right:V(1,0,0), t0:0, cycle:1, groundY:0, speed:1, L:0};
@@ -1507,6 +1563,7 @@ function createParade(){
         U.wrap.position.copy(tmp);
         U.wrap.lookAt(tmp.x + state.dir.x, tmp.y, tmp.z + state.dir.z);
         U.people.forEach(p=>animPerson(p, t, dist, cheer));
+        U.chars.forEach(c=>animChar(c, t, dist, cheer, dt));
         if(U.F){
           U.F.wheels.forEach(w=>{ w.p.rotation.x = dist / w.r; });
           U.bulbs(t, cheerT);
