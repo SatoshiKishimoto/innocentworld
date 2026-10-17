@@ -2512,8 +2512,8 @@ function createHalloween(){
   const gm = new THREE.MeshStandardMaterial({color:0xffffff, emissive:0xd8e8ff, emissiveIntensity:.55, transparent:true, opacity:.88, roughness:.6});
   const gpts = []; for(let k=0;k<=12;k++){ const u = k/12; gpts.push(new THREE.Vector2(u < 0.55 ? Math.sin(u/0.55*Math.PI/2)*0.42 : 0.42 + (u-0.55)*0.15, 1 - u*1.4)); }
   const gbody = new THREE.Mesh(new THREE.LatheGeometry(gpts, 20), gm); ghost.add(gbody);
-  [-0.13,0.13].forEach(x=>add(ghost, SPH, new THREE.MeshBasicMaterial({color:0x111111}), [0.06,0.09,0.03], [x, 0.72, 0.43]));
-  const gmouth = add(ghost, SPH, new THREE.MeshBasicMaterial({color:0x111111}), [0.07,0.05,0.03], [0, 0.52, 0.45]);
+  [-0.13,0.13].forEach(x=>add(ghost, SPH, new THREE.MeshBasicMaterial({color:0x111111}), [0.065,0.095,0.03], [x, 0.46, 0.39]));
+  const gmouth = add(ghost, SPH, new THREE.MeshBasicMaterial({color:0x111111}), [0.07,0.05,0.03], [0, 0.27, 0.43]);
   [-1,1].forEach(sx=>{ const arm = add(ghost, SPH, gm, [0.09,0.2,0.09], [sx*0.44, 0.35, 0.05]); arm.rotation.z = sx*0.8; });
   glowSprite(ghost, 'rgba(200,220,255,.45)', 1.6, [0, 0.5, 0]);
   const boo = new THREE.Sprite(new THREE.SpriteMaterial({map:tex.boo, transparent:true, depthTest:false})); boo.renderOrder = 12; boo.scale.set(1.2,1.2,1); boo.position.y = 1.3; boo.material.opacity = 0; ghost.add(boo);
