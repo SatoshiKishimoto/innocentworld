@@ -271,6 +271,15 @@ html,body{margin:0;height:100%;background:#0d1030;color:var(--ink);font-family:v
     </div>
 
     <div class="card">
+      <h3><i>♥</i>ARパレードの仲間たち</h3>
+      <p>innocent world の仲間たちが、ARパレードでみなさんをお出迎えします。それぞれのキャラクターに、この世界のどこかで出会えるかもしれません。</p>
+      <figure style="margin-top:12px">
+        <img class="zoomable" data-full="parade-guide-large.jpg?v=1" role="button" tabindex="0" src="parade-guide.jpg?v=1" alt="ARパレードのキャラクター紹介。エスパー、ミミ、リリィ、ルーク、ニコ、ハル、アリカ、ヌール、モック、じいじ" width="1400" height="933">
+        <figcaption>画像をタップすると拡大して読めます / Tap to zoom</figcaption>
+      </figure>
+    </div>
+
+    <div class="card">
       <h3><i>★</i>このページでできること</h3>
       <dl>
         <dt>火の鳥</dt><dd>羽ばたくたびに、羽から火の粉がこぼれ落ちます。</dd>
@@ -837,6 +846,44 @@ const flareTex = (()=>{ const c = document.createElement('canvas'); c.width = c.
     l.addColorStop(0,'rgba(255,255,255,0)'); l.addColorStop(.5,'rgba(255,255,255,1)'); l.addColorStop(1,'rgba(255,255,255,0)');
     x.fillStyle = l; if(a) x.fillRect(0,61,128,6); else x.fillRect(61,0,6,128); });
   return new THREE.CanvasTexture(c); })();
+// 山車の形そのものを電球で埋めつくす（光で形を描く）。山車の本体は暗めにして、光を主役にする
+const DREAM_PALS = [
+  [col(0xff1e2d), col(0xffe600), col(0xffffff)], [col(0x1e6bff), col(0x00e0ff), col(0xffffff)], [col(0x10e050), col(0xffe600), col(0xffffff)],
+  [col(0xff1e8c), col(0x8a3cff), col(0xffffff)], [col(0xff8a00), col(0xffe600), col(0xff1e2d)], [col(0x00c8ff), col(0x10e050), col(0xffe600)]];
+let _dreamIdx = 0;
+function lightUp(F){
+  const g = F.g, pts = [], tri = new THREE.Triangle(), a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3();
+  g.updateMatrixWorld(true);
+  const inv = new THREE.Matrix4().copy(g.matrixWorld).invert();
+  const meshes = [];
+  g.traverse(o=>{ if(o.isMesh && o.geometry && !o.userData.noLights && o.material && !o.material.map) meshes.push(o); });
+  let totalArea = 0; const tris = [];
+  meshes.forEach(o=>{
+    const geo = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry, pos = geo.attributes.position;
+    const m = new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld);
+    for(let i=0;i<pos.count;i+=3){
+      a.fromBufferAttribute(pos,i).applyMatrix4(m); b.fromBufferAttribute(pos,i+1).applyMatrix4(m); c.fromBufferAttribute(pos,i+2).applyMatrix4(m);
+      tri.set(a,b,c); const ar = tri.getArea(); if(ar < 1e-5) continue;
+      if(Math.min(a.y,b.y,c.y) < 0.05) continue;            // 地面の影などは除く
+      tris.push([a.clone(), b.clone(), c.clone(), ar]); totalArea += ar;
+    }
+    // 本体は暗く、少しだけ色が残る程度に
+    if(!o.userData.keepMat){ const mm = o.material.clone(); mm.color.multiplyScalar(0.2); mm.emissiveIntensity = (mm.emissiveIntensity||0)*0.15; o.material = mm; }
+  });
+  const N = Math.min(2600, Math.round(totalArea*150));
+  let acc = 0, k = 0;
+  const step = totalArea / Math.max(1, N);
+  tris.forEach(([A,B,C,ar])=>{
+    acc += ar;
+    while(acc >= step && k < N){
+      acc -= step; k++;
+      let r1 = Math.random(), r2 = Math.random(); if(r1 + r2 > 1){ r1 = 1 - r1; r2 = 1 - r2; }
+      pts.push(A.clone().addScaledVector(B.clone().sub(A), r1).addScaledVector(C.clone().sub(A), r2));
+    }
+  });
+  return bulbs(g, pts, {size:0.06, halo:0.07, flares:8, pal:DREAM_PALS[(_dreamIdx++) % DREAM_PALS.length], wave:true});
+}
+const _wc = new THREE.Color();
 function bulbs(parent, pts, opt){
   opt = opt || {};
   const n = pts.length, pos = new Float32Array(n*3), c = new Float32Array(n*3);
@@ -858,9 +905,11 @@ function bulbs(parent, pts, opt){
   return function(t, flash){
     const step = Math.floor(t*9), shift = Math.floor(t*1.5);
     for(let i=0;i<n;i++){
-      const cc = PAL[(i + shift) % PAL.length];
+      let cc = PAL[(i + shift) % PAL.length];
+      if(opt.wave){ const q = (pts[i].z*0.55 + pts[i].y*0.35 - t*1.6), f = ((q % PAL.length) + PAL.length) % PAL.length, i0 = Math.floor(f);
+        cc = _wc.copy(PAL[i0]).lerp(PAL[(i0+1) % PAL.length], f - i0); }
       // steady：文字の電飾は、いつも明るく点けたまま光の粒が流れる（読みやすさ優先）
-      const on = flash > 0 ? 1.6 : opt.steady ? (1.0 + ((i + step) % 5 === 0 ? 0.55 : 0)) : ((i + step) % 3 === 0 ? 1.5 : 0.62 + 0.18*Math.sin(t*6 + i));
+      const on = flash > 0 ? 1.6 : opt.wave ? (0.95 + ((i*7 + step) % 11 === 0 ? 0.7 : 0)) : opt.steady ? (1.0 + ((i + step) % 5 === 0 ? 0.55 : 0)) : ((i + step) % 3 === 0 ? 1.5 : 0.62 + 0.18*Math.sin(t*6 + i));
       c[i*3] = cc.r*on; c[i*3+1] = cc.g*on; c[i*3+2] = cc.b*on;
     }
     g.attributes.color.needsUpdate = true;
@@ -1714,7 +1763,8 @@ function createParade(){
     if(u.fly) return;
     const wrap = new THREE.Group(); root.add(wrap);
     if(u.float){
-      const F = u.float(); wrap.add(F.g); const bl = F.pts.length ? bulbs(F.g, F.pts) : ()=>{};
+      const F = u.float(); wrap.add(F.g); const bl0 = F.pts.length ? bulbs(F.g, F.pts) : ()=>{};
+      const bl1 = lightUp(F); const bl = (t, f)=>{ bl0(t, f); bl1(t, f); };
       const chars = [];
       if(u.riders){   // 住人が乗るときは、もとの乗り手と入れかえる
         F.people.forEach(p=>F.g.remove(p.g)); F.people.length = 0;
