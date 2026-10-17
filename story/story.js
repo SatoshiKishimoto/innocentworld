@@ -148,7 +148,7 @@
     if(j.today !== L.today){ L.stories = {}; L.intro = null; }      // 日がかわったら、前の日の解放は使わない
     L.today = j.today; L.day = j.day; L.resident = j.resident || L.resident;
     if(j.state) L.state = Object.assign(emptyState(), j.state);
-    L.visits = j.visits || []; L.returning = !!j.returning; L.prevEvent = !!j.prevEvent; L.unlocked = j.unlocked || null; L.map = j.map || null; L.upcoming = j.upcoming || [];
+    L.visits = j.visits || []; L.returning = !!j.returning; L.returningThis = !!j.returningThis; L.prevEvent = !!j.prevEvent; L.unlocked = j.unlocked || null; L.map = j.map || null; L.upcoming = j.upcoming || [];
     save();
   }
   function route(){
@@ -241,7 +241,7 @@
       try{
         const j = await api('entrance', {word:w});
         if(!j.ok){ if(j.error === 'auth') return start(); shake(e.target); return toast(errText(j)); }
-        L.unlocked = j.unlocked; L.map = j.map; L.visits = j.visits || L.visits; L.returning = !!j.returning; L.prevEvent = !!j.prevEvent; L.intro = j.intro || null; save();
+        L.unlocked = j.unlocked; L.map = j.map; L.visits = j.visits || L.visits; L.returning = !!j.returning; L.returningThis = !!j.returningThis; L.prevEvent = !!j.prevEvent; L.intro = j.intro || null; save();
         celebrate(fill(j.message || 'ようこそ！ 今日の村の地図がひらきました'));
         setTimeout(route, 1000);
       }catch(err){ toast(errText(err)); }
@@ -346,6 +346,7 @@
     if(c.returning === true && !L.returning) return false;
     if(c.returning === false && L.returning) return false;
     if(c.prevEvent && !L.prevEvent) return false;
+    if(c.returningThis && !L.returningThis) return false;
     if(c.flags && !c.flags.every(f => st.flags[f])) return false;
     if(c.notFlags && c.notFlags.some(f => st.flags[f])) return false;
     if(c.items && !c.items.every(i => st.items[i])) return false;

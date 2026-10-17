@@ -199,6 +199,7 @@ function parseCond(v, C){
     if(t === '再訪'){ c.returning = true; return; }
     if(t === '初来訪'){ c.returning = false; return; }
     if(t === '前回参加'){ c.prevEvent = true; return; }
+    if(t === '今回再訪'){ c.returningThis = true; return; }
     if((m = t.match(/^(\d+)日目$/)) || (m = t.match(/^日[:：](\d+)$/))){ c.day = Number(m[1]); return; }
     if((m = t.match(/^アイテム[:：](.+)$/))){ (c.items = c.items || []).push(itemId(m[1].trim(), C)); return; }
     if((m = t.match(/^記録なし[:：](.+)$/))){ (c.notFlags = c.notFlags || []).push(m[1].trim()); return; }
@@ -236,6 +237,7 @@ function check(c, st, ctx){
   if(c.returning === true && !ctx.returning) return false;
   if(c.returning === false && ctx.returning) return false;
   if(c.prevEvent && !ctx.prevEvent) return false;
+  if(c.returningThis && !ctx.returningThis) return false;
   var i;
   if(c.flags) for(i = 0; i < c.flags.length; i++) if(!st.flags[c.flags[i]]) return false;
   if(c.notFlags) for(i = 0; i < c.notFlags.length; i++) if(st.flags[c.notFlags[i]]) return false;
@@ -313,6 +315,7 @@ function visitInfo(rid, d, ev){
   var v = rows('visits').filter(function(r){ return r[0] === rid; });
   return {
     returning: v.some(function(r){ return ymd(r[2]) && ymd(r[2]) < d; }),
+    returningThis: v.some(function(r){ return str(r[1]) === ev && ymd(r[2]) && ymd(r[2]) < d; }),
     prevEvent: v.some(function(r){ return str(r[1]) && str(r[1]) !== ev; }),
     visitedToday: v.some(function(r){ return ymd(r[2]) === d; }),
     dates: v.map(function(r){ return ymd(r[2]); })
@@ -412,13 +415,13 @@ function apiBoot(me, req){
     return res;
   }
   var vi = visitInfo(me.rid, d, info.event), un = unlockedToday(me.rid, d);
-  res.visits = vi.dates; res.returning = vi.returning; res.prevEvent = vi.prevEvent;
+  res.visits = vi.dates; res.returning = vi.returning; res.returningThis = vi.returningThis; res.prevEvent = vi.prevEvent;
   res.unlocked = un;
   if(un.entrance) res.map = mapFor(info, st, vi, un);
   return res;
 }
 
-function ctxFor(info, vi){ return {dayNo: info.dayNo, returning: vi.returning, prevEvent: vi.prevEvent}; }
+function ctxFor(info, vi){ return {dayNo: info.dayNo, returning: vi.returning, returningThis: vi.returningThis, prevEvent: vi.prevEvent}; }
 function mapFor(info, st, vi, un){
   var ctx = ctxFor(info, vi);
   return content().facilities.filter(function(f){ return f.event === info.event; }).map(function(f){
@@ -447,7 +450,7 @@ function apiEntrance(me, req){
   }
   var st = loadState(me.rid), vi = visitInfo(me.rid, d, info.event), ctx = ctxFor(info, vi);
   var intro = pickRoute(info, 'intro', st, ctx, d);
-  return {ok: true, message: msg, returning: vi.returning, prevEvent: vi.prevEvent, visits: vi.dates, unlocked: un,
+  return {ok: true, message: msg, returning: vi.returning, returningThis: vi.returningThis, prevEvent: vi.prevEvent, visits: vi.dates, unlocked: un,
     map: mapFor(info, st, vi, un), intro: intro ? bundle(info.event, intro, 'intro') : null};
 }
 
@@ -587,10 +590,10 @@ function seedSample(){
   put('routes', [
     [EV, 'intro', 1, '再訪', 'intro_return', '', '', '2回目以降の来場'],
     [EV, 'intro', 2, '', 'intro_1', '', '', ''],
-    [EV, 'bakery', 1, '再訪；2日目', 'bakery_r1', '', '', '2日目の再訪住民だけ'],
+    [EV, 'bakery', 1, '今回再訪', 'bakery_r1', '', '', '1日目にも来た住民だけ'],
     [EV, 'bakery', 2, '', 'bakery_1', '', '', ''],
     [EV, 'flower', 1, '', 'flower_1', '', '', ''],
-    [EV, 'library', 1, '再訪；2日目', 'library_r1', '', '', '2日目の再訪住民だけ'],
+    [EV, 'library', 1, '今回再訪', 'library_r1', '', '', '1日目にも来た住民だけ'],
     [EV, 'library', 2, '', 'library_1', '', '', ''],
     [EV, 'windmill', 1, '', 'windmill_1', '', '', ''],
     [EV, 'plaza', 1, 'やさしさ>=2', 'end_kind', '', '', 'エンディング'],
