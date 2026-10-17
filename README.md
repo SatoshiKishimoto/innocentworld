@@ -14,3 +14,7 @@
 ## フィナーレ花火の音楽（オリジナル曲）
 - `music/fireworks.mp3`：花火モードで1回だけ流れる曲（約68秒）。花火の打ち上げは、この曲の拍に合わせてあります
 - `music/fireworks.py`：作曲・音源生成スクリプト（`python3 music/fireworks.py`）
+
+## クリスマスパレードの音楽（オリジナル曲）
+- `music/xmas.mp3`：クリスマスパレードで流れるBGM（約116秒・ループ再生、鈴とチェレスタ入り）
+- `music/xmas.py`：作曲・音源生成スクリプト（`python3 music/xmas.py`）

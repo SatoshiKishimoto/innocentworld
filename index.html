@@ -80,6 +80,9 @@ html,body{margin:0;height:100%;background:#0d1030;color:var(--ink);font-family:v
 .choice span{font-size:11px;line-height:1.5;color:var(--muted)}
 .choice.wide{grid-column:1 / -1;flex-direction:row;justify-content:center;gap:12px;text-align:left}
 .choice.wide .txt{display:flex;flex-direction:column;gap:2px}
+.choice.xmas{background:linear-gradient(135deg,#0a4a22,#7a0a14);color:#fff}
+.choice.xmas em,.choice.xmas span{color:#ffe08a}
+.choice.xmas:has(input:checked){background:linear-gradient(135deg,#0a6a2e,#a80f1c);border-color:#ffd000}
 .choice.halloween{background:linear-gradient(135deg,#2a1640,#4a2060);color:#fff}
 .choice.halloween em,.choice.halloween span{color:#ffcf9a}
 .choice.halloween:has(input:checked){background:linear-gradient(135deg,#3a1a58,#6a2a80);border-color:#ff8a1a}
@@ -239,6 +242,11 @@ html,body{margin:0;height:100%;background:#0d1030;color:var(--ink);font-family:v
         <svg viewBox="0 0 52 52"><g><ellipse cx="18" cy="31" rx="9" ry="12" fill="#ff7a00"/><ellipse cx="34" cy="31" rx="9" ry="12" fill="#ff7a00"/><ellipse cx="26" cy="31" rx="11" ry="13" fill="#ff8a1a"/><rect x="24" y="14" width="4" height="7" rx="1" fill="#3a6a20"/><path d="M18 28l3-5 3 5zM28 28l3-5 3 5z" fill="#2a0a12"/><path d="M17 35l4 3 5-3 5 3 4-3-4 6h-10z" fill="#2a0a12"/></g><path d="M40 8c3 0 5 2 5 2s-1-4 2-5c-3 0-4 2-4 2s0-3-3-3c1 2 0 4 0 4z" fill="#3a2060"/></svg>
         <div class="txt"><b>ハロウィンの部屋</b><em>HALLOWEEN</em><span>見回して、気になるものをタップ</span></div>
       </label>
+      <label class="choice wide xmas">
+        <input type="radio" name="mode" id="mXmas" value="xmas">
+        <svg viewBox="0 0 52 52"><path d="M26 4l3 6 6 1-4.5 4 1 6-5.5-3-5.5 3 1-6L17 11l6-1z" fill="#ffd000"/><path d="M26 16l-9 11h5l-8 10h6l-7 9h26l-7-9h6l-8-10h5z" fill="#0a8a2e"/><rect x="23" y="46" width="6" height="5" fill="#7a3a10"/><circle cx="21" cy="30" r="2" fill="#e8101e"/><circle cx="31" cy="36" r="2" fill="#ffd000"/><circle cx="24" cy="41" r="2" fill="#1e5aff"/><circle cx="30" cy="25" r="1.8" fill="#fff"/></svg>
+        <div class="txt"><b>クリスマスパレード</b><em>CHRISTMAS PARADE</em><span>雪とオーロラの夜、サンタ帽の仲間たちが行進</span></div>
+      </label>
       <label class="choice wide">
         <input type="radio" name="mode" id="mParade" value="parade">
         <svg viewBox="0 0 52 52"><g fill="#ffd25a"><path d="M14 8l2.4 5 5.5.8-4 3.9 1 5.5-4.9-2.6-4.9 2.6 1-5.5-4-3.9 5.5-.8z"/></g><g fill="#ff9fd0"><path d="M36 20l2 4 4.4.6-3.2 3.1.8 4.4-4-2.1-4 2.1.8-4.4-3.2-3.1 4.4-.6z"/></g><g fill="#7fe6ff"><path d="M20 32l1.8 3.6 4 .6-2.9 2.8.7 4-3.6-1.9-3.6 1.9.7-4-2.9-2.8 4-.6z"/></g></svg>
@@ -286,6 +294,7 @@ html,body{margin:0;height:100%;background:#0d1030;color:var(--ink);font-family:v
         <dt>光の蝶</dt><dd>色とりどりの蝶の群れが、ひらひら舞います。</dd>
         <dt>フィナーレ花火</dt><dd>フィナーレの音楽に合わせて、スターマインやハートの花火が夜空を彩ります。最後は夜空に「innocent world」の文字が浮かび上がります（約1分）。</dd>
         <dt>ハロウィンの部屋</dt><dd>ハロウィンの部屋に入って、まわりを見回してみましょう。かぼちゃやおばけ、黒ねこ、がいこつなど、気になるものをタップすると動き出します。</dd>
+        <dt>クリスマスパレード</dt><dd>雪が舞い、オーロラがゆらめく夜空の下、ツリーやトナカイのそり、氷のお城の山車に、サンタ帽をかぶった仲間たちが乗って行進します。</dd>
         <dt>パレード</dt><dd>エスパーやミミ、リリィ、ハル、アリカ、ヌールたち innocent world の住人が、電飾の山車やマーチングバンドといっしょに行進します。</dd>
       </dl>
     </div>
@@ -369,7 +378,7 @@ window.addEventListener('resize', ()=>{
   const ls = window.innerWidth > window.innerHeight;
   if(ls === lastLandscape) return; lastLandscape = ls;
   clearTimeout(reTimer);
-  reTimer = setTimeout(()=>{ if(typeof Parade !== 'undefined' && Parade && mode === 'parade' && placedAt >= 0 && running) Parade.relayout(); }, 400);
+  reTimer = setTimeout(()=>{ if(typeof Parade !== 'undefined' && Parade && MODES[mode] && MODES[mode].march && placedAt >= 0 && running) Parade.relayout(); }, 400);
 });
 
 /* ---------- 共通の道具 ---------- */
@@ -916,7 +925,7 @@ function lightUp(F){
       pts.push(A.clone().addScaledVector(B.clone().sub(A), r1).addScaledVector(C.clone().sub(A), r2));
     }
   });
-  return bulbs(g, pts, {size:0.06, halo:0.07, flares:8, pal:DREAM_PALS[(_dreamIdx++) % DREAM_PALS.length], wave:true});
+  return bulbs(g, pts, {size:0.06, halo:0.07, flares:8, pal:F.pal || DREAM_PALS[(_dreamIdx++) % DREAM_PALS.length], wave:true});
 }
 const _wc = new THREE.Color();
 function bulbs(parent, pts, opt){
@@ -1474,7 +1483,8 @@ function addWave(C){
   s.center.set((x1 - px)/(x1 - x0), (y1 - py)/(y1 - y0));   // 左右反転して表示するので、肩の位置も反転
   C.g.add(s); C.arm = s; C.armInfo = A;
 }
-function animChar(C, t, dist, cheer, dt){
+function animChar(C, t, dist, cheer, dt){ _animChar(C, t, dist, cheer, dt); if(C.hat) placeHat(C); }
+function _animChar(C, t, dist, cheer, dt){
   const h = C.info.h;
   if(C.info.fly){
     C.sp.position.y = C.baseY + Math.sin(t*1.7 + C.phase)*0.28 + cheer*0.5;
@@ -1734,7 +1744,8 @@ const _hp = new THREE.Vector3();
 // 行進の並び：3幕構成。row(前との間隔m, …同じ列に並ぶもの)
 let FLAG_TEX = null;
 const MUSIC_LOOP = 152;   // 曲の長さ（76小節・120拍/分＝152秒）。行列全体がちょうどこの時間で通り過ぎる
-function createParade(){
+function createParade(variant){
+  const XMAS = variant === 'xmas';
   FLAG_TEX = flagTex();
   const root = new THREE.Group(); root.visible = false; scene.add(root);
   const navy = 0x0033cc, gold = 0xffc400;
@@ -1749,11 +1760,13 @@ function createParade(){
   const PINK = 0xff1e3c, CYAN = 0x1e6bff, GOLDC = 0xffe000, MINT = 0x10c040, VIO = 0x2a3fe0;
 
   // 空を飛ぶ仲間（パレード専用に用意）
-  const flyers = { bf1:createButterflies(), bf2:createButterflies(), phoenix:createPhoenix(), whale:createWhale() };
+  const flyers = XMAS ? {} : { bf1:createButterflies(), bf2:createButterflies(), phoenix:createPhoenix(), whale:createWhale() };
 
   const plan = []; let cur = 0;
   const row = (gap, ...items)=>{ cur += gap; items.forEach(it=>plan.push(Object.assign({back:cur}, it))); };
   const pair = (make)=>[{lane:-0.6, make}, {lane:0.6, make}];
+  if(XMAS) xmasPlan(row, pair, P);
+  else {
   // 第1幕：はじまりの行進
   row(0,   ...pair(FLAG));
   row(1.5, {fly:'bf1', d:-1.5, lift:0.4});
@@ -1791,6 +1804,7 @@ function createParade(){
   row(3.6, ...pair(HORN));
   row(4.2, {float:finaleFloat, riders:[{k:'esper', at:[0.9,1.03,0]}, {k:'lily', at:[0.9,1.03,-1.35]}, {k:'mimi', at:[0.9,1.03,1.35]}]});
   row(3.6, {lane:0, make:FLAG});
+  }
   const total = cur;
 
   const units = [];
@@ -1803,7 +1817,7 @@ function createParade(){
       const chars = [];
       if(u.riders){   // 住人が乗るときは、もとの乗り手と入れかえる
         F.people.forEach(p=>F.g.remove(p.g)); F.people.length = 0;
-        u.riders.forEach(r=>{ const c = character(r.k, {y:r.at[1], noShadow:true, onFloat:true}); c.g.position.set(r.at[0], 0, r.at[2]); F.g.add(c.g); addWave(c); chars.push(c); });
+        u.riders.forEach(r=>{ const c = character(r.k, {y:r.at[1], noShadow:true, onFloat:true}); c.g.position.set(r.at[0], 0, r.at[2]); F.g.add(c.g); addWave(c); if(XMAS) addSantaHat(c); chars.push(c); });
       }
       units.push({u, wrap, F, people:F.people, chars, bulbs:bl});
     }
@@ -1825,7 +1839,7 @@ function createParade(){
       const Hmax = (CONFIG.paradeDistance + 5)*tanH + 3;
       const L = Hmax + 1; state.L = L;
       state.cycle = 2*H + total + PARADE.gap;
-      state.speed = state.cycle / MUSIC_LOOP;
+      state.speed = state.cycle / THEMES[XMAS ? 'xmas' : 'parade'].loop;
       LEAD = L - H;
       state.dir.copy(right).negate(); state.fwd.copy(f); state.right.copy(right);
       if(!keep) state.t0 = clock.elapsedTime;   // keep のときは同じ時刻を基準にする＝曲の何秒目かに対応した位置のまま
@@ -1842,8 +1856,9 @@ function createParade(){
         c.place(start, f, 0, {start, dir:state.dir.clone(), fwd:f.clone(), speed:state.speed, offset:LEAD - u.back, cycle:state.cycle, t0:state.t0});
       });
       if(!keep) restartTheme();   // 先頭の登場と曲のイントロをそろえる
+      if(XMAS) xmasSky.show(true);
     },
-    hide(){ root.visible = false; Object.values(flyers).forEach(c=>{ c.root.visible = false; }); },
+    hide(){ root.visible = false; Object.values(flyers).forEach(c=>{ c.root.visible = false; }); if(XMAS) xmasSky.show(false); },
     tap(){
       cheerT = 1.0; soundChime();
       Object.values(flyers).forEach(c=>{ if(c.root.visible) c.tap(); });
@@ -1922,11 +1937,16 @@ function playStep(i, time){
   if(m){ note('triangle', mf(m), time, 0.32, 0.22, out); note('sine', mf(m+12), time, 0.25, 0.05, out); }
 }
 // パレードのテーマ（music/parade.mp3）。読み込めないときは下の簡易BGMで代用する
-let themeBytes = null, themeBuf = null, themeSrc = null, wantTheme = false;
-fetch('music/parade.mp3').then(r=>r.ok ? r.arrayBuffer() : null).then(b=>{ themeBytes = b; if(wantTheme) playTheme(); }).catch(()=>{});
+// 曲の一覧：パレード（parade.mp3）とクリスマスパレード（xmas.mp3）。loop はちょうど1曲分の秒数
+const THEMES = {parade:{url:'music/parade.mp3', loop:152}, xmas:{url:'music/xmas.mp3', loop:64*4*60/132}};
+let themeName = 'parade', themeBytes = null, themeBuf = null, themeSrc = null, wantTheme = false;
+const _tBytes = {}, _tBuf = {};
+Object.entries(THEMES).forEach(([k,o])=>fetch(o.url).then(r=>r.ok ? r.arrayBuffer() : null).then(b=>{ _tBytes[k] = b; if(k === themeName){ themeBytes = b; if(wantTheme) playTheme(); } }).catch(()=>{}));
+function useTheme(k){ themeName = k; themeBytes = _tBytes[k] || null; themeBuf = _tBuf[k] || null; }
 function decodeTheme(){
   if(themeBuf || !themeBytes || !audio) return Promise.resolve(themeBuf);
-  return new Promise(res=>{ audio.decodeAudioData(themeBytes.slice(0), b=>{ themeBuf = b; res(b); }, ()=>res(null)); });
+  const k = themeName;
+  return new Promise(res=>{ audio.decodeAudioData(themeBytes.slice(0), b=>{ _tBuf[k] = b; if(themeName === k) themeBuf = b; res(b); }, ()=>res(null)); });
 }
 function playTheme(){
   if(!wantTheme || themeSrc || !audio) return;
@@ -1940,7 +1960,7 @@ function playTheme(){
     gp.cancelScheduledValues(now); gp.setValueAtTime(0.0001, now); gp.linearRampToValueAtTime(muted ? 0.0001 : 0.9, now + 4);
     themeSrc = audio.createBufferSource(); themeSrc.buffer = buf; themeSrc.loop = true; ALL_SRC.add(themeSrc);
     // MP3 は頭に無音が入ることがあるので、音の始まりを探してちょうど1曲分でループさせる
-    const LOOP_SEC = MUSIC_LOOP, d = buf.getChannelData(0);
+    const LOOP_SEC = THEMES[themeName].loop, d = buf.getChannelData(0);
     let start = 0; const lim = Math.min(d.length, buf.sampleRate);
     while(start < lim && Math.abs(d[start]) < 1e-3) start++;
     if(start >= lim) start = 0;
@@ -1998,8 +2018,9 @@ function stopMusic(){
   if(Music.timer){ clearInterval(Music.timer); Music.timer = null; }
   if(Music.gain){ try{ Music.gain.disconnect(); }catch(e){} Music.gain = null; }
 }
-function startMusic(){
+function startMusic(name){
   if(!audio) return;
+  if(name && THEMES[name]) useTheme(name);
   wantTheme = true;
   if(themeBytes) playTheme();
   else setTimeout(()=>{ if(wantTheme && !themeSrc && !Music.timer) startSynthMusic(); }, 2500);
@@ -2760,6 +2781,352 @@ function stopHalloweenMusic(){
   if(HW.gain){ try{ HW.gain.disconnect(); }catch(e){} HW.gain = null; }
 }
 
+/* =========================================================
+   クリスマスパレード：山車・サンタ帽・雪とオーロラ
+   ========================================================= */
+const XRED = 0xe8101e, XGREEN = 0x0a8a2e, XGOLD = 0xffc400, XWHITE = 0xffffff, XBLUE = 0x1e5aff;
+const XPALS = [
+  [col(0xff1e2d), col(0xffd000), col(0xffffff)], [col(0x10e050), col(0xffd000), col(0xffffff)], [col(0xff1e2d), col(0x10e050), col(0xffffff)],
+  [col(0x7ad8ff), col(0xffffff), col(0x1e6bff)], [col(0xffd000), col(0xffffff), col(0xff1e2d)]];
+// 山車の飾りのうち、電球で覆わず、色と光をそのまま残したいもの
+function kp(o){ o.userData.keepMat = true; o.userData.noLights = true; o.traverse && o.traverse(c=>{ c.userData.keepMat = true; c.userData.noLights = true; }); return o; }
+function shiny(c, ei){ return new THREE.MeshStandardMaterial({color:c, emissive:c, emissiveIntensity:ei === undefined ? 0.55 : ei, roughness:.25, metalness:.5}); }
+function stripeTex(a, b, n){ return canvasTex(64, 256, (x,w,h)=>{ x.fillStyle = a; x.fillRect(0,0,w,h); x.fillStyle = b;
+  for(let k=-2;k<n*2;k++){ x.beginPath(); x.moveTo(0, k*h/n); x.lineTo(w, k*h/n - h/n*0.6); x.lineTo(w, k*h/n - h/n*0.1); x.lineTo(0, k*h/n + h/n*0.5); x.fill(); } }); }
+function starGeo(r, depth){ const s = new THREE.Shape(); for(let k=0;k<10;k++){ const a = Math.PI/2 + k*Math.PI/5, rr = k%2 ? r*0.42 : r; k ? s.lineTo(Math.cos(a)*rr, Math.sin(a)*rr) : s.moveTo(Math.cos(a)*rr, Math.sin(a)*rr); }
+  const g = new THREE.ExtrudeGeometry(s, {depth, bevelEnabled:true, bevelThickness:depth*0.4, bevelSize:r*0.06, bevelSegments:2}); g.translate(0,0,-depth/2); return g; }
+function ornament(g, c, r, p){ const m = kp(add(g, SPH, shiny(c, 0.45), [r,r,r], p)); kp(add(m, CYLG, shiny(XGOLD, .5), [0.3,0.3,0.3], [0,1.05,0])); return m; }
+function giftBox(g, c, rib, s, p, ry){ const b = new THREE.Group(); b.position.set(p[0], p[1], p[2]); b.rotation.y = ry || 0; g.add(b);
+  kp(add(b, BOXG, shiny(c, .35), s, [0, s[1]/2, 0])); kp(add(b, BOXG, shiny(rib, .6), [s[0]+0.01, s[1]+0.01, s[2]*0.18], [0, s[1]/2, 0])); kp(add(b, BOXG, shiny(rib, .6), [s[0]*0.18, s[1]+0.01, s[2]+0.01], [0, s[1]/2, 0]));
+  [-1,1].forEach(sd=>{ const bow = kp(add(b, new THREE.TorusGeometry(0.06, 0.02, 6, 12), shiny(rib, .6), [s[0]*2.2, s[0]*2.2, s[0]*2.2], [sd*s[0]*0.14, s[1] + 0.03, 0])); bow.rotation.y = Math.PI/2; bow.rotation.x = sd*0.5; });
+  return b; }
+function snowCap(g, w, d, y, x){ const m = kp(add(g, SPH, shiny(0xf4fbff, 0.35), [w/2, 0.09, d/2], [x||0, y, 0])); return m; }
+
+// ① 大きなクリスマスツリー
+function xTreeFloat(){
+  const W = wagon(4.8, 2.4, XRED, XGOLD), g = W.g, pts = W.pts; W.pal = XPALS[1];
+  add(g, CYLG, hMat2(0x5a3010), [0.18, 0.5, 0.18], [0, 1.15, 0]);
+  const tree = new THREE.Group(); tree.position.y = 1.3; g.add(tree);
+  [[1.45,1.3,0],[1.15,1.15,0.85],[0.85,1.0,1.6],[0.55,0.85,2.25]].forEach(([r,h,y])=>add(tree, new THREE.ConeGeometry(1,1,24,1), hMat2(0x0a6a24), [r,h,r], [0, y + h/2, 0]));
+  // オーナメント
+  const OC = [XRED, XGOLD, XBLUE, XWHITE, 0xff2a8a, 0x10e050];
+  for(let k=0;k<34;k++){ const yy = 0.25 + Math.random()*2.6, rr = Math.max(0.15, 1.45*(1 - yy/3.2))*0.92, a = Math.random()*Math.PI*2;
+    ornament(tree, OC[k % OC.length], 0.07 + Math.random()*0.04, [Math.cos(a)*rr, yy, Math.sin(a)*rr]); }
+  // らせんの電球とモール
+  for(let k=0;k<180;k++){ const u = k/180, yy = u*3.1, rr = 1.45*(1 - yy/3.3) + 0.05, a = u*Math.PI*2*5;
+    pts.push(V(Math.cos(a)*rr, 1.3 + yy, Math.sin(a)*rr)); }
+  // てっぺんの星
+  const star = kp(new THREE.Mesh(starGeo(0.32, 0.08), shiny(XGOLD, 1.0))); star.position.set(0, 1.3 + 3.25, 0); g.add(star);
+  const sg = glowSprite(g, 'rgba(255,220,100,.9)', 2.2, [0, 1.3 + 3.25, 0]);
+  // プレゼント
+  giftBox(g, XRED, XGOLD, [0.45,0.4,0.45], [0.75, 0.92, 1.4], 0.3); giftBox(g, XBLUE, XWHITE, [0.38,0.32,0.38], [0.85, 0.92, 0.85], -0.2);
+  giftBox(g, XGOLD, XRED, [0.4,0.5,0.4], [0.75, 0.92, -1.3], 0.5); giftBox(g, XGREEN, XRED, [0.32,0.28,0.32], [0.9, 0.92, -1.8], 0.1);
+  W.update = (t)=>{ star.rotation.y = t*1.2; sg.material.opacity = 0.8 + Math.sin(t*4)*0.2; };
+  return W;
+}
+function hMat2(c){ return new THREE.MeshStandardMaterial({color:c, roughness:.7}); }
+
+// ② トナカイとそり
+function reindeer(g, x, z, lead){
+  const r = new THREE.Group(); r.position.set(x, 0.92, z); g.add(r);
+  const fur = hMat2(0x8a5a30), dark = hMat2(0x3a2010), cream = hMat2(0xe8d0b0);
+  const body = new THREE.Group(); body.position.y = 0.72; r.add(body);
+  add(body, SPH, fur, [0.2, 0.2, 0.36], [0,0,0]); add(body, SPH, cream, [0.15, 0.13, 0.24], [0,-0.07,0.05]);
+  const neck = add(body, CYLG, fur, [0.08, 0.38, 0.08], [0, 0.22, 0.3]); neck.rotation.x = 0.6;
+  const head = new THREE.Group(); head.position.set(0, 0.42, 0.45); body.add(head);
+  add(head, SPH, fur, [0.11, 0.1, 0.16], [0,0,0]); add(head, SPH, fur, [0.07, 0.07, 0.1], [0,-0.03,0.14]);
+  const nose = kp(add(head, SPH, lead ? shiny(0xff1010, 1.4) : hMat2(0x111111), [0.035,0.035,0.035], [0,-0.02,0.24]));
+  if(lead) kp(glowSprite(head, 'rgba(255,40,40,.9)', 0.4, [0,-0.02,0.26]));
+  [-1,1].forEach(s=>{ kp(add(head, SPH, new THREE.MeshBasicMaterial({color:0x111111}), [0.018,0.022,0.012], [s*0.07, 0.03, 0.1]));
+    add(head, CONEG, fur, [0.03,0.08,0.03], [s*0.09, 0.07, -0.04], [0,0,-s*1.2]);
+    // 角
+    const ant = new THREE.Group(); ant.position.set(s*0.05, 0.08, -0.03); ant.rotation.z = -s*0.35; head.add(ant);
+    add(ant, CYLG, cream, [0.012, 0.24, 0.012], [0, 0.12, 0]); add(ant, CYLG, cream, [0.01, 0.12, 0.01], [s*0.04, 0.17, 0.02], [0.5,0,-s*0.8]);
+    add(ant, CYLG, cream, [0.01, 0.1, 0.01], [s*0.03, 0.24, -0.02], [-0.4,0,-s*0.6]); add(ant, CYLG, cream, [0.01, 0.1, 0.01], [-s*0.02, 0.08, 0.03], [0.7,0,s*0.3]); });
+  // 首の鈴と手綱
+  kp(add(body, new THREE.TorusGeometry(0.11, 0.02, 6, 16), shiny(XRED, .6), [1,1,1], [0, 0.18, 0.28], [1.0,0,0]));
+  for(let k=0;k<3;k++) kp(add(body, SPH, shiny(XGOLD, .9), [0.025,0.025,0.025], [(k-1)*0.06, 0.09, 0.36]));
+  const legs = [];
+  [[-1,1],[1,1],[-1,-1],[1,-1]].forEach(([sx,sz])=>{ const L = new THREE.Group(); L.position.set(sx*0.1, -0.08, sz*0.22); body.add(L);
+    add(L, CYLG, fur, [0.035, 0.32, 0.035], [0,-0.16,0]); add(L, CYLG, dark, [0.03, 0.28, 0.03], [0,-0.45,0]); legs.push({L, sz}); });
+  add(body, SPH, cream, [0.05,0.06,0.04], [0, 0.06, -0.36]);
+  return {r, body, head, legs};
+}
+function xSleighFloat(){
+  const W = wagon(6.0, 2.2, XGREEN, XGOLD), g = W.g, pts = W.pts; W.pal = XPALS[0];
+  // そり（横から見た形を押し出して作る）
+  const sl = new THREE.Group(); sl.position.set(0, 0.92, -1.5); g.add(sl);
+  const sh = new THREE.Shape(); sh.moveTo(-0.9, 0.15); sh.lineTo(0.8, 0.15); sh.quadraticCurveTo(1.25, 0.2, 1.2, 0.75); sh.quadraticCurveTo(1.15, 1.05, 0.95, 0.95); sh.quadraticCurveTo(1.05, 0.7, 0.75, 0.6);
+  sh.lineTo(-0.5, 0.6); sh.quadraticCurveTo(-0.75, 1.25, -1.05, 1.15); sh.quadraticCurveTo(-1.25, 1.05, -1.0, 0.5); sh.closePath();
+  const sg = new THREE.ExtrudeGeometry(sh, {depth:1.1, bevelEnabled:true, bevelThickness:0.04, bevelSize:0.04, bevelSegments:2}); sg.translate(0,0,-0.55);
+  const body = kp(new THREE.Mesh(sg, shiny(XRED, .35))); body.rotation.y = -Math.PI/2; sl.add(body);
+  // 金のふちどり・ランナー
+  [-0.6, 0.6].forEach(x=>{ const tub = new THREE.TubeGeometry(new THREE.CatmullRomCurve3([V(x,0.05,-1.0),V(x,0,0),V(x,0.02,0.9),V(x,0.2,1.3),V(x,0.45,1.25),V(x,0.4,1.05)]), 30, 0.035, 8, false);
+    kp(sl.add(new THREE.Mesh(tub, shiny(XGOLD, .7))) ); [-0.6,0,0.6].forEach(z=>kp(add(sl, CYLG, shiny(XGOLD,.7), [0.02,0.17,0.02], [x, 0.08, z]))); });
+  for(let k=0;k<26;k++){ const u = k/25; pts.push(V(-0.6, 1.55, -1.5 - 0.85 + u*1.9)); pts.push(V(0.6, 1.55, -1.5 - 0.85 + u*1.9)); }
+  // 贈りものの袋
+  kp(add(sl, SPH, shiny(0x8a1a1a, .25), [0.42,0.5,0.42], [0, 0.95, -0.55]));
+  kp(add(sl, CYLG, shiny(XGOLD, .7), [0.12,0.06,0.12], [0, 1.42, -0.55]));
+  giftBox(sl, XGREEN, XGOLD, [0.26,0.24,0.26], [0.25, 1.25, -0.25], 0.4); giftBox(sl, XBLUE, XWHITE, [0.22,0.2,0.22], [-0.2, 1.3, -0.3], -0.3);
+  // トナカイ（2頭×2列）
+  const deer = [reindeer(g, -0.35, 1.0, false), reindeer(g, 0.35, 1.0, false), reindeer(g, -0.35, 2.3, false), reindeer(g, 0.35, 2.3, true)];
+  // 手綱（金の電球の線）
+  [-0.35,0.35].forEach(x=>{ line(pts, V(x*1.4, 1.7, -0.55), V(x, 1.75, 1.3), 0.15); line(pts, V(x, 1.75, 1.3), V(x, 1.75, 2.6), 0.15); });
+  W.update = (t)=>{ deer.forEach((d,i)=>{ const w = t*7 + i*0.7; d.body.position.y = 0.72 + Math.abs(Math.sin(w))*0.06; d.head.rotation.x = Math.sin(w)*0.1;
+    d.legs.forEach(({L,sz})=>{ L.rotation.x = Math.sin(w + (sz > 0 ? 0 : Math.PI))*0.7; }); }); sl.rotation.z = Math.sin(t*3.5)*0.02; };
+  return W;
+}
+
+// ③ サンタの工房
+function xWorkshopFloat(){
+  const W = wagon(4.4, 2.3, XRED, XWHITE), g = W.g, pts = W.pts; W.pal = XPALS[4];
+  houseBody(g, pts, 0x8a2a1a, XGREEN, XGOLD, 1.6, 2.0, 1.4, -0.25);
+  snowCap(g, 1.9, 2.4, 0.9 + 1.4 + 0.45, -0.25);
+  add(g, BOXG, hMat2(0x6a2010), [0.3, 0.6, 0.3], [-0.6, 3.0, -0.5]); snowCap(g, 0.38, 0.38, 3.32, -0.6);
+  // キャンディケインの柱
+  const ct = stripeTex('#ffffff', '#e8101e', 7);
+  [[0.85,1.9],[0.85,-1.9]].forEach(([x,z])=>{ const c = new THREE.Group(); c.position.set(x, 0.92, z); g.add(c);
+    kp(add(c, CYLG, new THREE.MeshStandardMaterial({map:ct, emissive:0x400000, emissiveIntensity:.3}), [0.07, 1.4, 0.07], [0, 0.7, 0]));
+    const hook = kp(new THREE.Mesh(new THREE.TorusGeometry(0.16, 0.07, 8, 16, Math.PI), new THREE.MeshStandardMaterial({map:ct}))); hook.position.set(0, 1.4, 0.16*(z > 0 ? 1 : -1)); hook.rotation.y = Math.PI/2; c.add(hook); });
+  // おもちゃのつみき
+  [[XRED,0],[XBLUE,1],[XGOLD,2],[XGREEN,3]].forEach(([c,k])=>kp(add(g, BOXG, shiny(c,.4), [0.24,0.24,0.24], [0.8, 1.04 + (k>1?0.24:0), -0.6 + (k%2)*0.27 + (k>1?0.13:0)], [0, k*0.3, 0])));
+  // 煙突の煙
+  const smoke = new THREE.Object3D(); smoke.position.set(-0.6, 3.45, -0.5); g.add(smoke);
+  const wp = V(0,0,0), SC = [col(0xffffff), col(0xffe0e0)];
+  W.update = (t, dt)=>{ if(Math.random() < dt*12){ smoke.getWorldPosition(wp); spawn(wp, (Math.random()-.5)*0.2, 0.7, (Math.random()-.5)*0.2, 1.8, SC[(Math.random()*2)|0], -0.05, 0); } };
+  return W;
+}
+
+// ④ お菓子の家
+function xGingerFloat(){
+  const W = wagon(4.4, 2.3, 0x8a4a1e, XRED), g = W.g, pts = W.pts; W.pal = XPALS[2];
+  houseBody(g, pts, 0xb8702e, 0x6a3010, XRED, 1.6, 2.0, 1.4, -0.2);
+  snowCap(g, 1.95, 2.45, 0.9 + 1.4 + 0.45, -0.2);
+  // アイシングの白い線（電球）
+  for(let k=0;k<14;k++){ const z = -1.0 + k*0.155; pts.push(V(0.62, 0.95 + 1.4*0.5 + Math.sin(k*1.4)*0.06, z)); }
+  // ガムドロップ
+  const GC = [XRED, XGREEN, XGOLD, XBLUE, 0xff2a8a, 0xff7a00];
+  for(let k=0;k<12;k++) kp(add(g, SPH, shiny(GC[k % GC.length], .55), [0.09, 0.08, 0.09], [0.95, 0.98, -1.95 + k*0.35]));
+  // ペロペロキャンディ
+  const sw = canvasTex(256, 256, (x,w,h)=>{ const cs = ['#e8101e','#ffffff','#10a040','#ffffff']; for(let k=0;k<24;k++){ x.fillStyle = cs[k%4]; x.beginPath(); x.moveTo(128,128); x.arc(128,128,128, k/24*Math.PI*2 + 0.0, (k+1)/24*Math.PI*2 + 0.0); x.fill(); } });
+  [[0.8,1.7,0.0],[0.8,-1.7,1.2]].forEach(([x,z,r])=>{ const l = new THREE.Group(); l.position.set(x, 0.92, z); g.add(l);
+    kp(add(l, CYLG, hMat2(0xffffff), [0.025, 1.0, 0.025], [0, 0.5, 0]));
+    const disc = kp(new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, 0.06, 32), [new THREE.MeshStandardMaterial({color:0xffffff}), new THREE.MeshStandardMaterial({map:sw, emissive:0x330000, emissiveIntensity:.3}), new THREE.MeshStandardMaterial({map:sw})]));
+    disc.rotation.z = Math.PI/2; disc.position.y = 1.15; l.add(disc); l.userData.disc = disc; W[ 'lol' + r ] = disc; });
+  W.update = (t)=>{ g.children.forEach(c=>{ if(c.userData && c.userData.disc) c.userData.disc.rotation.x = t*0.8; }); };
+  return W;
+}
+
+// ⑤ 氷のお城
+function xIceFloat(){
+  const W = wagon(4.6, 2.4, 0x1e5aff, XWHITE), g = W.g, pts = W.pts; W.pal = XPALS[3];
+  const ice = new THREE.MeshStandardMaterial({color:0xbfe8ff, emissive:0x5ab8ff, emissiveIntensity:.45, transparent:true, opacity:.88, roughness:.15, metalness:.2});
+  const top = new THREE.MeshStandardMaterial({color:0xffffff, emissive:0x9ad8ff, emissiveIntensity:.6, roughness:.2});
+  kp(add(g, BOXG, ice, [1.0, 1.0, 2.4], [0, 1.4, 0]));
+  [[0,0,2.6,0.4],[0,1.25,1.8,0.28],[0,-1.25,1.8,0.28]].forEach(([x,z,h,r])=>{ kp(add(g, CYLG, ice, [r, h, r], [x, 0.92 + h/2, z])); kp(add(g, CONEG, top, [r*1.25, 0.8, r*1.25], [x, 0.92 + h + 0.4, z]));
+    ring(pts, x, 0.92 + h, z, r*1.1); });
+  // つらら
+  for(let k=0;k<14;k++) kp(add(g, CONEG, top, [0.04, 0.22, 0.04], [0.52, 1.82, -1.1 + k*0.17], [Math.PI, 0, 0]));
+  // 雪の結晶
+  const fl = canvasTex(256, 256, (x,w,h)=>{ x.translate(128,128); x.strokeStyle = '#ffffff'; x.lineWidth = 10; x.lineCap = 'round';
+    for(let k=0;k<6;k++){ x.rotate(Math.PI/3); x.beginPath(); x.moveTo(0,0); x.lineTo(0,-110); x.moveTo(0,-60); x.lineTo(-28,-88); x.moveTo(0,-60); x.lineTo(28,-88); x.moveTo(0,-30); x.lineTo(-18,-46); x.moveTo(0,-30); x.lineTo(18,-46); x.stroke(); } });
+  const flakes = [];
+  for(let k=0;k<5;k++){ const s = new THREE.Sprite(new THREE.SpriteMaterial({map:fl, color:0xbfe8ff, transparent:true, blending:THREE.AdditiveBlending, depthWrite:false})); s.scale.set(0.6,0.6,1); g.add(s); flakes.push({s, a:k/5*Math.PI*2}); }
+  const glow = glowSprite(g, 'rgba(120,200,255,.45)', 4.5, [0, 2.0, 0]);
+  W.update = (t)=>{ flakes.forEach((f,i)=>{ const a = f.a + t*0.5; f.s.position.set(0.3 + Math.cos(a)*0.2, 2.6 + Math.sin(t*1.3 + i)*0.4, Math.sin(a)*1.6); f.s.material.rotation = t*0.6 + i; });
+    glow.material.opacity = 0.7 + Math.sin(t*1.7)*0.2; };
+  return W;
+}
+
+// ⑥ プレゼントの塔
+function xGiftFloat(){
+  const W = wagon(4.0, 2.3, XGOLD, XRED), g = W.g, pts = W.pts; W.pal = XPALS[4];
+  const tower = new THREE.Group(); tower.position.set(-0.1, 0.92, 0); g.add(tower);
+  const L = [[XRED, XGOLD, 1.1, 0.7], [XGREEN, XRED, 0.85, 0.6], [XBLUE, XWHITE, 0.62, 0.5], [XWHITE, XRED, 0.42, 0.42]];
+  let y = 0; const tiers = [];
+  L.forEach(([c, r, s, h], i)=>{ const b = giftBox(tower, c, r, [s, h, s], [0, y, 0], i*0.4); tiers.push(b); y += h; });
+  const star = kp(new THREE.Mesh(starGeo(0.26, 0.07), shiny(XGOLD, 1.0))); star.position.set(-0.1, 0.92 + y + 0.4, 0); g.add(star);
+  glowSprite(g, 'rgba(255,220,100,.8)', 1.6, [-0.1, 0.92 + y + 0.4, 0]);
+  // まわりの小さなプレゼント
+  [[0.85,1.5,XRED,XWHITE],[0.9,-1.5,XGREEN,XGOLD],[0.75,1.0,XBLUE,XGOLD],[0.8,-0.95,0xff2a8a,XWHITE]].forEach(([x,z,c,r])=>giftBox(g, c, r, [0.28,0.26,0.28], [x, 0.92, z], Math.random()));
+  W.update = (t)=>{ tiers.forEach((b,i)=>{ b.rotation.y = (i%2 ? -1 : 1)*t*0.4 + i*0.4; }); star.rotation.y = t*1.5; star.position.y = 0.92 + y + 0.4 + Math.sin(t*2)*0.08; };
+  return W;
+}
+
+// ⑦ 雪だるま
+function xSnowmanFloat(){
+  const W = wagon(4.2, 2.3, XBLUE, XWHITE), g = W.g, pts = W.pts; W.pal = XPALS[3];
+  const sn = new THREE.Group(); sn.position.set(-0.1, 0.92, 0.2); g.add(sn);
+  const snow = new THREE.MeshStandardMaterial({color:0xffffff, emissive:0xdff0ff, emissiveIntensity:.35, roughness:.9});
+  kp(add(sn, SPH, snow, [0.75,0.7,0.75], [0, 0.65, 0])); kp(add(sn, SPH, snow, [0.55,0.52,0.55], [0, 1.72, 0]));
+  const head = new THREE.Group(); head.position.y = 2.55; sn.add(head);
+  kp(add(head, SPH, snow, [0.4,0.4,0.4], [0,0,0]));
+  [-0.13,0.13].forEach(x=>kp(add(head, SPH, new THREE.MeshBasicMaterial({color:0x111111}), [0.05,0.05,0.04], [0.33, 0.08, x])));
+  kp(add(head, CONEG, shiny(0xff7a00, .5), [0.06, 0.32, 0.06], [0.48, 0, 0], [0, 0, -Math.PI/2]));
+  for(let k=0;k<5;k++){ const a = -0.55 + k*0.27; kp(add(head, SPH, new THREE.MeshBasicMaterial({color:0x111111}), [0.025,0.025,0.025], [0.35*Math.cos(a), -0.15 + Math.sin(a)*0.05 - Math.abs(k-2)*0.03 + 0.02, 0.35*Math.sin(a)*0.6])); }
+  // シルクハット
+  kp(add(head, CYLG, shiny(0x111111, .1), [0.38, 0.03, 0.38], [0, 0.33, 0])); kp(add(head, CYLG, shiny(0x111111, .1), [0.26, 0.42, 0.26], [0, 0.55, 0]));
+  kp(add(head, CYLG, shiny(XRED, .6), [0.265, 0.07, 0.265], [0, 0.4, 0])); kp(add(head, SPH, shiny(XGREEN,.5), [0.06,0.05,0.04], [0.15, 0.42, 0.2]));
+  // マフラー
+  kp(add(sn, new THREE.TorusGeometry(0.42, 0.09, 8, 20), shiny(XRED, .5), [1,1,1], [0, 2.22, 0], [Math.PI/2, 0, 0]));
+  kp(add(sn, BOXG, shiny(XRED, .5), [0.12, 0.6, 0.2], [0.35, 1.95, -0.25], [0, 0, 0.15]));
+  [0.25,0.55,0.85].forEach((yy,i)=>kp(add(sn, SPH, new THREE.MeshBasicMaterial({color:0x111111}), [0.05,0.05,0.05], [0.53 - i*0.04, 1.45 + i*0.22 - 0.2, 0])));
+  // 木の枝のうで
+  const arms = [-1,1].map(s=>{ const a = new THREE.Group(); a.position.set(0, 1.85, s*0.48); sn.add(a);
+    add(a, CYLG, hMat2(0x5a3010), [0.03, 0.8, 0.03], [0, 0.35, 0]); add(a, CYLG, hMat2(0x5a3010), [0.02, 0.25, 0.02], [0, 0.6, s*0.08], [s*0.6, 0, 0]); a.rotation.x = s*-0.9; return {a, s}; });
+  W.update = (t)=>{ arms.forEach(({a,s},i)=>{ a.rotation.x = s*(-0.9 - (i ? 0.6 + Math.sin(t*5)*0.5 : 0)); }); head.rotation.y = Math.sin(t*1.2)*0.25; sn.rotation.z = Math.sin(t*2)*0.03; };
+  return W;
+}
+
+// ⑧ 金の鐘とリース
+function xBellFloat(){
+  const W = wagon(4.2, 2.3, XGREEN, XGOLD), g = W.g, pts = W.pts; W.pal = XPALS[0];
+  const arch = new THREE.Group(); arch.position.set(0, 0.92, 0); g.add(arch);
+  [-1.5, 1.5].forEach(z=>add(arch, CYLG, hMat2(0xffffff), [0.08, 2.6, 0.08], [0, 1.3, z]));
+  const bar = new THREE.Mesh(new THREE.TorusGeometry(1.5, 0.07, 8, 32, Math.PI), hMat2(0xffffff)); bar.rotation.y = Math.PI/2; bar.position.y = 2.6; arch.add(bar);
+  for(let k=0;k<=24;k++){ const a = k/24*Math.PI; pts.push(V(0, 0.92 + 2.6 + Math.sin(a)*1.5, Math.cos(a)*1.5)); }
+  // 鐘（回転体）
+  const bp = []; [[0,0.0],[0.12,0.02],[0.16,0.18],[0.2,0.38],[0.33,0.55],[0.36,0.6],[0,0.6]].forEach(([r,y])=>bp.push(new THREE.Vector2(r, 0.6 - y)));
+  const bellG = new THREE.LatheGeometry(bp, 28);
+  const bells = [-0.55, 0.55].map((z,i)=>{ const p = new THREE.Group(); p.position.set(0, 0.92 + 3.4, z); g.add(p);
+    const b = kp(new THREE.Mesh(bellG, shiny(XGOLD, .6))); b.position.y = -0.62; b.scale.setScalar(1.2); p.add(b);
+    kp(add(p, SPH, shiny(XGOLD, .8), [0.07,0.07,0.07], [0, -1.3, 0])); return {p, i}; });
+  // リボンとヒイラギ
+  kp(add(g, new THREE.TorusGeometry(0.15, 0.06, 8, 16), shiny(XRED, .6), [1.4,1,1], [0, 0.92 + 3.45, -0.18], [0, Math.PI/2, 0]));
+  kp(add(g, new THREE.TorusGeometry(0.15, 0.06, 8, 16), shiny(XRED, .6), [1.4,1,1], [0, 0.92 + 3.45, 0.18], [0, Math.PI/2, 0]));
+  const wreath = new THREE.Group(); wreath.position.set(0.6, 0.92 + 1.1, 0); wreath.rotation.y = Math.PI/2; g.add(wreath);
+  kp(add(wreath, new THREE.TorusGeometry(0.55, 0.14, 10, 32), shiny(0x0a6a24, .25), [1,1,1], [0,0,0]));
+  for(let k=0;k<16;k++){ const a = k/16*Math.PI*2; kp(add(wreath, SPH, shiny(k%2 ? XRED : XGOLD, .7), [0.05,0.05,0.05], [Math.cos(a)*0.55, Math.sin(a)*0.55, 0.13])); }
+  kp(add(wreath, new THREE.TorusGeometry(0.12, 0.05, 8, 16), shiny(XRED, .6), [1.4,1,1], [0, -0.55, 0.15]));
+  W.update = (t)=>{ bells.forEach(({p,i})=>{ p.rotation.x = Math.sin(t*3 + i*Math.PI)*0.45; }); wreath.rotation.z = Math.sin(t*0.8)*0.1; };
+  return W;
+}
+
+// ⑨ フィナーレ：Merry Christmas
+function xFinaleFloat(){
+  const W = wagon(4.8, 2.4, XRED, XGOLD), g = W.g, pts = W.pts; W.pal = XPALS[4];
+  add(g, BOXG, hMat2(0xfff2d8), [1.9,0.12,4.4], [0, 0.97, 0]);
+  [-1,1].forEach(s=>{ add(g, CYLG, hMat2(0xffffff), [0.07, 2.9, 0.07], [0.35, 2.4, s*2.1]); kp(add(g, SPH, shiny(XGOLD, 1), [0.13,0.13,0.13], [0.35, 3.9, s*2.1])); });
+  const board = kp(new THREE.Mesh(new THREE.PlaneGeometry(4.4, 1.25), new THREE.MeshBasicMaterial({color:0x0a3a1a}))); board.rotation.y = Math.PI/2; board.position.set(0.45, 3.3, 0); g.add(board);
+  const BW = 4.0, lp = [];
+  bulbTextPoints('Merry Christmas').forEach(([u,v])=>lp.push(V(0.49, 3.36 + v*BW, -u*BW)));
+  const letters = bulbs(g, lp, {size:0.1, pal:[col(0xffd000), col(0xfff1c0), col(0xffe08a)], steady:true, flares:8, halo:0.05});
+  const sub = kp(new THREE.Mesh(new THREE.PlaneGeometry(2.4, 0.42), new THREE.MeshBasicMaterial({map:canvasTex(1024, 180, (x,w,h)=>{ x.fillStyle = '#e8101e'; x.fillRect(0,0,w,h); x.strokeStyle = '#ffd000'; x.lineWidth = 10; x.strokeRect(6,6,w-12,h-12);
+    x.fillStyle = '#ffffff'; x.font = `800 110px ${FONT}`; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(CONFIG.eventName, w/2, h/2 + 4); })})));
+  sub.rotation.y = Math.PI/2; sub.position.set(0.47, 2.48, 0); g.add(sub);
+  const fp = []; for(let z=-2.22; z<=2.221; z+=0.15){ fp.push(V(0.47, 3.95, z)); fp.push(V(0.47, 2.68, z)); }
+  for(let y=2.68; y<=3.951; y+=0.15){ fp.push(V(0.47, y, -2.22)); fp.push(V(0.47, y, 2.22)); }
+  const frame = bulbs(g, fp, {size:0.1, pal:[col(0xff1e2d), col(0x10e050)], flares:0, halo:0.08});
+  const star = kp(new THREE.Mesh(starGeo(0.4, 0.1), shiny(XGOLD, 1.0))); star.position.set(0.35, 4.5, 0); g.add(star);
+  glowSprite(g, 'rgba(255,220,100,.9)', 2.4, [0.35, 4.5, 0]);
+  giftBox(g, XGREEN, XGOLD, [0.36,0.32,0.36], [0.9, 1.03, 1.85], 0.3); giftBox(g, XBLUE, XWHITE, [0.3,0.28,0.3], [0.9, 1.03, -1.85], -0.3);
+  const wp = V(0,0,0), CC = [col(0xffd000), col(0xff1e2d), col(0x10e050), col(0xffffff)];
+  W.update = (t, dt, flash)=>{ letters(t, flash); frame(t, flash); star.rotation.y = t*1.3;
+    if(Math.random() < dt*14){ star.getWorldPosition(wp); spawn(wp, (Math.random()-.5)*3, 1.5 + Math.random()*1.5, (Math.random()-.5)*3, 1.8, CC[(Math.random()*4)|0], 1.5, 0); } };
+  return W;
+}
+
+// 行列の並び（クリスマス）
+function xmasPlan(row, pair, P){
+  const FLAG = P('flag', {suit:XRED, trim:XGOLD, pants:0xffffff, hat:'shako', hatColor:XGREEN});
+  const SOLDIER = P('drum', {suit:XRED, trim:XGOLD, pants:0x0033cc, hat:'shako', hatColor:0x111111});
+  const XHORN = P('horn', {suit:XGREEN, trim:XGOLD, pants:0xffffff, hat:'shako', hatColor:XRED});
+  const CANE = c=>P('ribbon', {suit:0xffffff, trim:XRED, pants:0xffffff, skirt:true, ribbon:c});
+  const SNOW = P('dance', {suit:0xffffff, trim:0x6ad8ff, pants:0xe8f6ff, skirt:true});
+  const RED = P('dance', {suit:XRED, trim:0xffffff, pants:0xffffff, skirt:true});
+  const GREEN = P('dance', {suit:XGREEN, trim:0xffffff, pants:0xffffff, skirt:true});
+  const STAR = P('lantern', {suit:0x0033cc, trim:XGOLD, pants:0x101a60, lanternColor:0xffe000});
+  row(0,   ...pair(FLAG));
+  row(1.5, ...pair(SOLDIER)); row(1.3, ...pair(SOLDIER));
+  row(4.6, {float:xTreeFloat, riders:[{k:'esper', at:[0.9,0.9,1.85]}, {k:'mimi', at:[0.9,0.9,-1.85]}]});
+  row(4.6, ...pair(SNOW)); row(1.3, {lane:-0.6, make:RED}, {lane:0.6, make:GREEN});
+  row(4.8, {float:xSleighFloat, riders:[{k:'jiiji', at:[0.0,1.6,-1.25]}, {k:'niko', at:[0.95,0.9,-2.55]}]});
+  row(5.0, {lane:-0.6, make:CANE(XRED)}, {lane:0.6, make:CANE(XGREEN)}); row(1.4, {lane:-0.6, make:CANE(XGOLD)}, {lane:0.6, make:CANE(XRED)});
+  row(4.2, {float:xWorkshopFloat, riders:[{k:'luke', at:[0.85,0.9,1.35]}]});
+  row(4.4, {float:xGingerFloat, riders:[{k:'lily', at:[0.95,0.9,-1.25]}]});
+  row(4.0, ...pair(XHORN)); row(1.3, ...pair(XHORN));
+  row(4.4, {float:xIceFloat, riders:[{k:'arika', at:[0.95,1.35,1.55]}, {k:'nuru', at:[0.95,1.35,-1.6]}]});
+  row(4.4, ...pair(STAR)); row(1.3, ...pair(STAR));
+  row(4.0, {float:xGiftFloat, riders:[{k:'hal', at:[0.95,0.9,1.25]}]});
+  row(4.2, {float:xSnowmanFloat, riders:[{k:'mock', at:[0.95,0.9,-1.35]}]});
+  row(4.0, ...pair(SOLDIER)); row(1.3, ...pair(SOLDIER));
+  row(4.2, {float:xBellFloat});
+  row(4.0, ...pair(SNOW)); row(1.3, {lane:-0.6, make:GREEN}, {lane:0.6, make:RED});
+  row(4.8, {float:xFinaleFloat, riders:[{k:'esper', at:[0.9,1.03,0]}, {k:'lily', at:[0.9,1.03,-1.35]}, {k:'mimi', at:[0.9,1.03,1.35]}]});
+  row(3.8, {lane:0, make:FLAG});
+}
+
+// サンタ帽（キャラクターの頭の位置：絵の左右・上下の割合、帽子の幅）
+const SANTA_HAT = {esper:{x:.56,y:.05,s:.5,r:-.25}, mimi:{x:.52,y:.27,s:.5,r:.15}, lily:{x:.5,y:.07,s:.55,r:-.15}, hal:{x:.3,y:.1,s:.38,r:.2},
+  arika:{x:.45,y:.06,s:.5,r:.2}, nuru:{x:.5,y:.07,s:.5,r:-.2}, jiiji:{x:.56,y:.08,s:.52,r:-.2}};
+let _hatTex = null;
+function hatTex(){ if(_hatTex) return _hatTex; _hatTex = canvasTex(256, 256, (x,w,h)=>{
+  x.fillStyle = '#e8101e'; x.beginPath(); x.moveTo(40,196); x.quadraticCurveTo(70,70,150,38); x.quadraticCurveTo(205,30,214,96); x.quadraticCurveTo(190,70,176,92); x.quadraticCurveTo(200,140,214,196); x.closePath(); x.fill();
+  x.fillStyle = 'rgba(0,0,0,.18)'; x.beginPath(); x.moveTo(130,196); x.quadraticCurveTo(170,120,176,92); x.quadraticCurveTo(200,140,214,196); x.fill();
+  x.fillStyle = '#ffffff'; const fur = (cx,cy,rw,rh)=>{ for(let k=0;k<26;k++){ x.beginPath(); x.arc(cx - rw + Math.random()*rw*2, cy - rh/2 + Math.random()*rh, 10 + Math.random()*6, 0, Math.PI*2); x.fill(); } };
+  x.beginPath(); x.ellipse(127, 200, 98, 26, 0, 0, Math.PI*2); x.fill(); fur(127, 200, 90, 30);
+  x.beginPath(); x.arc(212, 104, 26, 0, Math.PI*2); x.fill(); fur(212, 104, 18, 30); }); return _hatTex; }
+function addSantaHat(C){
+  const H = SANTA_HAT[C.k]; if(!H) return;
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({map:hatTex(), transparent:true, alphaTest:0.2, depthTest:false}));
+  s.renderOrder = 12; s.center.set(0.5, 0.18); C.g.add(s); C.hat = s; C.hatInfo = H;
+}
+function placeHat(C){
+  const H = C.hatInfo, W = C.sp.scale.x, h = C.sp.scale.y, th = C.sp.material.rotation;
+  const r = ((1 - H.x) - 0.5)*W, u = (1 - H.y)*h, rr = r*Math.cos(th) - u*Math.sin(th), uu = r*Math.sin(th) + u*Math.cos(th);
+  C.hat.position.set(C.sp.position.x, C.sp.position.y + uu, -rr); const sz = H.s*W; C.hat.scale.set(sz, sz, 1); C.hat.material.rotation = th + H.r;
+}
+
+// 雪・オーロラ・星（クリスマスパレードの夜空）
+const xmasSky = (()=>{
+  const root = new THREE.Group(); root.visible = false; scene.add(root);
+  const NS = 2200, sp = new Float32Array(NS*3), sv = new Float32Array(NS), sph = new Float32Array(NS);
+  const box = 16;
+  for(let i=0;i<NS;i++){ sp[i*3] = (Math.random()-.5)*box*2; sp[i*3+1] = Math.random()*14 - 2; sp[i*3+2] = (Math.random()-.5)*box*2; sv[i] = 0.5 + Math.random()*0.7; sph[i] = Math.random()*6; }
+  const sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.BufferAttribute(sp, 3));
+  const flakeTex = canvasTex(64, 64, (x)=>{ const g = x.createRadialGradient(32,32,0,32,32,30); g.addColorStop(0,'rgba(255,255,255,1)'); g.addColorStop(0.45,'rgba(255,255,255,.9)'); g.addColorStop(1,'rgba(255,255,255,0)'); x.fillStyle = g; x.beginPath(); x.arc(32,32,30,0,Math.PI*2); x.fill(); });
+  const snow = new THREE.Points(sg, new THREE.PointsMaterial({size:0.09, map:flakeTex, color:0xffffff, transparent:true, opacity:.9, depthWrite:false}));
+  snow.frustumCulled = false; root.add(snow);
+  // 星空
+  const NT = 500, tp = new Float32Array(NT*3);
+  for(let i=0;i<NT;i++){ const a = Math.random()*Math.PI*2, e = 0.15 + Math.random()*1.2, r = 90; tp[i*3] = Math.cos(a)*Math.cos(e)*r; tp[i*3+1] = Math.sin(e)*r; tp[i*3+2] = Math.sin(a)*Math.cos(e)*r; }
+  const tg = new THREE.BufferGeometry(); tg.setAttribute('position', new THREE.BufferAttribute(tp, 3));
+  const stars = new THREE.Points(tg, new THREE.PointsMaterial({size:0.7, map:flakeTex, color:0xfff6d0, transparent:true, depthWrite:false, blending:THREE.AdditiveBlending}));
+  stars.frustumCulled = false; root.add(stars);
+  // オーロラ
+  const auroraTex = canvasTex(512, 256, (x,w,h)=>{ const g = x.createLinearGradient(0,0,0,h); g.addColorStop(0,'rgba(120,60,255,0)'); g.addColorStop(0.35,'rgba(160,100,255,.55)'); g.addColorStop(0.7,'rgba(40,255,170,.85)'); g.addColorStop(1,'rgba(40,255,160,0)');
+    x.fillStyle = g; x.fillRect(0,0,w,h); x.globalCompositeOperation = 'destination-out';   // 縦のすじ模様（光のカーテン）を、塗ったところだけ薄くする
+    for(let k=0;k<w;k+=2){ x.fillStyle = `rgba(0,0,0,${1 - (0.35 + 0.65*Math.abs(Math.sin(k*0.031)*Math.sin(k*0.013 + 1)))})`; x.fillRect(k,0,2,h); }
+    x.globalCompositeOperation = 'source-over'; });
+  auroraTex.wrapS = THREE.RepeatWrapping;
+  const auroras = [];
+  for(let k=0;k<4;k++){ const t = auroraTex.clone(); t.needsUpdate = true; t.wrapS = THREE.RepeatWrapping;
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({map:t, transparent:true, opacity:0.9, blending:THREE.AdditiveBlending, depthWrite:false, fog:false}));
+    sp.scale.set(44, 13, 1); root.add(sp); auroras.push({m:sp, k}); }
+  const cp = V(0,0,0);
+  return {
+    show(on){ root.visible = on; },
+    update(t, dt){
+      if(!root.visible) return;
+      camera.getWorldPosition(cp);
+      for(let i=0;i<NS;i++){
+        sp[i*3+1] -= sv[i]*dt; sp[i*3] += Math.sin(t*0.8 + sph[i])*dt*0.25; sp[i*3+2] += Math.cos(t*0.6 + sph[i])*dt*0.2;
+        if(sp[i*3+1] < cp.y - 3){ sp[i*3+1] = cp.y + 10 + Math.random()*2; }
+        if(sp[i*3] - cp.x > box) sp[i*3] -= box*2; if(sp[i*3] - cp.x < -box) sp[i*3] += box*2;
+        if(sp[i*3+2] - cp.z > box) sp[i*3+2] -= box*2; if(sp[i*3+2] - cp.z < -box) sp[i*3+2] += box*2;
+      }
+      sg.attributes.position.needsUpdate = true;
+      stars.position.copy(cp); stars.material.opacity = 0.75 + Math.sin(t*1.3)*0.15;
+      auroras.forEach(({m, k})=>{
+        const ang = -0.9 + k*0.6 + Math.sin(t*0.05 + k)*0.08;
+        m.position.set(cp.x + Math.sin(ang)*40, cp.y + 14 + Math.sin(t*0.3 + k*1.7)*1.5 + (k%2)*3, cp.z - Math.cos(ang)*40);
+        m.material.opacity = 0.55 + 0.35*Math.sin(t*0.4 + k*1.3); m.material.rotation = Math.sin(t*0.2 + k)*0.12;
+        m.material.map.offset.x = t*0.015*(k%2 ? -1 : 1);
+      });
+    }
+  };
+})();
+
 /* ---------- キャラクターと表示モード ---------- */
 const C = { phoenix:createPhoenix(), whale:createWhale(), butterflies:createButterflies(), fireworks:createFireworks() };
 // d：基本距離に足す距離、off：円軌道の出発位置をずらす角度
@@ -2769,13 +3136,14 @@ const MODES = {
   butterflies: {hint:C.butterflies.tapHint, list:[{c:C.butterflies, d:-2}]},
   fireworks:   {hint:C.fireworks.tapHint, list:[{c:C.fireworks, d:0}]},
   halloween:   {hint:'気になるものをタップしてみよう<small>Tap anything</small>', room:true, list:[]},
+  xmas:        {hint:'タップするとみんなが応えてくれます<small>Tap to cheer</small>', lookHint:'クリスマスパレードが右からやってきます<small>Coming from the right</small>', march:true, list:[]},
   parade:      {hint:'タップするとみんなが応えてくれます<small>Tap to cheer</small>', lookHint:'パレードが右からやってきます<small>Coming from the right</small>',
                 march:true, list:[]}
 };
 let mode = 'phoenix';
 // gap＝最後尾が画面から抜けてから先頭が入ってくるまでの距離(m)。進む速さは曲の長さに合わせて自動で決まる
 const PARADE = {gap:1};
-let Parade = null;
+let Parade = null; const PARADES = {};
 
 /* ---------- 端末の向き → カメラの向き ---------- */
 let ori = null, gotOri = false;
@@ -2810,7 +3178,7 @@ function placeAll(){
   const right = V(-f.z, 0, f.x), M = MODES[mode];
   if(Hall) Hall.hide();
   if(M.room){ if(!Hall) Hall = createHalloween(); Hall.start(f); placedAt = clock.elapsedTime; return; }
-  if(M.march){ if(!Parade) Parade = createParade(); Parade.start(f, right); placedAt = clock.elapsedTime; return; }
+  if(M.march){ if(!PARADES[mode]) PARADES[mode] = createParade(mode); Object.values(PARADES).forEach(p=>{ if(p !== PARADES[mode]) p.hide(); }); Parade = PARADES[mode]; Parade.start(f, right); placedAt = clock.elapsedTime; return; }
   C.whale.root.scale.setScalar(0.6);
   M.list.forEach(({c, d, off, s})=>{
     const center = camera.position.clone().addScaledVector(f, CONFIG.distance + d);
@@ -2869,7 +3237,8 @@ function loop(){
   else camera.rotation.set(pitch, yaw, 0, 'YXZ');
   if(running){
     Object.values(C).forEach(c=>c.update(t, dt));
-    if(Parade) Parade.update(t, dt);
+    Object.values(PARADES).forEach(p=>p.update(t, dt));
+    if(mode === 'xmas') xmasSky.update(t, dt);
     if(Hall) Hall.update(t, dt);
     updateParticles(t, dt);
     updateIndicator();
@@ -2926,22 +3295,22 @@ async function startExperience(){
   }
   $('start').hidden = true; $('hud').hidden = false; $('btnHome').hidden = false; hint.hidden = false; hintState = ''; setHint('look');
   running = true;
-  if(mode === 'parade'){
-    startMusic();
+  if(MODES[mode].march){
+    startMusic(mode === 'xmas' ? 'xmas' : 'parade');
     try{ await Promise.race([document.fonts.ready, new Promise(r=>setTimeout(r,1500))]); }catch(e){}
   }
   setTimeout(()=>{
     if(!running) return;
     placeAll();
     if(!gotOri) toast('画面をドラッグすると見回せます', 4000);
-    else if(mode === 'parade' && window.innerHeight > window.innerWidth) toast('スマホを横向きにすると、パレードが広く見えます', 5000);
+    else if(MODES[mode].march && window.innerHeight > window.innerWidth) toast('スマホを横向きにすると、パレードが広く見えます', 5000);
   }, 600);
 }
 // 最初の画面にもどる：表示中のものをすべて片付ける（カメラはつないだまま）
 function goHome(){
   running = false; placedAt = -1;
   Object.values(C).forEach(c=>{ c.root.visible = false; });
-  if(Parade) Parade.hide();
+  Object.values(PARADES).forEach(p=>p.hide());
   if(Hall) Hall.hide();
   silenceAll();
   for(let i=0;i<N;i++){ pLife[i] = 1; pPos[i*3+1] = -999; }
