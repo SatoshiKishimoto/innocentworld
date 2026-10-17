@@ -7,7 +7,7 @@
 <meta http-equiv="Expires" content="0">
 <script>
 /* 更新の確認：ホーム画面から開いたときに古いページが残っていたら、新しい版を読み込み直す */
-var BUILD = '20261018000210';
+var BUILD = '20261018000547';
 (function(){
   var pending = '';
   function busy(){ try{ return typeof running !== 'undefined' && running; }catch(e){ return false; } }
@@ -1997,7 +1997,7 @@ function playStep(i, time){
 }
 // パレードのテーマ（music/parade.mp3）。読み込めないときは下の簡易BGMで代用する
 // 曲の一覧：パレード（parade.mp3）とクリスマスパレード（xmas.mp3）。loop はちょうど1曲分の秒数
-const THEMES = {parade:{url:'music/parade.mp3', loop:152}, xmas:{url:'music/xmas.mp3', loop:64*4*60/132}};
+const THEMES = {parade:{url:'music/parade.mp3', loop:152}, xmas:{url:'music/xmas.mp3?v=2', loop:68*4*60/132}};
 let themeName = 'parade', themeBytes = null, themeBuf = null, themeSrc = null, wantTheme = false;
 const _tBytes = {}, _tBuf = {};
 Object.entries(THEMES).forEach(([k,o])=>fetch(o.url).then(r=>r.ok ? r.arrayBuffer() : null).then(b=>{ _tBytes[k] = b; if(k === themeName){ themeBytes = b; if(wantTheme) playTheme(); } }).catch(()=>{}));
