@@ -7,21 +7,27 @@
 <meta http-equiv="Expires" content="0">
 <script>
 /* 更新の確認：ホーム画面から開いたときに古いページが残っていたら、新しい版を読み込み直す */
-var BUILD = '20261017235801';
+var BUILD = '20261018000210';
 (function(){
+  var pending = '';
+  function busy(){ try{ return typeof running !== 'undefined' && running; }catch(e){ return false; } }
+  function go(v){
+    try{ if(sessionStorage.getItem('reloadedTo') === v) return; sessionStorage.setItem('reloadedTo', v); }catch(e){}
+    location.replace(location.pathname + '?v=' + encodeURIComponent(v) + location.hash);
+  }
   function check(){
     fetch('version.txt?t=' + Date.now(), {cache:'no-store'}).then(function(r){ return r.ok ? r.text() : ''; }).then(function(v){
       v = (v || '').trim();
-      if(v && BUILD !== 'dev' && v !== BUILD){
-        var u = location.pathname + '?v=' + encodeURIComponent(v) + location.hash;
-        try{ if(sessionStorage.getItem('reloadedTo') === v) return; sessionStorage.setItem('reloadedTo', v); }catch(e){}
-        location.replace(u);
-      }
+      if(v && BUILD !== 'dev' && v !== BUILD){ if(busy()) pending = v; else go(v); }
     }).catch(function(){});
   }
   check();
+  // 開いたままでも1分ごとに確認。パレードなどの表示中は中断せず、最初の画面に戻ったときに読み込み直す
+  setInterval(check, 60000);
+  setInterval(function(){ if(pending && !busy()) go(pending); }, 1500);
   document.addEventListener('visibilitychange', function(){ if(document.visibilityState === 'visible') check(); });
   window.addEventListener('pageshow', function(e){ if(e.persisted) check(); });
+  window.addEventListener('focus', check);
 })();
 </script>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
