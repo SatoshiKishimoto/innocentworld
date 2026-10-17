@@ -249,3 +249,9 @@ html[data-lang="kana"] .srtop b,html[data-lang="en"] .srtop b{letter-spacing:.04
 .srtop{flex-wrap:wrap}
 .srbody dd.mono{white-space:nowrap;font-size:12px}
 html[data-lang="kana"] .srbody dl{font-size:12px}
+
+/* 第1日目シナリオ用の背景（井戸・森・時計台） */
+.bg-well{background:radial-gradient(ellipse at 50% 92%,#8a8f9c 0 18%,#5c6170 18.5% 22%,transparent 22.5%),radial-gradient(ellipse at 50% 120%,#7cc860 0 46%,transparent 46.5%),linear-gradient(180deg,#9fd0ff,#e4f4ff 58%,#b8e08a 58.5%)}
+.bg-forest{background:radial-gradient(circle at 12% 30%,#2f8a3a 0 12%,transparent 12.5%),radial-gradient(circle at 88% 26%,#2f8a3a 0 14%,transparent 14.5%),radial-gradient(circle at 70% 18%,rgba(255,250,200,.85) 0 4%,transparent 16%),
+  linear-gradient(180deg,#7fc48a,#cfeec0 55%,#5aa84a 55.5%,#3f8a3a)}
+.bg-clock{background:radial-gradient(circle at 50% 30%,#fff7d8 0 13%,#c89a3a 13.5% 15%,transparent 15.5%),repeating-conic-gradient(from 0deg at 50% 30%,rgba(255,255,255,.12) 0 6deg,transparent 6deg 30deg),linear-gradient(180deg,#5a3a8a,#a87a5a 60%,#8a5a3a)}
