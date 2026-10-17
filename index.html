@@ -440,7 +440,35 @@ function updateParticles(t, dt){
 
 /* ---------- 音（合成） ---------- */
 let audio = null, muted = false;
-function initAudio(){ try{ audio = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ audio = null; } }
+// スマートフォンのスピーカーから音を出すための準備
+//  ・iPhone は Web Audio の音を「環境音」として扱い、マナースイッチがオンだとスピーカーから鳴らない
+//  ・カメラを使っている間は「通話」扱いになり、受話口から小さく鳴ることがある
+//  そこで、①音の種類を「再生」に指定し、②すべての音をふつうの音楽プレーヤー（<audio>）を通して鳴らす
+let AOUT = null, mediaEl = null;
+function setPlaybackSession(){ try{ if(navigator.audioSession) navigator.audioSession.type = 'playback'; }catch(e){} }
+function initAudio(){
+  setPlaybackSession();
+  try{ audio = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ audio = null; return; }
+  AOUT = audio.destination;
+  try{
+    if(audio.createMediaStreamDestination){
+      const dst = audio.createMediaStreamDestination();
+      mediaEl = document.createElement('audio');
+      mediaEl.setAttribute('playsinline', ''); mediaEl.autoplay = true; mediaEl.srcObject = dst.stream;
+      document.body.appendChild(mediaEl);
+      const p = mediaEl.play();
+      AOUT = dst;
+      if(p && p.catch) p.catch(()=>{ AOUT = audio.destination; });   // 再生できない端末では、これまでどおり直接鳴らす
+    }
+  }catch(e){ AOUT = audio.destination; }
+}
+function wakeAudio(){   // 画面に戻ったときや、操作のたびに音を起こし直す
+  setPlaybackSession();
+  if(audio && audio.state === 'suspended') audio.resume();
+  if(mediaEl && mediaEl.paused){ const p = mediaEl.play(); if(p && p.catch) p.catch(()=>{}); }
+}
+document.addEventListener('pointerdown', ()=>{ if(audio) wakeAudio(); }, {passive:true});
+document.addEventListener('visibilitychange', ()=>{ if(!document.hidden && audio) wakeAudio(); });
 function au(){ if(!audio || muted) return null; if(audio.state === 'suspended') audio.resume(); return audio; }
 function soundPhoenix(){
   const a = au(); if(!a) return;
@@ -459,7 +487,7 @@ function soundPhoenix(){
     const g = a.createGain(); g.gain.value = i ? 0.35 : 0.5;
     o.connect(g); g.connect(bp); o.start(now); o.stop(now+len);
   });
-  bp.connect(out); out.connect(a.destination);
+  bp.connect(out); out.connect(AOUT);
   vib.start(now); vib.stop(now+len);
 }
 function soundWhale(){
@@ -476,7 +504,7 @@ function soundWhale(){
     const g = a.createGain(); g.gain.value = i ? 0.25 : 0.7;
     o.connect(g); g.connect(lp); o.start(now); o.stop(now+len);
   });
-  lp.connect(out); out.connect(a.destination); out.connect(delay); delay.connect(fb); fb.connect(delay); delay.connect(a.destination);
+  lp.connect(out); out.connect(AOUT); out.connect(delay); delay.connect(fb); fb.connect(delay); delay.connect(AOUT);
   setTimeout(()=>{ try{ fb.disconnect(); }catch(e){} }, 5000);
 }
 function soundChime(){
@@ -486,7 +514,7 @@ function soundChime(){
     const o = a.createOscillator(); o.type='sine'; o.frequency.value = f;
     const g = a.createGain(), st = now + i*0.08;
     g.gain.setValueAtTime(0.0001, st); g.gain.linearRampToValueAtTime(0.16, st+0.01); g.gain.exponentialRampToValueAtTime(0.001, st+0.9);
-    o.connect(g); g.connect(a.destination); o.start(st); o.stop(st+1);
+    o.connect(g); g.connect(AOUT); o.start(st); o.stop(st+1);
   });
 }
 
@@ -1890,7 +1918,7 @@ function playTheme(){
     if(!wantTheme || themeSrc) return;
     if(!buf){ if(!Music.timer) startSynthMusic(); return; }
     if(Music.timer){ clearInterval(Music.timer); Music.timer = null; }
-    if(!Music.gain){ Music.gain = audio.createGain(); Music.gain.connect(audio.destination); }
+    if(!Music.gain){ Music.gain = audio.createGain(); Music.gain.connect(AOUT); }
     // 数秒かけて音量を上げる（いきなり鳴らさない）
     const gp = Music.gain.gain, now = audio.currentTime;
     gp.cancelScheduledValues(now); gp.setValueAtTime(0.0001, now); gp.linearRampToValueAtTime(muted ? 0.0001 : 0.9, now + 4);
@@ -1920,7 +1948,7 @@ function playFireworksMusic(onStart){
   const go = (buf)=>{
     if(started || my !== fwToken) return; started = true;
     if(buf && audio){
-      Music.gain = audio.createGain(); Music.gain.gain.value = muted ? 0 : 0.95; Music.gain.connect(audio.destination);
+      Music.gain = audio.createGain(); Music.gain.gain.value = muted ? 0 : 0.95; Music.gain.connect(AOUT);
       fwSrc = audio.createBufferSource(); fwSrc.buffer = buf; fwSrc.connect(Music.gain); fwSrc.start();
     }
     onStart();
@@ -1953,7 +1981,7 @@ function startMusic(){
 }
 function startSynthMusic(){
   if(!audio || Music.timer || themeSrc) return;
-  Music.gain = audio.createGain(); Music.gain.gain.value = muted ? 0 : 0.28; Music.gain.connect(audio.destination);
+  Music.gain = audio.createGain(); Music.gain.gain.value = muted ? 0 : 0.28; Music.gain.connect(AOUT);
   Music.next = audio.currentTime + 0.15; Music.step = 0;
   const sixteenth = 60/118/4;
   Music.timer = setInterval(()=>{
@@ -2250,7 +2278,7 @@ function soundCrackle(len){
   const s = a.createBufferSource(); s.buffer = b;
   const hp = a.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 1200;
   const g = a.createGain(); g.gain.value = 0.7;
-  s.connect(hp); hp.connect(g); g.connect(a.destination); s.start(now);
+  s.connect(hp); hp.connect(g); g.connect(AOUT); s.start(now);
 }
 function soundWhiz(){
   const a = au(); if(!a) return;
@@ -2258,14 +2286,14 @@ function soundWhiz(){
   for(let k=0;k<4;k++){ const o = a.createOscillator(), g = a.createGain(), st = now + k*0.12;
     o.type = 'sawtooth'; o.frequency.setValueAtTime(900 + Math.random()*600, st); o.frequency.linearRampToValueAtTime(400 + Math.random()*900, st+0.9);
     g.gain.setValueAtTime(0.0001, st); g.gain.linearRampToValueAtTime(0.025, st+0.05); g.gain.exponentialRampToValueAtTime(0.0001, st+1);
-    o.connect(g); g.connect(a.destination); o.start(st); o.stop(st+1.05); }
+    o.connect(g); g.connect(AOUT); o.start(st); o.stop(st+1.05); }
 }
 function soundLaunch(){
   const a = au(); if(!a) return;
   const now = a.currentTime, o = a.createOscillator(), g = a.createGain();
   o.type = 'sine'; o.frequency.setValueAtTime(500, now); o.frequency.exponentialRampToValueAtTime(1700, now+1.1);
   g.gain.setValueAtTime(0.0001, now); g.gain.linearRampToValueAtTime(0.05, now+0.1); g.gain.exponentialRampToValueAtTime(0.0001, now+1.2);
-  o.connect(g); g.connect(a.destination); o.start(now); o.stop(now+1.25);
+  o.connect(g); g.connect(AOUT); o.start(now); o.stop(now+1.25);
 }
 let boomBuf = null, lastBoom = 0;
 function soundBoom(big, small){
@@ -2278,7 +2306,7 @@ function soundBoom(big, small){
   const g = a.createGain(); g.gain.setValueAtTime((big ? 0.9 : 0.6)*(small ? 0.45 : 1), now); g.gain.exponentialRampToValueAtTime(0.0001, now+1.9);
   const o = a.createOscillator(), og = a.createGain(); o.frequency.setValueAtTime(90, now); o.frequency.exponentialRampToValueAtTime(35, now+0.4);
   og.gain.setValueAtTime(big ? 0.8 : 0.5, now); og.gain.exponentialRampToValueAtTime(0.0001, now+0.5);
-  s.connect(lp); lp.connect(g); g.connect(a.destination); o.connect(og); og.connect(a.destination);
+  s.connect(lp); lp.connect(g); g.connect(AOUT); o.connect(og); og.connect(AOUT);
   s.start(now); s.stop(now+2); o.start(now); o.stop(now+0.55);
 }
 
@@ -2405,6 +2433,7 @@ async function startCamera(){
   video.srcObject = stream; video.hidden = false;
   await video.play().catch(()=>{});
   camOn = true;
+  setPlaybackSession(); wakeAudio && audio && wakeAudio();
 }
 let sensorsReady = false;
 $('btnStart').addEventListener('click', startExperience);
