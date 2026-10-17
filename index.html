@@ -467,9 +467,16 @@ function wakeAudio(){   // 画面に戻ったときや、操作のたびに音�
   if(audio && audio.state === 'suspended') audio.resume();
   if(mediaEl && mediaEl.paused){ const p = mediaEl.play(); if(p && p.catch) p.catch(()=>{}); }
 }
-document.addEventListener('pointerdown', ()=>{ if(audio) wakeAudio(); }, {passive:true});
-document.addEventListener('visibilitychange', ()=>{ if(!document.hidden && audio) wakeAudio(); });
-function au(){ if(!audio || muted) return null; if(audio.state === 'suspended') audio.resume(); return audio; }
+// 体験中だけ音を起こす（メニュー画面では鳴らさない）
+document.addEventListener('pointerdown', ()=>{ if(audio && running) wakeAudio(); }, {passive:true});
+// ホーム画面や別のアプリに移ったら音を止め、戻ってきたら体験中のときだけ再開する
+document.addEventListener('visibilitychange', ()=>{
+  if(!audio) return;
+  if(document.hidden){ audio.suspend().catch(()=>{}); if(mediaEl) mediaEl.pause(); }
+  else if(running) wakeAudio();
+});
+window.addEventListener('pagehide', ()=>{ if(audio) silenceAll(); });
+function au(){ if(!audio || muted || !running) return null; if(audio.state === 'suspended') audio.resume(); return audio; }
 function soundPhoenix(){
   const a = au(); if(!a) return;
   const now = a.currentTime, len = 1.4;
@@ -1922,7 +1929,7 @@ function playTheme(){
     // 数秒かけて音量を上げる（いきなり鳴らさない）
     const gp = Music.gain.gain, now = audio.currentTime;
     gp.cancelScheduledValues(now); gp.setValueAtTime(0.0001, now); gp.linearRampToValueAtTime(muted ? 0.0001 : 0.9, now + 4);
-    themeSrc = audio.createBufferSource(); themeSrc.buffer = buf; themeSrc.loop = true;
+    themeSrc = audio.createBufferSource(); themeSrc.buffer = buf; themeSrc.loop = true; ALL_SRC.add(themeSrc);
     // MP3 は頭に無音が入ることがあるので、音の始まりを探してちょうど1曲分でループさせる
     const LOOP_SEC = MUSIC_LOOP, d = buf.getChannelData(0);
     let start = 0; const lim = Math.min(d.length, buf.sampleRate);
@@ -1949,7 +1956,7 @@ function playFireworksMusic(onStart){
     if(started || my !== fwToken) return; started = true;
     if(buf && audio){
       Music.gain = audio.createGain(); Music.gain.gain.value = muted ? 0 : 0.95; Music.gain.connect(AOUT);
-      fwSrc = audio.createBufferSource(); fwSrc.buffer = buf; fwSrc.connect(Music.gain); fwSrc.start();
+      fwSrc = audio.createBufferSource(); fwSrc.buffer = buf; fwSrc.connect(Music.gain); fwSrc.start(); ALL_SRC.add(fwSrc);
     }
     onStart();
   };
@@ -1965,6 +1972,14 @@ function playFireworksMusic(onStart){
     const t0 = performance.now();
     const iv = setInterval(()=>{ if(my !== fwToken){ clearInterval(iv); return; } if(fwBytes || performance.now() - t0 > 3000){ clearInterval(iv); if(tryDecode() === false) go(null); } }, 100);
   }
+}
+const ALL_SRC = new Set();
+// すべての音を止める：曲・効果音・遅れて鳴る音も含めて、音の出口ごと止める
+function silenceAll(){
+  stopMusic();
+  ALL_SRC.forEach(src=>{ try{ src.stop(); }catch(e){} try{ src.disconnect(); }catch(e){} }); ALL_SRC.clear();
+  if(audio && audio.state === 'running') audio.suspend().catch(()=>{});
+  if(mediaEl && !mediaEl.paused) mediaEl.pause();
 }
 function stopMusic(){
   wantTheme = false; fwToken++;
@@ -2106,8 +2121,8 @@ function createFireworks(){
         break;
       case 'mini':    sphere(40, 4.5, c1, 1.1, 1.4, 0.955); sphere(8, 4.5, WHITE, 0.9, 1.4, 0.955, {gl:1}); soundCrackle(0.25); break;
       case 'bees':    sphere(90, 6, YELLOW, 2.0, 0.6, 0.97, {jt:40, gl:1}); sphere(40, 6, c1, 2.0, 0.6, 0.97, {jt:40}); soundWhiz(); break; // 蜂
-      case 'crown':   sphere(260, 9, GOLD, 3.6, 2.6, 0.955, {gl:1}); sphere(60, 9, WHITE, 3.4, 2.6, 0.955, {gl:1}); setTimeout(()=>soundCrackle(1.2), 1400); break; // 錦冠
-      case 'crackle': sphere(60, 8, SILVER.clone().multiplyScalar(0.7), 1.2, 1.4, 0.96); for(let k=0;k<26;k++) delayed.push({t:clock.elapsedTime + 0.8 + Math.random()*0.6, p:p.clone().add(V((Math.random()-.5)*20,(Math.random()-.5)*18,(Math.random()-.5)*10)), type:'pop', pal:[WHITE,WHITE]}); setTimeout(()=>soundCrackle(1.0), 800); break;
+      case 'crown':   sphere(260, 9, GOLD, 3.6, 2.6, 0.955, {gl:1}); sphere(60, 9, WHITE, 3.4, 2.6, 0.955, {gl:1}); setTimeout(()=>{ if(running) soundCrackle(1.2); }, 1400); break; // 錦冠
+      case 'crackle': sphere(60, 8, SILVER.clone().multiplyScalar(0.7), 1.2, 1.4, 0.96); for(let k=0;k<26;k++) delayed.push({t:clock.elapsedTime + 0.8 + Math.random()*0.6, p:p.clone().add(V((Math.random()-.5)*20,(Math.random()-.5)*18,(Math.random()-.5)*10)), type:'pop', pal:[WHITE,WHITE]}); setTimeout(()=>{ if(running) soundCrackle(1.0); }, 800); break;
       case 'pop':     for(let i=0;i<10;i++){ const a = Math.random()*Math.PI*2, u = Math.random()*2-1, r = Math.sqrt(1-u*u); emit(p, Math.cos(a)*r*3, u*3, Math.sin(a)*r*3, 0.3, YELLOW, 0.5, 0.9); } break;
       case 'ring':    plane(circle(140, 1, 0.8, 0), 10, c1, 2.2); sphere(30, 3, c2, 1.4, 1, 0.96, {gl:1}); break;
       case 'rings2':  plane(circle(120, 1, 0.42, 0.6), 10, c1, 2.3); plane(circle(120, 1, 0.42, -0.6), 10, c2, 2.3); break;  // 交差リング
@@ -2456,7 +2471,7 @@ async function startExperience(){
   mode = sel ? sel.value : 'phoenix';
   $('about').hidden = true;
   if(!audio) initAudio();
-  else if(audio.state === 'suspended') audio.resume();
+  else wakeAudio();
   if(!sensorsReady){
     sensorsReady = true;
     // iPhone は傾きセンサーの許可をタップ直後に求める必要がある
@@ -2488,7 +2503,7 @@ function goHome(){
   running = false; placedAt = -1;
   Object.values(C).forEach(c=>{ c.root.visible = false; });
   if(Parade) Parade.hide();
-  stopMusic();
+  silenceAll();
   for(let i=0;i<N;i++){ pLife[i] = 1; pPos[i*3+1] = -999; }
   pGeo.attributes.position.needsUpdate = true;
   arrow.hidden = true; hint.hidden = true; $('hud').hidden = true; $('btnAgain').hidden = true; $('btnHome').hidden = true; $('toast').hidden = true; $('shot').hidden = true;
