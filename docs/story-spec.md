@@ -5,6 +5,8 @@
 
 芽美の設計を、下の書式で書いてもらえれば、Claude がそのままアプリに組み込みます。
 
+**スプレッドシートに登録する正式な形式は docs/scenario-sheets.md を見てください。**（このページは考え方のまとめです）
+
 ## アプリの前提（設計のときに知っておいてほしいこと）
 
 - 全体の構成は docs/system-design.md を参照。Googleサイト ＋ GitHub Pages ＋ Google Apps Script ＋ Googleスプレッドシート。

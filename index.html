@@ -7,13 +7,13 @@
 <meta http-equiv="Expires" content="0">
 <script>
 /* 更新の確認：ホーム画面から開いたときに古いページが残っていたら、新しい版を読み込み直す */
-var BUILD = '20261018000547';
+var BUILD = '20261018010647';
 (function(){
   var pending = '';
   function busy(){ try{ return typeof running !== 'undefined' && running; }catch(e){ return false; } }
   function go(v){
     try{ if(sessionStorage.getItem('reloadedTo') === v) return; sessionStorage.setItem('reloadedTo', v); }catch(e){}
-    location.replace(location.pathname + '?v=' + encodeURIComponent(v) + location.hash);
+    var u = new URL(location.href); u.searchParams.set('v', v); location.replace(u.href);   // ?ar= などはそのまま残す
   }
   function check(){
     fetch('version.txt?t=' + Date.now(), {cache:'no-store'}).then(function(r){ return r.ok ? r.text() : ''; }).then(function(v){
@@ -3671,6 +3671,8 @@ async function startCamera(){
 }
 let sensorsReady = false;
 $('btnStart').addEventListener('click', startExperience);
+// 物語のエンディングなどから ?ar=xmas のように開いたとき：そのARを選んだ状態で最初の画面を出す
+(function(){ try{ const m = new URLSearchParams(location.search).get('ar'); const el = m && document.querySelector('input[name="mode"][value="' + m.replace(/[^a-z]/g, '') + '"]'); if(el) el.checked = true; }catch(e){} })();
 // 全画面表示：ブラウザの決まりで、タップなどの操作の直後にしか切り替えられない
 function isFullscreen(){ return !!(document.fullscreenElement || document.webkitFullscreenElement); }
 function goFullscreen(){

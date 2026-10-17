@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>レンガ村の物語｜innocent world</title>
+<meta name="theme-color" content="#bfe0ff">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="レンガ村">
+<link rel="apple-touch-icon" href="../icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;800&display=swap">
+<script>
+/* 更新の確認：古い版が残っていたら新しい版を読み込み直す（物語の途中では切りかえない） */
+var BUILD = '20261018010647';
+(function(){
+  function go(v){
+    try{ if(sessionStorage.getItem('storyReloadedTo') === v) return; sessionStorage.setItem('storyReloadedTo', v); }catch(e){}
+    var u = new URL(location.href); u.searchParams.set('v', v); location.replace(u.href);
+  }
+  function check(){
+    fetch('../version.txt?t=' + Date.now(), {cache:'no-store'}).then(function(r){ return r.ok ? r.text() : ''; }).then(function(v){
+      v = (v || '').trim();
+      if(v && BUILD !== 'dev' && v !== BUILD && !document.querySelector('.sscene')) go(v);
+    }).catch(function(){});
+  }
+  check();
+  document.addEventListener('visibilitychange', function(){ if(document.visibilityState === 'visible') check(); });
+  document.write('<link rel="stylesheet" href="story.css?v=' + BUILD + '">');
+  document.write('<script src="config.js?v=' + BUILD + '"><\/script>');
+})();
+</script>
+</head>
+<body>
+<main id="app" aria-live="polite"></main>
+<noscript>このページを見るには JavaScript を有効にしてください。</noscript>
+<script>document.write('<script src="story.js?v=' + BUILD + '"><\/script>');</script>
+</body>
+</html>
