@@ -4,6 +4,12 @@
 
 ## 1. スプレッドシートを作る
 
+> 作成済み（2026-10-18、innocentworld1221@gmail.com のドライブ）
+> - 制作用（シナリオ共有）：ID `1ug5SUBHhA0AMOK_4ycuelBSEO_SsYd6LFXJyS4CUnqs`（見出しと見本の物語入り。GAS はつなげない）
+> - 本番DB：ID `1h3Aa_4pnGTv0IL7haaFSQerOffJHqWJ_kpVo8ON9th4`（空。このファイルで下の 2. 以降を行う）
+>
+> 本番DB を使う場合は、下の 1. を飛ばして 2. から進めてください。
+
 1. Google ドライブで「新規 → Google スプレッドシート」を作ります。名前の例：`innocent world 物語DB`
 2. このスプレッドシートは**誰にも公開しないでください**（共有は運営メンバーだけ）。
 
