@@ -3035,24 +3035,115 @@ function xGingerFloat(){
   return W;
 }
 
-// ⑤ 氷のお城
+// ⑤ 氷のお城（石組み・窓・門・とんがり屋根・旗）
+function iceBrickTex(rx, ry, win){ const t = canvasTex(512, 512, (x,w,h)=>{
+  const bg = x.createLinearGradient(0,0,0,h); bg.addColorStop(0,'#d6efff'); bg.addColorStop(1,'#8cc8f5'); x.fillStyle = bg; x.fillRect(0,0,w,h);
+  const rows = 8, bh = h/rows, bw = w/4;
+  for(let r=0;r<rows;r++) for(let c=-1;c<5;c++){ const ox = (r%2)*bw/2, X = c*bw + ox, Y = r*bh;
+    const gr = x.createLinearGradient(X, Y, X+bw, Y+bh); gr.addColorStop(0, 'rgba(255,255,255,.75)'); gr.addColorStop(.5, 'rgba(200,236,255,.15)'); gr.addColorStop(1, 'rgba(90,160,230,.35)');
+    x.fillStyle = gr; x.fillRect(X+4, Y+4, bw-8, bh-8); }
+  x.strokeStyle = '#3a6fb8'; x.lineWidth = 6;
+  for(let r=0;r<=rows;r++){ x.beginPath(); x.moveTo(0, r*bh); x.lineTo(w, r*bh); x.stroke(); }
+  for(let r=0;r<rows;r++) for(let c=0;c<5;c++){ const X = c*bw + (r%2)*bw/2; x.beginPath(); x.moveTo(X, r*bh); x.lineTo(X, r*bh+bh); x.stroke(); }
+  if(win){ // アーチ窓（中があたたかく光る）
+    [[w*0.25, h*0.3],[w*0.75, h*0.3],[w*0.5, h*0.62]].forEach(([cx,cy])=>{ const ww = 56, hh = 110;
+      x.fillStyle = '#ffd34a'; x.strokeStyle = '#ffffff'; x.lineWidth = 12;
+      x.beginPath(); x.moveTo(cx-ww/2, cy+hh/2); x.lineTo(cx-ww/2, cy-hh/2+ww/2); x.arc(cx, cy-hh/2+ww/2, ww/2, Math.PI, 0); x.lineTo(cx+ww/2, cy+hh/2); x.closePath(); x.stroke();
+      const lg = x.createRadialGradient(cx, cy, 4, cx, cy, hh*0.7); lg.addColorStop(0,'#fff6c0'); lg.addColorStop(1,'#ff9a1a'); x.fillStyle = lg; x.fill();
+      x.strokeStyle = '#b06a10'; x.lineWidth = 4; x.beginPath(); x.moveTo(cx, cy-hh/2); x.lineTo(cx, cy+hh/2); x.moveTo(cx-ww/2, cy+6); x.lineTo(cx+ww/2, cy+6); x.stroke(); });
+  }
+}); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rx, ry); return t; }
+function iceFacadeTex(){ return canvasTex(1024, 440, (x,w,h)=>{
+  const bi = iceBrickTex(1,1).image; x.drawImage(bi, 0, 0, w/2, h); x.drawImage(bi, w/2, 0, w/2, h);
+  // 窓の列
+  const win = (cx, cy, ww, hh)=>{ x.fillStyle = '#ffffff'; x.beginPath(); x.moveTo(cx-ww/2-8, cy+hh/2+8); x.lineTo(cx-ww/2-8, cy-hh/2+ww/2); x.arc(cx, cy-hh/2+ww/2, ww/2+8, Math.PI, 0); x.lineTo(cx+ww/2+8, cy+hh/2+8); x.fill();
+    const lg = x.createRadialGradient(cx, cy, 2, cx, cy, hh*0.8); lg.addColorStop(0,'#fff8d0'); lg.addColorStop(1,'#ff9a1a'); x.fillStyle = lg;
+    x.beginPath(); x.moveTo(cx-ww/2, cy+hh/2); x.lineTo(cx-ww/2, cy-hh/2+ww/2); x.arc(cx, cy-hh/2+ww/2, ww/2, Math.PI, 0); x.lineTo(cx+ww/2, cy+hh/2); x.fill();
+    x.strokeStyle = '#a0600c'; x.lineWidth = 3; x.beginPath(); x.moveTo(cx, cy-hh/2); x.lineTo(cx, cy+hh/2); x.moveTo(cx-ww/2, cy+4); x.lineTo(cx+ww/2, cy+4); x.stroke();
+    x.fillStyle = '#e8101e'; x.fillRect(cx-ww/2-10, cy+hh/2+8, ww+20, 10); };
+  [90, 210, 330, 694, 814, 934].forEach(cx=>win(cx, 130, 50, 96));
+  [150, 270, 754, 874].forEach(cx=>win(cx, 300, 44, 80));
+  // 大きな門（アーチ）と金の飾り
+  const cx = w/2, gw = 230, top = 110;
+  x.fillStyle = '#ffffff'; x.beginPath(); x.moveTo(cx-gw/2-22, h); x.lineTo(cx-gw/2-22, top+gw/2); x.arc(cx, top+gw/2, gw/2+22, Math.PI, 0); x.lineTo(cx+gw/2+22, h); x.fill();
+  x.fillStyle = '#ffc400'; x.beginPath(); x.moveTo(cx-gw/2-10, h); x.lineTo(cx-gw/2-10, top+gw/2); x.arc(cx, top+gw/2, gw/2+10, Math.PI, 0); x.lineTo(cx+gw/2+10, h); x.fill();
+  const dg = x.createLinearGradient(0, top, 0, h); dg.addColorStop(0, '#2a3f9e'); dg.addColorStop(1, '#0d1650'); x.fillStyle = dg;
+  x.beginPath(); x.moveTo(cx-gw/2, h); x.lineTo(cx-gw/2, top+gw/2); x.arc(cx, top+gw/2, gw/2, Math.PI, 0); x.lineTo(cx+gw/2, h); x.fill();
+  // 両開きの扉の板と金の金具
+  x.strokeStyle = '#ffd84a'; x.lineWidth = 5; x.beginPath(); x.moveTo(cx, top); x.lineTo(cx, h); x.stroke();
+  for(let k=1;k<4;k++){ x.beginPath(); x.moveTo(cx-gw/2, top+gw/2 + k*55); x.lineTo(cx+gw/2, top+gw/2 + k*55); x.stroke(); }
+  [-1,1].forEach(sd=>{ x.fillStyle = '#ffd84a'; x.beginPath(); x.arc(cx + sd*26, top+gw/2+90, 10, 0, 7); x.fill(); });
+  // 門の上の雪の結晶の紋章
+  x.save(); x.translate(cx, top+gw/2-10); x.strokeStyle = '#ffffff'; x.lineWidth = 6; x.lineCap = 'round';
+  for(let k=0;k<6;k++){ x.rotate(Math.PI/3); x.beginPath(); x.moveTo(0,0); x.lineTo(0,-48); x.moveTo(0,-28); x.lineTo(-12,-40); x.moveTo(0,-28); x.lineTo(12,-40); x.stroke(); } x.restore();
+  // かなめ石と、壁の上下の金の帯
+  x.fillStyle = '#ffc400'; x.fillRect(0, 0, w, 12); x.fillRect(0, h-8, w, 8);
+  x.beginPath(); x.moveTo(cx-24, top-24); x.lineTo(cx+24, top-24); x.lineTo(cx+14, top+12); x.lineTo(cx-14, top+12); x.fill();
+}); }
+function roofTex(c1, c2){ const t = canvasTex(256, 256, (x,w,h)=>{ x.fillStyle = c1; x.fillRect(0,0,w,h);
+  for(let r=0;r<10;r++) for(let c=0;c<9;c++){ const cx = c*w/8 + (r%2)*w/16, cy = r*h/10;
+    const gr = x.createLinearGradient(0, cy, 0, cy + h/10); gr.addColorStop(0, c2); gr.addColorStop(1, c1);
+    x.fillStyle = gr; x.beginPath(); x.arc(cx, cy, w/16, 0, Math.PI); x.fill(); x.strokeStyle = 'rgba(255,255,255,.55)'; x.lineWidth = 2; x.stroke(); }
+}); t.wrapS = THREE.RepeatWrapping; t.repeat.set(3, 1); return t; }
 function xIceFloat(){
   const W = xwagon(4.6, 2.4, 0x1e5aff, XWHITE), g = W.g, pts = W.pts; W.pal = XPALS[3];
-  const ice = new THREE.MeshStandardMaterial({color:0xbfe8ff, emissive:0x5ab8ff, emissiveIntensity:.45, transparent:true, opacity:.88, roughness:.15, metalness:.2});
-  const top = new THREE.MeshStandardMaterial({color:0xffffff, emissive:0x9ad8ff, emissiveIntensity:.6, roughness:.2});
-  kp(add(g, BOXG, ice, [1.0, 1.0, 2.4], [0, 1.4, 0]));
-  [[0,0,2.6,0.4],[0,1.25,1.8,0.28],[0,-1.25,1.8,0.28]].forEach(([x,z,h,r])=>{ kp(add(g, CYLG, ice, [r, h, r], [x, 0.92 + h/2, z])); kp(add(g, CONEG, top, [r*1.25, 0.8, r*1.25], [x, 0.92 + h + 0.4, z]));
-    ring(pts, x, 0.92 + h, z, r*1.1); });
-  // つらら
-  for(let k=0;k<14;k++) kp(add(g, CONEG, top, [0.04, 0.22, 0.04], [0.52, 1.82, -1.1 + k*0.17], [Math.PI, 0, 0]));
+  const tm = (t, ei)=>new THREE.MeshStandardMaterial({map:t, emissive:0xffffff, emissiveMap:t, emissiveIntensity:ei, roughness:.35});
+  const wall = tm(iceBrickTex(3, 1), .38), tower = tm(iceBrickTex(2, 3, true), .42), facade = tm(iceFacadeTex(), .5);
+  const roof = tm(roofTex('#1a3fd8', '#7fc4ff'), .6), roof2 = tm(roofTex('#6a2ad8', '#d0a8ff'), .6);
+  const gold = shiny(XGOLD, .8), snow = new THREE.MeshStandardMaterial({color:0xffffff, emissive:0xe8f6ff, emissiveIntensity:.6, roughness:1});
+  const ice = new THREE.MeshStandardMaterial({color:0xbfe8ff, emissive:0x5ab8ff, emissiveIntensity:.5, transparent:true, opacity:.8, roughness:.1, metalness:.3});
+  // 本館（城壁）と正面
+  kp(add(g, BOXG, wall, [1.0, 1.0, 2.4], [-0.05, 1.4, 0]));
+  const fc = kp(new THREE.Mesh(new THREE.PlaneGeometry(2.4, 1.03), facade)); fc.rotation.y = Math.PI/2; fc.position.set(0.455, 1.415, 0); g.add(fc);
+  kp(add(g, BOXG, gold, [1.06, 0.06, 2.46], [-0.05, 1.92, 0]));
+  // 城壁の上のぎざぎざ（胸壁）と雪
+  for(let z=-1.1; z<=1.11; z+=0.22){ kp(add(g, BOXG, wall, [0.12, 0.16, 0.13], [0.42, 2.03, z])); kp(add(g, SPH, snow, [0.075, 0.03, 0.075], [0.42, 2.12, z])); }
+  for(let z=-1.1; z<=1.11; z+=0.44) kp(add(g, BOXG, wall, [0.12, 0.16, 0.13], [-0.5, 2.03, z]));
+  // 門の前の階段
+  for(let k=0;k<3;k++) kp(add(g, BOXG, snow, [0.16, 0.06, 0.62 - k*0.08], [0.55 + (2-k)*0.12 - 0.12, 0.95 + k*0.06, 0]));
+  // 赤い垂れ幕（金の雪の結晶）
+  const ban = canvasTex(128, 320, (x,w,h)=>{ x.fillStyle = '#d00818'; x.beginPath(); x.moveTo(0,0); x.lineTo(w,0); x.lineTo(w,h); x.lineTo(w/2,h-40); x.lineTo(0,h); x.fill();
+    x.strokeStyle = '#ffc400'; x.lineWidth = 8; x.strokeRect(10, 6, w-20, h-70); x.translate(w/2, h*0.4); x.lineWidth = 7; x.lineCap = 'round';
+    for(let k=0;k<6;k++){ x.rotate(Math.PI/3); x.beginPath(); x.moveTo(0,0); x.lineTo(0,-38); x.moveTo(0,-22); x.lineTo(-10,-32); x.moveTo(0,-22); x.lineTo(10,-32); x.stroke(); } });
+  [-0.55, 0.55].forEach(z=>{ const b = kp(new THREE.Mesh(new THREE.PlaneGeometry(0.26, 0.62), new THREE.MeshBasicMaterial({map:ban, transparent:true, side:THREE.DoubleSide}))); b.rotation.y = Math.PI/2; b.position.set(0.47, 1.55, z); g.add(b); });
+  // 塔：石組み・アーチ窓・バルコニー・うろこ屋根・金の玉・旗
+  const flags = [];
+  const towerAt = (x, z, h, r, rf)=>{
+    const y0 = 0.92;
+    kp(add(g, new THREE.CylinderGeometry(1, 1, 1, 24), tower, [r, h, r], [x, y0 + h/2, z]));
+    kp(add(g, new THREE.TorusGeometry(1, 0.08, 6, 24), gold, [r*1.08, r*1.08, r*1.08], [x, y0 + h*0.62, z], [Math.PI/2, 0, 0]));
+    kp(add(g, CYLG, snow, [r*1.18, 0.07, r*1.18], [x, y0 + h + 0.02, z]));
+    for(let k=0;k<8;k++){ const a = k/8*Math.PI*2; kp(add(g, BOXG, wall, [0.08, 0.13, 0.08], [x + Math.cos(a)*r*1.08, y0 + h + 0.12, z + Math.sin(a)*r*1.08])); }
+    kp(add(g, new THREE.ConeGeometry(1, 1, 24, 1, true), rf, [r*1.3, r*3.2, r*1.3], [x, y0 + h + 0.18 + r*1.6, z]));
+    const tip = y0 + h + 0.18 + r*3.2;
+    kp(add(g, SPH, gold, [0.06, 0.06, 0.06], [x, tip + 0.02, z])); kp(add(g, CYLG, gold, [0.012, 0.4, 0.012], [x, tip + 0.22, z]));
+    const fl = kp(new THREE.Mesh(new THREE.PlaneGeometry(0.34, 0.18), new THREE.MeshBasicMaterial({color:k_flag(flags.length), side:THREE.DoubleSide})));
+    fl.position.set(x, tip + 0.33, z - 0.17); fl.rotation.y = Math.PI/2; g.add(fl); flags.push(fl);
+    ring(pts, x, tip - r*3.2 + 0.02, z, r*1.32, 0.13);
+  };
+  const k_flag = i=>[0xe8101e, 0xffc400, 0x10a040, 0xe8101e, 0xffc400][i % 5];
+  towerAt(-0.15, 0, 2.6, 0.38, roof);              // 中央の高い塔
+  towerAt(-0.1, 1.3, 1.8, 0.28, roof2); towerAt(-0.1, -1.3, 1.8, 0.28, roof2);
+  towerAt(0.38, 0.95, 1.25, 0.15, roof); towerAt(0.38, -0.95, 1.25, 0.15, roof);   // 正面の小さな見張り塔
+  // 中央の塔のバラ窓（雪の結晶のステンドグラス）
+  const rose = kp(new THREE.Mesh(new THREE.CircleGeometry(0.2, 32), new THREE.MeshBasicMaterial({map:canvasTex(256, 256, (x,w,h)=>{
+    x.fillStyle = '#ffc400'; x.beginPath(); x.arc(128,128,126,0,7); x.fill();
+    const C = ['#e8101e','#1e5aff','#10c050','#ffe000','#ff40b0','#7ad8ff'];
+    for(let k=0;k<12;k++){ x.fillStyle = C[k%6]; x.beginPath(); x.moveTo(128,128); x.arc(128,128,112, k*Math.PI/6, (k+1)*Math.PI/6); x.fill(); }
+    x.strokeStyle = '#ffc400'; x.lineWidth = 8; for(let k=0;k<12;k++){ x.beginPath(); x.moveTo(128,128); x.lineTo(128+Math.cos(k*Math.PI/6)*112, 128+Math.sin(k*Math.PI/6)*112); x.stroke(); }
+    x.fillStyle = '#ffffff'; x.beginPath(); x.arc(128,128,30,0,7); x.fill(); })})));
+  rose.rotation.y = Math.PI/2; rose.position.set(0.24, 2.95, 0); g.add(rose);
+  // 氷の結晶のかたまりとつらら
+  [[0.7,1.0,1.25],[0.7,1.0,-1.25],[-0.75,1.0,0.6],[-0.75,1.0,-0.6]].forEach(([x,y,z])=>{ for(let k=0;k<4;k++){ const c = kp(add(g, CONEG, ice, [0.06+k*0.01, 0.3+k*0.08, 0.06+k*0.01], [x + (k%2)*0.08, y + 0.15, z + (k-1.5)*0.08])); c.rotation.z = (k-1.5)*0.25; } });
+  for(let k=0;k<13;k++) kp(add(g, CONEG, ice, [0.03, 0.14 + (k%3)*0.05, 0.03], [0.46, 1.86, -1.05 + k*0.175], [Math.PI, 0, 0]));
   // 雪の結晶
   const fl = canvasTex(256, 256, (x,w,h)=>{ x.translate(128,128); x.strokeStyle = '#ffffff'; x.lineWidth = 10; x.lineCap = 'round';
     for(let k=0;k<6;k++){ x.rotate(Math.PI/3); x.beginPath(); x.moveTo(0,0); x.lineTo(0,-110); x.moveTo(0,-60); x.lineTo(-28,-88); x.moveTo(0,-60); x.lineTo(28,-88); x.moveTo(0,-30); x.lineTo(-18,-46); x.moveTo(0,-30); x.lineTo(18,-46); x.stroke(); } });
   const flakes = [];
-  for(let k=0;k<5;k++){ const s = new THREE.Sprite(new THREE.SpriteMaterial({map:fl, color:0xbfe8ff, transparent:true, blending:THREE.AdditiveBlending, depthWrite:false})); s.scale.set(0.6,0.6,1); g.add(s); flakes.push({s, a:k/5*Math.PI*2}); }
-  const glow = glowSprite(g, 'rgba(120,200,255,.45)', 4.5, [0, 2.0, 0]);
-  W.update = (t)=>{ flakes.forEach((f,i)=>{ const a = f.a + t*0.5; f.s.position.set(0.3 + Math.cos(a)*0.2, 2.6 + Math.sin(t*1.3 + i)*0.4, Math.sin(a)*1.6); f.s.material.rotation = t*0.6 + i; });
-    glow.material.opacity = 0.7 + Math.sin(t*1.7)*0.2; };
+  for(let k=0;k<5;k++){ const s = new THREE.Sprite(new THREE.SpriteMaterial({map:fl, color:0xbfe8ff, transparent:true, blending:THREE.AdditiveBlending, depthWrite:false})); s.scale.set(0.5,0.5,1); g.add(s); flakes.push({s, a:k/5*Math.PI*2}); }
+  const glow = glowSprite(g, 'rgba(120,200,255,.4)', 4.5, [0, 2.2, 0]);
+  W.update = (t)=>{ flakes.forEach((f,i)=>{ const a = f.a + t*0.5; f.s.position.set(0.3 + Math.cos(a)*0.2, 3.0 + Math.sin(t*1.3 + i)*0.4, Math.sin(a)*1.9); f.s.material.rotation = t*0.6 + i; });
+    flags.forEach((f,i)=>{ f.rotation.x = Math.sin(t*4 + i)*0.25; }); glow.material.opacity = 0.6 + Math.sin(t*1.7)*0.2; };
   return W;
 }
 
