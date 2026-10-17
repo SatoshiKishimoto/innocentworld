@@ -32,7 +32,7 @@ var SHEETS = {
   choices:    {name: '選択肢',     head: ['event_id', '場面ID', '順番', '選択肢ID', '選択肢の文', '次の場面ID', 'ポイント', '記録する', 'もらえるアイテム', '表示する条件']},
   items:      {name: 'アイテム',   head: ['アイテムID', '名前', 'アイコン', '説明']},
   points:     {name: 'ポイント',   head: ['ポイントID', '名前']},
-  characters: {name: '住人',       head: ['住人ID', '名前']},
+  characters: {name: '住人',       head: ['住人ID', '名前', '英語表記']},
   regfields:  {name: '登録項目',   head: ['項目ID', '表示名', '種類(text/choice/character)', '選択肢（｜区切り）', '必須(TRUE/FALSE)', '最大文字数', '入力例']},
   // ---- 住民の記録（自動で書き込まれます。手で編集しないでください） ----
   residents:  {name: '住民',       head: ['住民番号', 'トークンハッシュ', '登録項目(JSON)', '登録日時', '最終来訪日時', '状態']},
@@ -151,7 +151,7 @@ function buildContent(){
   C.items = {}; rows('items').forEach(function(r){ if(str(r[0])) C.items[str(r[0])] = {name: str(r[1]), icon: str(r[2]), desc: str(r[3])}; });
   C.points = {}; C.pointByName = {};
   rows('points').forEach(function(r){ if(str(r[0])){ C.points[str(r[0])] = str(r[1]); C.pointByName[str(r[1])] = str(r[0]); } });
-  C.characters = {}; rows('characters').forEach(function(r){ if(str(r[0])) C.characters[str(r[0])] = str(r[1]); });
+  C.characters = {}; C.charactersEn = {}; rows('characters').forEach(function(r){ if(str(r[0])){ C.characters[str(r[0])] = str(r[1]); C.charactersEn[str(r[0])] = str(r[2]); } });
   C.regfields = rows('regfields').filter(function(r){ return str(r[0]); }).map(function(r){
     return {id: str(r[0]), label: str(r[1]), type: str(r[2]) || 'text', options: splitList(r[3]), required: r[4] === true || str(r[4]).toUpperCase() === 'TRUE', max: Number(r[5]) || 20, placeholder: str(r[6])};
   });
@@ -170,7 +170,7 @@ function buildContent(){
   });
   rows('lines').forEach(function(r){
     var sc = C.scenes[str(r[0]) + '/' + str(r[1])]; if(!sc || !str(r[4])) return;
-    sc.lines.push({o: Number(r[2]) || 0, who: str(r[3]), text: str(r[4])});
+    sc.lines.push({o: Number(r[2]) || 0, who: charId(str(r[3])), text: str(r[4])});
   });
   rows('choices').forEach(function(r){
     var sc = C.scenes[str(r[0]) + '/' + str(r[1])]; if(!sc || !str(r[4])) return;
@@ -219,6 +219,8 @@ function parsePoints(v, C){
   });
   return o;
 }
+/** 住人ID：nour と書いても nuru（ヌール）として扱う。表示名で書いてもよい */
+function charId(v){ var a = {nour: 'nuru', NOUR: 'nuru'}; return a[v] || v; }
 function pointId(nameOrId, C){ return (C.pointByName && C.pointByName[nameOrId]) || nameOrId; }
 function itemId(nameOrId, C){
   if(C.items[nameOrId]) return nameOrId;
@@ -325,7 +327,7 @@ function unlockedToday(rid, d){
 /* ================= API ================= */
 function publicDefs(){
   var C = content();
-  return {items: C.items, points: C.points, characters: C.characters, regfields: C.regfields};
+  return {items: C.items, points: C.points, characters: C.characters, charactersEn: C.charactersEn || {}, regfields: C.regfields};
 }
 function apiConfig(){
   var d = today(), info = dayInfo(d), C = content();
@@ -610,10 +612,10 @@ function seedSample(){
   put('scenes', SC.map(function(r){ return [EV, r[0], r[1], r[2], r[3], r[4], r[5], r[6], r[7], '']; }));
   var L = [
     ['intro_1', '', 'ページをめくると、レンガの小道が目の前にのびていました。'],
-    ['intro_1', 'esper', 'わあ、新しい住民さんだ！ ようこそ、レンガ村へ！'],
+    ['intro_1', 'esper', 'わあ、{name}さんだね！ ようこそ、レンガ村へ！'],
     ['intro_1', 'esper', 'ぼくはエスパー。村のあちこちで、ふしぎなことが起きているんだ。'],
     ['intro_1', 'esper', '地図の建物をタップして、施設に掲示された「ひみつのことば」を入れてみて。物語がひらくよ！'],
-    ['intro_return', 'esper', 'あっ、前にも来てくれた住民さんだ！ また会えてうれしいな。'],
+    ['intro_return', 'esper', 'あっ、{name}さん！ また来てくれたんだね。会えてうれしいな。'],
     ['intro_return', 'esper', '今日は、再訪した住民さんにしか見えない物語があるんだ。パン屋さんと図書館をのぞいてみて！'],
     ['bakery_1', 'niko', 'いらっしゃい！ 焼きたてのパンのにおい、するでしょ？'],
     ['bakery_1', 'niko', 'でもね、今朝からオーブンの火がちょっと元気ないの……。'],
@@ -672,7 +674,7 @@ function seedSample(){
     ['key', '小さな鍵', '🗝️', '再訪した住民だけがもらえる、ひみつの扉の鍵。']
   ]);
   put('points', [['courage', '勇気'], ['kindness', 'やさしさ'], ['wonder', '好奇心']]);
-  put('characters', [['esper', 'エスパー'], ['mimi', 'ミミ'], ['lily', 'リリィ'], ['luke', 'ルーク'], ['niko', 'ニコ'], ['hal', 'ハル'], ['arika', 'アリカ'], ['nuru', 'ヌール'], ['mock', 'モック'], ['jiiji', 'じいじ']]);
+  put('characters', [['esper', 'エスパー', 'ESPER'], ['mimi', 'ミミ', 'MIMI'], ['lily', 'リリィ', 'LILY'], ['luke', 'ルーク', 'LUKE'], ['niko', 'ニコ', 'NIKO'], ['hal', 'ハル', 'HAL'], ['arika', 'アリカ', 'ARIKA'], ['nuru', 'ヌール', 'NOUR'], ['mock', 'モック', 'MOCK'], ['jiiji', 'じいじ', 'JIJI']]);
   put('regfields', [
     ['name', '住民名（ニックネーム）', 'text', '', true, 12, 'れい：ほしのこ'],
     ['friend', 'いちばん会いたい住人', 'character', '', false, 20, ''],

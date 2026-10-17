@@ -82,6 +82,18 @@
   /* ---------- 画面の部品 ---------- */
   function charImg(k){ return '../characters2/' + encodeURIComponent(k) + '.png'; }
   function cname(k){ return defs().characters[k] || k; }
+  function cnameEn(k){ return (defs().charactersEn || {})[k] || ''; }
+  // セリフの差し込み：{name}（または {住民名}）＝住民名。ほかの登録項目も {項目ID} で差し込めます
+  function fill(t){
+    const r = L.resident, f = (r && r.fields) || {}, regs = defs().regfields || [];
+    const nameF = regs.find(x => x.type === 'text');
+    return String(t == null ? '' : t).replace(/\{(name|住民名|[A-Za-z_][A-Za-z0-9_]*)\}/g, (m, k) => {
+      if(k === 'name' || k === '住民名') return f.name || (nameF && f[nameF.id]) || 'あなた';
+      if(!(k in f)) return m;
+      const rf = regs.find(x => x.id === k);
+      return rf && rf.type === 'character' ? cname(f[k]) : f[k];
+    });
+  }
   function fmtDate(d){ if(!d) return ''; const [y, m, dd] = d.split('-').map(Number); const w = '日月火水木金土'[new Date(y, m-1, dd).getDay()]; return `${m}月${dd}日（${w}）`; }
   function topbar(title, opt){
     opt = opt || {};
@@ -170,7 +182,7 @@
     if(!(await ensureDefs())) return showError({code:'network'}, true);
     const fields = defs().regfields.map(f => {
       if(f.type === 'character') return `<fieldset class="sfield"><legend>${esc(f.label)}</legend><div class="schars">${
-        Object.keys(defs().characters).map((k, i) => `<label class="schar"><input type="radio" name="${esc(f.id)}" value="${esc(k)}" ${i ? '' : 'checked'}><img src="${charImg(k)}" alt="" loading="lazy"><span>${esc(cname(k))}</span></label>`).join('')}</div></fieldset>`;
+        Object.keys(defs().characters).map((k, i) => `<label class="schar"><input type="radio" name="${esc(f.id)}" value="${esc(k)}" ${i ? '' : 'checked'}><img src="${charImg(k)}" alt="" loading="lazy"><span>${esc(cname(k))}</span>${cnameEn(k) ? `<em>${esc(cnameEn(k))}</em>` : ''}</label>`).join('')}</div></fieldset>`;
       if(f.type === 'choice') return `<fieldset class="sfield"><legend>${esc(f.label)}</legend><div class="sopts">${
         f.options.map((o, i) => `<label class="sopt"><input type="radio" name="${esc(f.id)}" value="${esc(o)}" ${i ? '' : 'checked'}><span>${esc(o)}</span></label>`).join('')}</div></fieldset>`;
       return `<label class="sfield"><span class="slabel">${esc(f.label)}${f.required ? '' : '（なくてもOK）'}</span><input class="sinput" name="${esc(f.id)}" maxlength="${f.max || 20}" placeholder="${esc(f.placeholder || '')}" autocomplete="off"></label>`;
@@ -230,7 +242,7 @@
         const j = await api('entrance', {word:w});
         if(!j.ok){ if(j.error === 'auth') return start(); shake(e.target); return toast(errText(j)); }
         L.unlocked = j.unlocked; L.map = j.map; L.visits = j.visits || L.visits; L.returning = !!j.returning; L.prevEvent = !!j.prevEvent; L.intro = j.intro || null; save();
-        celebrate(j.message || 'ようこそ！ 今日の村の地図がひらきました');
+        celebrate(fill(j.message || 'ようこそ！ 今日の村の地図がひらきました'));
         setTimeout(route, 1000);
       }catch(err){ toast(errText(err)); }
     });
@@ -301,7 +313,7 @@
       if(j.map) L.map = j.map;
       if(!j.story){ save(); showMap(); return toast('今はまだ、ここの物語はありません。'); }
       L.stories[f.id] = j.story; save();
-      if(word){ celebrate(j.message || f.name + 'の物語がひらきました'); setTimeout(() => play(j.story), 900); }
+      if(word){ celebrate(fill(j.message || f.name + 'の物語がひらきました')); setTimeout(() => play(j.story), 900); }
       else play(j.story);
     }catch(err){ toast(errText(err)); }
   }
@@ -350,8 +362,8 @@
     const bg = /^#[0-9a-f]{3,8}$/i.test(sc.bg) ? `style="background:${sc.bg}"` : '';
     const got = last && P.got.length ? `<div class="sgot">${P.got.map(i => { const it = defs().items[i]; return `<span>${it ? esc((it.icon || '★') + ' ' + it.name) : esc(i)} をもらった！</span>`; }).join('')}</div>` : '';
     let foot;
-    if(choices.length) foot = `<div class="schoices">${choices.map(c => `<button class="sbtn choice" data-act="choose" data-i="${sc.choices.indexOf(c)}">${esc(c.text)}</button>`).join('')}</div>`;
-    else if(last && sc.ar) foot = `<div class="sar"><a class="sbtn main pink" href="${esc(arLink(sc.ar))}" target="_blank" rel="noopener" data-act="ar">${esc(sc.arLabel || 'ARを見る')}</a>
+    if(choices.length) foot = `<div class="schoices">${choices.map(c => `<button class="sbtn choice" data-act="choose" data-i="${sc.choices.indexOf(c)}">${esc(fill(c.text))}</button>`).join('')}</div>`;
+    else if(last && sc.ar) foot = `<div class="sar"><a class="sbtn main pink" href="${esc(arLink(sc.ar))}" target="_blank" rel="noopener" data-act="ar">${esc(fill(sc.arLabel || 'ARを見る'))}</a>
       <small>新しい画面でARが開きます。見終わったら、この画面にもどってきてね。</small><button class="sbtn link" data-act="next">地図にもどる</button></div>`;
     else foot = `<span class="snext">${last && !sc.next ? 'おわり ▶' : 'タップで次へ ▼'}</span>`;
     set(`<div class="sscene bg-${esc(/^[a-z]+$/.test(sc.bg) ? sc.bg : 'meadow')}" ${bg}>
@@ -359,7 +371,7 @@
       ${who ? `<img class="sactor" src="${charImg(who)}" alt="${esc(cname(who))}">` : ''}
       <div class="sbox" ${choices.length || (last && sc.ar) ? '' : 'data-act="next" role="button" tabindex="0" aria-label="次へ"'}>
         ${who ? `<div class="sname">${esc(cname(who))}</div>` : ''}
-        <p class="${who ? '' : 'narr'}">${esc(text)}</p>${got}${foot}
+        <p class="${who ? '' : 'narr'}">${esc(fill(text))}</p>${got}${foot}
       </div></div>`);
   }
   function arLink(m){ const u = new URL(AR_URL, location.href); u.searchParams.set('ar', m); return u.href; }
