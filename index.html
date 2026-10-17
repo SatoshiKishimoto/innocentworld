@@ -80,6 +80,9 @@ html,body{margin:0;height:100%;background:#0d1030;color:var(--ink);font-family:v
 .choice span{font-size:11px;line-height:1.5;color:var(--muted)}
 .choice.wide{grid-column:1 / -1;flex-direction:row;justify-content:center;gap:12px;text-align:left}
 .choice.wide .txt{display:flex;flex-direction:column;gap:2px}
+.choice.halloween{background:linear-gradient(135deg,#2a1640,#4a2060);color:#fff}
+.choice.halloween em,.choice.halloween span{color:#ffcf9a}
+.choice.halloween:has(input:checked){background:linear-gradient(135deg,#3a1a58,#6a2a80);border-color:#ff8a1a}
 .choice:has(input:checked){border-color:var(--navy);background:#f4f6ff}
 .choice:has(input:checked)::after{content:"✓";position:absolute;top:8px;right:10px;width:22px;height:22px;border-radius:50%;
   background:var(--pink);color:#fff;font-size:13px;line-height:22px;font-weight:800}
@@ -231,6 +234,11 @@ html,body{margin:0;height:100%;background:#0d1030;color:var(--ink);font-family:v
         <svg viewBox="0 0 52 52"><g stroke-linecap="round" stroke-width="2.4"><g stroke="#ff6fb5"><path d="M20 22v-9M20 22l7-5M20 22l8 1M20 22l5 7M20 22h-9M20 22l-6-6M20 22l-6 6M20 22v8"/></g><g stroke="#6fe0ff"><path d="M37 33v-6M37 33l5-3M37 33l5 2M37 33l2 5M37 33h-6M37 33l-4-4M37 33l-3 5"/></g></g><g fill="#ffd25a"><circle cx="20" cy="22" r="2.4"/><circle cx="37" cy="33" r="2"/><circle cx="40" cy="12" r="1.4"/><circle cx="10" cy="40" r="1.2"/></g></svg>
         <b>フィナーレ花火</b><em>FIREWORKS</em><span>ハートや星の花火が夜空に</span>
       </label>
+      <label class="choice wide halloween">
+        <input type="radio" name="mode" id="mHalloween" value="halloween">
+        <svg viewBox="0 0 52 52"><g><ellipse cx="18" cy="31" rx="9" ry="12" fill="#ff7a00"/><ellipse cx="34" cy="31" rx="9" ry="12" fill="#ff7a00"/><ellipse cx="26" cy="31" rx="11" ry="13" fill="#ff8a1a"/><rect x="24" y="14" width="4" height="7" rx="1" fill="#3a6a20"/><path d="M18 28l3-5 3 5zM28 28l3-5 3 5z" fill="#2a0a12"/><path d="M17 35l4 3 5-3 5 3 4-3-4 6h-10z" fill="#2a0a12"/></g><path d="M40 8c3 0 5 2 5 2s-1-4 2-5c-3 0-4 2-4 2s0-3-3-3c1 2 0 4 0 4z" fill="#3a2060"/></svg>
+        <div class="txt"><b>ハロウィンの部屋</b><em>HALLOWEEN</em><span>見回して、気になるものをタップ</span></div>
+      </label>
       <label class="choice wide">
         <input type="radio" name="mode" id="mParade" value="parade">
         <svg viewBox="0 0 52 52"><g fill="#ffd25a"><path d="M14 8l2.4 5 5.5.8-4 3.9 1 5.5-4.9-2.6-4.9 2.6 1-5.5-4-3.9 5.5-.8z"/></g><g fill="#ff9fd0"><path d="M36 20l2 4 4.4.6-3.2 3.1.8 4.4-4-2.1-4 2.1.8-4.4-3.2-3.1 4.4-.6z"/></g><g fill="#7fe6ff"><path d="M20 32l1.8 3.6 4 .6-2.9 2.8.7 4-3.6-1.9-3.6 1.9.7-4-2.9-2.8 4-.6z"/></g></svg>
@@ -277,6 +285,7 @@ html,body{margin:0;height:100%;background:#0d1030;color:var(--ink);font-family:v
         <dt>光のクジラ</dt><dd>星をちりばめた体で、夜空をゆったり泳ぎます。</dd>
         <dt>光の蝶</dt><dd>色とりどりの蝶の群れが、ひらひら舞います。</dd>
         <dt>フィナーレ花火</dt><dd>フィナーレの音楽に合わせて、スターマインやハートの花火が夜空を彩ります。最後は夜空に「innocent world」の文字が浮かび上がります（約1分）。</dd>
+        <dt>ハロウィンの部屋</dt><dd>ハロウィンの部屋に入って、まわりを見回してみましょう。かぼちゃやおばけ、黒ねこ、がいこつなど、気になるものをタップすると動き出します。</dd>
         <dt>パレード</dt><dd>エスパーやミミ、リリィ、ハル、アリカ、ヌールたち innocent world の住人が、電飾の山車やマーチングバンドといっしょに行進します。</dd>
       </dl>
     </div>
@@ -1983,6 +1992,7 @@ function silenceAll(){
 }
 function stopMusic(){
   wantTheme = false; fwToken++;
+  if(typeof stopHalloweenMusic === 'function') stopHalloweenMusic();
   if(fwSrc){ try{ fwSrc.stop(); }catch(e){} fwSrc = null; }
   if(themeSrc){ try{ themeSrc.stop(); }catch(e){} themeSrc = null; }
   if(Music.timer){ clearInterval(Music.timer); Music.timer = null; }
@@ -2328,6 +2338,428 @@ function soundBoom(big, small){
   s.start(now); s.stop(now+2); o.start(now); o.stop(now+0.55);
 }
 
+/* =========================================================
+   ハロウィンの部屋：見回して、気になるものをタップすると動き出す
+   ========================================================= */
+let Hall = null;
+const HEMI = scene.children.find(o=>o.isHemisphereLight);
+function setRoomLighting(on){
+  if(HEMI) HEMI.intensity = on ? 0.32 : 1.25;
+  sun.intensity = on ? 0.15 : 1.1;
+  fill.intensity = on ? 0.12 : 0.35;
+}
+function hMat(c, e, ei){ return new THREE.MeshStandardMaterial({color:c, emissive:e||0x000000, emissiveIntensity:ei||0, roughness:.8, metalness:.05}); }
+function roomTex(kind){
+  return canvasTex(512, 512, (x,w,h)=>{
+    if(kind === 'wall'){
+      x.fillStyle = '#2a1640'; x.fillRect(0,0,w,h);
+      for(let i=0;i<8;i++){ x.fillStyle = i%2 ? '#33194d' : '#24133a'; x.fillRect(i*64,0,64,h); }
+      x.fillStyle = 'rgba(255,140,40,.18)';
+      for(let r=0;r<4;r++) for(let c=0;c<4;c++){ const cx = c*128 + (r%2 ? 64 : 0) + 32, cy = r*128 + 64;
+        x.beginPath(); x.ellipse(cx, cy, 14, 11, 0, 0, Math.PI*2); x.fill(); x.fillRect(cx-2, cy-17, 4, 6); }
+    } else if(kind === 'floor'){
+      x.fillStyle = '#3b2414'; x.fillRect(0,0,w,h);
+      for(let i=0;i<8;i++){ x.fillStyle = i%2 ? '#45291a' : '#38210f'; x.fillRect(0,i*64,w,62);
+        x.fillStyle = '#24140a'; x.fillRect(((i*173)%w),i*64,3,64); }
+    } else if(kind === 'rug'){
+      x.fillStyle = '#5a1020'; x.fillRect(0,0,w,h);
+      x.strokeStyle = '#ff9a2a'; x.lineWidth = 18; x.strokeRect(30,30,w-60,h-60);
+      x.strokeStyle = '#2a0a12'; x.lineWidth = 8; x.strokeRect(70,70,w-140,h-140);
+      x.fillStyle = '#ff8a1a'; [-40,0,40].forEach(dx=>{ x.beginPath(); x.ellipse(w/2+dx, h/2+10, 52, 70, 0, 0, Math.PI*2); x.fill(); });
+      x.fillStyle = '#3a6a20'; x.fillRect(w/2-8, h/2-80, 16, 30);
+      x.fillStyle = '#2a0a12'; [[-40,-10],[40,-10]].forEach(([dx,dy])=>{ x.beginPath(); x.moveTo(w/2+dx-18,h/2+dy+12); x.lineTo(w/2+dx,h/2+dy-14); x.lineTo(w/2+dx+18,h/2+dy+12); x.fill(); });
+      x.beginPath(); x.moveTo(w/2-60,h/2+30); x.lineTo(w/2-30,h/2+48); x.lineTo(w/2,h/2+34); x.lineTo(w/2+30,h/2+48); x.lineTo(w/2+60,h/2+30); x.lineTo(w/2,h/2+70); x.fill();
+    } else if(kind === 'web'){
+      x.clearRect(0,0,w,h); x.strokeStyle = 'rgba(235,235,255,.75)'; x.lineWidth = 2;
+      for(let k=0;k<9;k++){ const a = k/8*Math.PI/2; x.beginPath(); x.moveTo(0,0); x.lineTo(Math.cos(a)*w, Math.sin(a)*h); x.stroke(); }
+      for(let r=60;r<w;r+=55){ x.beginPath(); for(let k=0;k<=8;k++){ const a = k/8*Math.PI/2, rr = r + Math.sin(k*1.7)*6; const px = Math.cos(a)*rr, py = Math.sin(a)*rr; k ? x.lineTo(px,py) : x.moveTo(px,py); } x.stroke(); }
+    } else if(kind === 'moon'){
+      const g = x.createLinearGradient(0,0,0,h); g.addColorStop(0,'#0b1030'); g.addColorStop(1,'#3a1f5a'); x.fillStyle = g; x.fillRect(0,0,w,h);
+      for(let i=0;i<60;i++){ x.fillStyle = `rgba(255,255,255,${Math.random()*.8})`; x.fillRect(Math.random()*w, Math.random()*h*0.7, 2, 2); }
+      const mg = x.createRadialGradient(330,170,10,330,170,150); mg.addColorStop(0,'rgba(255,240,180,.9)'); mg.addColorStop(1,'rgba(255,200,120,0)');
+      x.fillStyle = mg; x.fillRect(0,0,w,h); x.fillStyle = '#fff2c0'; x.beginPath(); x.arc(330,170,80,0,Math.PI*2); x.fill();
+      x.fillStyle = '#120a1c'; x.beginPath(); x.moveTo(0,h); x.lineTo(0,380); x.lineTo(60,350); x.lineTo(90,300); x.lineTo(120,350); x.lineTo(200,330); x.lineTo(230,260); x.lineTo(240,200); x.lineTo(250,260); x.lineTo(280,330); x.lineTo(380,360); x.lineTo(w,330); x.lineTo(w,h); x.fill();
+      x.strokeStyle = '#120a1c'; x.lineWidth = 6; x.beginPath(); x.moveTo(420,h); x.lineTo(430,300); x.lineTo(470,250); x.moveTo(432,320); x.lineTo(390,280); x.stroke();
+    } else if(kind === 'portrait0' || kind === 'portrait1'){
+      x.fillStyle = '#2a1a10'; x.fillRect(0,0,w,h);
+      const g = x.createRadialGradient(256,230,20,256,256,300); g.addColorStop(0,'#5a4a3a'); g.addColorStop(1,'#1a120a'); x.fillStyle = g; x.fillRect(30,30,w-60,h-60);
+      x.fillStyle = '#2a1830'; x.beginPath(); x.moveTo(110,h-30); x.quadraticCurveTo(256,300,402,h-30); x.fill();
+      x.fillStyle = kind === 'portrait0' ? '#e8d0b0' : '#9be07a'; x.beginPath(); x.ellipse(256,220,85,105,0,0,Math.PI*2); x.fill();
+      x.fillStyle = '#1a1020'; x.beginPath(); x.moveTo(150,170); x.quadraticCurveTo(256,40,362,170); x.quadraticCurveTo(256,120,150,170); x.fill();
+      if(kind === 'portrait0'){ x.fillStyle = '#fff'; [216,296].forEach(cx=>{ x.beginPath(); x.ellipse(cx,215,16,10,0,0,Math.PI*2); x.fill(); });
+        x.strokeStyle = '#6a2a2a'; x.lineWidth = 5; x.beginPath(); x.arc(256,270,26,0.2,Math.PI-0.2); x.stroke(); }
+      else { x.fillStyle = '#ffe000'; [216,296].forEach(cx=>{ x.beginPath(); x.ellipse(cx,212,18,14,0,0,Math.PI*2); x.fill(); });
+        x.fillStyle = '#1a1020'; x.beginPath(); x.ellipse(256,280,40,26,0,0,Math.PI); x.fill(); x.fillStyle = '#fff'; [240,272].forEach(cx=>{ x.beginPath(); x.moveTo(cx,280); x.lineTo(cx+8,300); x.lineTo(cx+16,280); x.fill(); }); }
+      x.strokeStyle = '#c8962a'; x.lineWidth = 26; x.strokeRect(13,13,w-26,h-26);
+    } else if(kind === 'bat'){
+      x.clearRect(0,0,w,h); x.fillStyle = '#140a1e';
+      x.beginPath(); x.moveTo(256,230); x.quadraticCurveTo(160,150,20,190); x.quadraticCurveTo(70,230,60,280); x.quadraticCurveTo(110,250,140,300); x.quadraticCurveTo(170,260,210,300);
+      x.lineTo(256,320); x.lineTo(302,300); x.quadraticCurveTo(342,260,372,300); x.quadraticCurveTo(402,250,452,280); x.quadraticCurveTo(442,230,492,190); x.quadraticCurveTo(352,150,256,230); x.fill();
+      x.beginPath(); x.ellipse(256,260,34,48,0,0,Math.PI*2); x.fill();
+      x.beginPath(); x.moveTo(230,225); x.lineTo(236,190); x.lineTo(250,218); x.moveTo(262,218); x.lineTo(276,190); x.lineTo(282,225); x.fill();
+      x.fillStyle = '#ffd000'; [244,268].forEach(cx=>{ x.beginPath(); x.arc(cx,245,6,0,Math.PI*2); x.fill(); });
+    } else if(kind === 'boo'){
+      x.clearRect(0,0,w,h); x.font = `900 200px ${FONT}`; x.textAlign = 'center'; x.textBaseline = 'middle';
+      x.lineWidth = 22; x.strokeStyle = '#2a0a3a'; x.strokeText('BOO!', w/2, h/2); x.fillStyle = '#ffffff'; x.fillText('BOO!', w/2, h/2);
+    } else if(kind === 'trick'){
+      x.clearRect(0,0,w,h); x.textAlign = 'center'; x.textBaseline = 'middle';
+      x.font = `900 76px ${FONT}`; x.lineWidth = 14; x.strokeStyle = '#2a0a3a';
+      ['Trick or','Treat!'].forEach((t,i)=>{ x.strokeText(t, w/2, 190 + i*100); x.fillStyle = i ? '#ff9a2a' : '#ffffff'; x.fillText(t, w/2, 190 + i*100); });
+    }
+  });
+}
+function createHalloween(){
+  const root = new THREE.Group(); root.visible = false; scene.add(root);
+  const hits = [];        // タップの当たり判定
+  const things = [];      // 動くもの
+  const R = 4.2, H = 3.4; // 部屋の半分の広さ・天井の高さ
+  const tex = {}; ['wall','floor','rug','web','moon','portrait0','portrait1','bat','boo','trick'].forEach(k=>tex[k] = roomTex(k));
+  tex.wall.wrapS = tex.wall.wrapT = THREE.RepeatWrapping; tex.wall.repeat.set(3, 1.4);
+  tex.floor.wrapS = tex.floor.wrapT = THREE.RepeatWrapping; tex.floor.repeat.set(3, 3);
+  const box = (g, c, s, p, e, ei)=>add(g, BOXG, hMat(c, e, ei), s, p);
+  const sph = (g, c, s, p, e, ei)=>add(g, SPH, hMat(c, e, ei), s, p);
+  function hit(obj, r, y, fn){ const m = new THREE.Mesh(SPH, new THREE.MeshBasicMaterial({visible:false})); m.scale.setScalar(r); m.position.y = y || 0; obj.add(m); m.userData.act = fn; hits.push(m); }
+  // 部屋の中で、正面からの角度 a（度）・距離 d の位置
+  function at(a, d, y){ const r = a*Math.PI/180; return V(Math.sin(r)*d, y||0, -Math.cos(r)*d); }
+  function face(o){ o.lookAt(0, o.position.y, 0); }   // 部屋の中心（見る人）を向く
+
+  // ---------- 部屋 ----------
+  const room = new THREE.Group(); root.add(room);
+  const wallM = new THREE.MeshStandardMaterial({map:tex.wall, roughness:.9});
+  [[0,0],[90,1],[180,2],[270,3]].forEach(([a])=>{
+    const w = new THREE.Mesh(new THREE.PlaneGeometry(R*2, H), wallM); const p = at(a, R, H/2); w.position.copy(p); face(w); room.add(w);
+    const wain = new THREE.Mesh(new THREE.PlaneGeometry(R*2, 0.9), hMat(0x1a0f08)); wain.position.copy(at(a, R-0.01, 0.45)); face(wain); room.add(wain);
+    const rail = new THREE.Mesh(new THREE.BoxGeometry(R*2, 0.06, 0.06), hMat(0x6a4020)); rail.position.copy(at(a, R-0.03, 0.92)); face(rail); room.add(rail);
+  });
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(R*2, R*2), new THREE.MeshStandardMaterial({map:tex.floor, roughness:.85})); floor.rotation.x = -Math.PI/2; room.add(floor);
+  const rug = new THREE.Mesh(new THREE.CircleGeometry(1.6, 40), new THREE.MeshStandardMaterial({map:tex.rug, roughness:1})); rug.rotation.x = -Math.PI/2; rug.position.y = 0.01; room.add(rug);
+  const ceil = new THREE.Mesh(new THREE.PlaneGeometry(R*2, R*2), hMat(0x120a1a)); ceil.rotation.x = Math.PI/2; ceil.position.y = H; room.add(ceil);
+  // 隅のくもの巣
+  [45,135,225,315].forEach(a=>{ const web = new THREE.Mesh(new THREE.PlaneGeometry(1.4,1.4), new THREE.MeshBasicMaterial({map:tex.web, transparent:true, depthWrite:false}));
+    web.position.copy(at(a, R*1.38, H - 0.7)); face(web); web.rotateZ(Math.PI); room.add(web); });
+  // オレンジと黒のガーランド
+  const flags = [];
+  [0,90,180,270].forEach(a=>{ for(let k=0;k<11;k++){ const u = k/10 - 0.5, base = at(a, R-0.08, 0);
+      const side = V(Math.cos(a*Math.PI/180), 0, Math.sin(a*Math.PI/180));
+      const fl = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.3, 3), hMat(k%2 ? 0x111111 : 0xff7a00, k%2 ? 0x000000 : 0xff5a00, 0.35));
+      fl.rotation.x = Math.PI; fl.position.copy(base).addScaledVector(side, u*R*1.8); fl.position.y = H - 0.35 - Math.cos(u*Math.PI)*0.35; room.add(fl); flags.push(fl); } });
+  // 窓と月
+  const win = new THREE.Group(); win.position.copy(at(-40, R-0.02, 1.9)); face(win); room.add(win);
+  const moonM = new THREE.MeshBasicMaterial({map:tex.moon}); add(win, new THREE.PlaneGeometry(1.5, 1.5), moonM, [1,1,1], [0,0,0]);
+  [[0,0.78,1.6,0.08],[0,-0.78,1.6,0.08],[0.78,0,0.08,1.6],[-0.78,0,0.08,1.6],[0,0,0.05,1.5],[0,0,1.5,0.05]].forEach(([x,y,w,h])=>box(win, 0x2a180c, [w,h,0.08], [x,y,0.04]));
+
+  // ---------- 暖炉（タップ：炎が緑に、火の粉が舞う） ----------
+  const fire = new THREE.Group(); fire.position.copy(at(180, R-0.35, 0)); face(fire); root.add(fire);
+  box(fire, 0x5a3a3a, [2.0, 1.5, 0.6], [0, 0.75, 0]); box(fire, 0x0a0606, [1.1, 0.9, 0.1], [0, 0.55, 0.27]); box(fire, 0x2a1810, [0.9, 0.08, 0.3], [0, 0.12, 0.4]); box(fire, 0x3a2418, [2.3, 0.12, 0.75], [0, 1.55, 0.05]);
+  const flames = []; let fireCol = 0;
+  const FIRE = [[0xff6a00, 0xffd000], [0x20ff60, 0xb0ff40], [0x8a3cff, 0xff60ff]];
+  for(let k=0;k<5;k++){ const f = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.5, 8), new THREE.MeshBasicMaterial({color:FIRE[0][k%2], transparent:true, opacity:.9, blending:THREE.AdditiveBlending, depthWrite:false}));
+    f.position.set(-0.3 + k*0.15, 0.38, 0.42); fire.add(f); flames.push(f); }
+  const fireLight = new THREE.PointLight(0xff7a20, 1.6, 7, 2); fireLight.position.set(0, 0.7, 0.8); fire.add(fireLight);
+  const fireGlow = glowSprite(fire, 'rgba(255,140,40,.6)', 2.2, [0, 0.5, 0.4]);
+  // 暖炉の上の小さなかぼちゃとろうそく
+  hit(fire, 0.9, 0.6, ()=>{ fireCol = (fireCol + 1) % FIRE.length; flames.forEach((f,i)=>f.material.color.setHex(FIRE[fireCol][i%2])); fireLight.color.setHex(FIRE[fireCol][0]);
+    burstAt(fire, V(0,0.6,0.3), [col(FIRE[fireCol][0]), col(FIRE[fireCol][1])], 70, 3.5); sfxWhoosh(); });
+
+  // ---------- 肖像画（タップ：顔が変わってニヤリ） ----------
+  const pic = new THREE.Group(); pic.position.copy(at(180, R-0.03, 2.45)); face(pic); root.add(pic);
+  const picM = new THREE.MeshBasicMaterial({map:tex.portrait0}); add(pic, new THREE.PlaneGeometry(0.9, 0.9), picM, [1,1,1], [0,0,0.01]);
+  let picT = 0; hit(pic, 0.55, 0, ()=>{ picM.map = tex.portrait1; picM.needsUpdate = true; picT = 2.2; sfxLaugh(); });
+
+  // ---------- かぼちゃのランタン（タップ：顔が光って笑い、お菓子が飛び出す） ----------
+  const pumps = [];
+  function pumpkin(pos, s){
+    const g = new THREE.Group(); g.position.copy(pos); g.scale.setScalar(s); face(g); root.add(g);
+    const body = new THREE.Group(); g.add(body);
+    for(let k=0;k<8;k++){ const m = add(body, SPH, hMat(0xff7a00, 0xff4a00, 0.18), [0.2, 0.32, 0.36], [Math.cos(k/8*Math.PI*2)*0.17, 0.3, Math.sin(k/8*Math.PI*2)*0.17]); m.rotation.y = -k/8*Math.PI*2; }
+    add(body, CYLG, hMat(0x3a6a20), [0.05, 0.16, 0.05], [0, 0.66, 0], [0.2, 0, 0.2]);
+    const faceM = new THREE.MeshBasicMaterial({color:0xffb020});
+    const fz = 0.385;
+    [[-0.13,0.38],[0.13,0.38]].forEach(([x,y])=>{ const t = new THREE.Mesh(new THREE.CircleGeometry(0.075, 3), faceM); t.position.set(x, y, fz); t.rotation.z = Math.PI/2; body.add(t); });
+    const nose = new THREE.Mesh(new THREE.CircleGeometry(0.04, 3), faceM); nose.position.set(0, 0.29, fz + 0.01); nose.rotation.z = Math.PI/2; body.add(nose);
+    const ms = new THREE.Shape(); ms.moveTo(-0.2,0.2); [[-0.13,0.15],[-0.08,0.19],[-0.03,0.14],[0.03,0.19],[0.08,0.14],[0.13,0.19],[0.2,0.2],[0.12,0.1],[0,0.07],[-0.12,0.1]].forEach(([x,y])=>ms.lineTo(x,y));
+    const mouth = new THREE.Mesh(new THREE.ShapeGeometry(ms), faceM); mouth.position.z = fz - 0.01; body.add(mouth);
+    const glow = glowSprite(g, 'rgba(255,160,40,.55)', 1.2, [0, 0.3, 0.3]);
+    const light = new THREE.PointLight(0xff8a20, 0.7, 3, 2); light.position.set(0, 0.35, 0.5); g.add(light);
+    const P = {g, body, faceM, glow, light, jump:0, bright:0};
+    hit(g, 0.45, 0.3, ()=>{ P.jump = 1; P.bright = 1.5; sfxLaugh(); candyBurst(g, V(0,0.6,0)); });
+    pumps.push(P); return P;
+  }
+  pumpkin(at(-22, 2.3, 0), 1.0); pumpkin(at(22, 2.3, 0), 0.85); pumpkin(at(180, R-0.35, 1.62), 0.55); pumpkin(at(140, 3.1, 0), 1.3);
+
+  // ---------- 魔女の大釜（タップ：ボコボコ噴き出して、何かが飛び出す） ----------
+  const caul = new THREE.Group(); caul.position.copy(at(0, 2.6, 0)); face(caul); root.add(caul);
+  const pot = add(caul, SPH, hMat(0x15121a, 0x000000, 0), [0.55, 0.45, 0.55], [0, 0.45, 0]);
+  add(caul, new THREE.TorusGeometry(0.47, 0.06, 8, 24), hMat(0x2a2630), [1,1,1], [0, 0.78, 0], [Math.PI/2, 0, 0]);
+  const brew = add(caul, new THREE.CircleGeometry(0.45, 24), new THREE.MeshBasicMaterial({color:0x40ff60}), [1,1,1], [0, 0.76, 0], [-Math.PI/2, 0, 0]);
+  [0,1,2].forEach(k=>add(caul, CYLG, hMat(0x15121a), [0.04, 0.3, 0.04], [Math.cos(k*2.1)*0.35, 0.1, Math.sin(k*2.1)*0.35]));
+  // 薪と炎
+  const cf = []; for(let k=0;k<3;k++){ const f = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.32, 6), new THREE.MeshBasicMaterial({color:0xff7a00, transparent:true, opacity:.85, blending:THREE.AdditiveBlending, depthWrite:false})); f.position.set(-0.15 + k*0.15, 0.12, 0); caul.add(f); cf.push(f); }
+  const caulLight = new THREE.PointLight(0x40ff60, 1.0, 4, 2); caulLight.position.set(0, 1.1, 0.3); caul.add(caulLight);
+  glowSprite(caul, 'rgba(80,255,120,.45)', 1.8, [0, 0.9, 0]);
+  const pops = [];   // 飛び出したもの
+  hit(caul, 0.75, 0.5, ()=>{
+    burstAt(caul, V(0,0.85,0), [col(0x40ff60), col(0xb0ff40), col(0x8a3cff)], 90, 4.5); sfxBubble();
+    const kind = (Math.random()*3)|0, o = new THREE.Group(); caul.add(o); o.position.set(0, 0.8, 0);
+    if(kind === 0){ add(o, SPH, hMat(0xff7a00, 0xff5a00, .5), [0.14,0.12,0.14], [0,0,0]); add(o, CYLG, hMat(0x3a6a20), [0.02,0.06,0.02], [0,0.13,0]); }
+    else if(kind === 1){ add(o, SPH, new THREE.MeshStandardMaterial({color:0xffffff, emissive:0xffffff, emissiveIntensity:.4, transparent:true, opacity:.9}), [0.14,0.18,0.14], [0,0,0]); [-0.05,0.05].forEach(x=>add(o, SPH, hMat(0x111111), [0.025,0.035,0.02], [x,0.04,0.12])); }
+    else { const s = new THREE.Sprite(new THREE.SpriteMaterial({map:tex.bat, transparent:true})); s.scale.set(0.5,0.5,1); o.add(s); }
+    pops.push({o, t:0, vx:(Math.random()-.5)*1.2, vz:0.9 + Math.random()*0.6});
+  });
+
+  // ---------- おばけ（タップ：BOO! とこちらへ飛んでくる） ----------
+  const ghost = new THREE.Group(); ghost.scale.setScalar(0.75); root.add(ghost);
+  const gm = new THREE.MeshStandardMaterial({color:0xffffff, emissive:0xd8e8ff, emissiveIntensity:.55, transparent:true, opacity:.88, roughness:.6});
+  const gpts = []; for(let k=0;k<=12;k++){ const u = k/12; gpts.push(new THREE.Vector2(u < 0.55 ? Math.sin(u/0.55*Math.PI/2)*0.42 : 0.42 + (u-0.55)*0.15, 1 - u*1.4)); }
+  const gbody = new THREE.Mesh(new THREE.LatheGeometry(gpts, 20), gm); ghost.add(gbody);
+  [-0.13,0.13].forEach(x=>add(ghost, SPH, new THREE.MeshBasicMaterial({color:0x111111}), [0.06,0.09,0.03], [x, 0.72, 0.43]));
+  const gmouth = add(ghost, SPH, new THREE.MeshBasicMaterial({color:0x111111}), [0.07,0.05,0.03], [0, 0.52, 0.45]);
+  [-1,1].forEach(sx=>{ const arm = add(ghost, SPH, gm, [0.09,0.2,0.09], [sx*0.44, 0.35, 0.05]); arm.rotation.z = sx*0.8; });
+  glowSprite(ghost, 'rgba(200,220,255,.45)', 1.6, [0, 0.5, 0]);
+  const boo = new THREE.Sprite(new THREE.SpriteMaterial({map:tex.boo, transparent:true, depthTest:false})); boo.renderOrder = 12; boo.scale.set(1.2,1.2,1); boo.position.y = 1.3; boo.material.opacity = 0; ghost.add(boo);
+  let gT = 0, gScare = 0;
+  hit(ghost, 0.6, 0.5, ()=>{ if(gScare <= 0){ gScare = 2.4; sfxBoo(); } });
+
+  // ---------- こうもり（タップ：いっせいに飛び回る） ----------
+  const bats = [];
+  for(let k=0;k<9;k++){ const s = new THREE.Sprite(new THREE.SpriteMaterial({map:tex.bat, transparent:true})); s.scale.set(0.5,0.5,1); root.add(s);
+    bats.push({s, a:k/9*Math.PI*2, r:1.6 + Math.random()*1.4, h:H - 0.6 - Math.random()*0.6, sp:0.25 + Math.random()*0.2, ph:Math.random()*6}); }
+  let batRush = 0;
+  bats.forEach(b=>hit(b.s, 0.45, 0, ()=>{ batRush = 3; sfxScreech(); }));
+
+  // ---------- 黒ねこ（タップ：ニャー！と跳ねて目が光る） ----------
+  const cat = new THREE.Group(); cat.position.copy(at(-95, 3.0, 0.9)); face(cat); root.add(cat);
+  box(cat, 0x3a2418, [1.0, 0.9, 0.6], [0, -0.45, 0]);   // 台（たんす）
+  box(cat, 0x2a180c, [1.05, 0.05, 0.65], [0, 0.01, 0]);
+  const catB = new THREE.Group(); cat.add(catB);
+  const blk = 0x14101a;
+  sph(catB, blk, [0.17,0.2,0.22], [0, 0.2, 0]); sph(catB, blk, [0.15,0.13,0.14], [0, 0.45, 0.06]);
+  [-1,1].forEach(s=>{ const e = add(catB, CONEG, hMat(blk), [0.05,0.1,0.05], [s*0.08, 0.57, 0.05]); e.rotation.z = -s*0.25; });
+  const catEyes = [-1,1].map(s=>add(catB, SPH, new THREE.MeshBasicMaterial({color:0xffe000}), [0.03,0.035,0.02], [s*0.055, 0.47, 0.18]));
+  const tail = new THREE.Group(); tail.position.set(0, 0.08, -0.18); catB.add(tail);
+  for(let k=0;k<6;k++) add(tail, SPH, hMat(blk), [0.04,0.04,0.06], [0, k*0.06, -k*0.03]);
+  let catJump = 0;
+  hit(cat, 0.45, 0.3, ()=>{ catJump = 1; sfxMeow(); });
+  // たんすの上のろうそく
+  const cnd = new THREE.Group(); cnd.position.set(0.32, 0.02, 0); cat.add(cnd);
+  add(cnd, CYLG, hMat(0xf0e6c8), [0.04,0.2,0.04], [0,0.1,0]); const cfl = add(cnd, SPH, new THREE.MeshBasicMaterial({color:0xffc040}), [0.025,0.05,0.025], [0,0.24,0]); glowSprite(cnd, 'rgba(255,190,80,.6)', 0.5, [0,0.24,0]);
+
+  // ---------- がいこつ（タップ：カタカタ踊る） ----------
+  const sk = new THREE.Group(); sk.position.copy(at(55, 2.9, 0)); face(sk); root.add(sk);
+  const bone = hMat(0xf2ead8, 0xf2ead8, .12);
+  const skull = new THREE.Group(); skull.position.y = 1.5; sk.add(skull);
+  add(skull, SPH, bone, [0.15,0.17,0.15], [0,0,0]); add(skull, SPH, bone, [0.09,0.06,0.09], [0,-0.13,0.03]);
+  [-0.06,0.06].forEach(x=>add(skull, SPH, new THREE.MeshBasicMaterial({color:0x1a0a2a}), [0.04,0.045,0.02], [x,0.02,0.13]));
+  const jaw = add(skull, BOXG, bone, [0.12,0.03,0.08], [0,-0.17,0.05]);
+  for(let k=0;k<5;k++) add(sk, BOXG, bone, [0.24 - Math.abs(k-1.5)*0.02, 0.025, 0.12], [0, 1.25 - k*0.07, 0]);
+  add(sk, CYLG, bone, [0.025, 0.45, 0.025], [0, 1.1, -0.02]);
+  add(sk, SPH, bone, [0.14,0.06,0.08], [0, 0.85, 0]);
+  const limbs = [];
+  [[-1,'a'],[1,'a'],[-1,'l'],[1,'l']].forEach(([s,t])=>{ const L = new THREE.Group(); L.position.set(s*(t === 'a' ? 0.17 : 0.08), t === 'a' ? 1.3 : 0.85, 0); sk.add(L);
+    add(L, CYLG, bone, [0.02, 0.36, 0.02], [0,-0.18,0]); add(L, CYLG, bone, [0.02, 0.36, 0.02], [0,-0.52,0]); add(L, SPH, bone, [0.04,0.03,t === 'a' ? 0.04 : 0.08], [0,-0.72,0.03]); limbs.push({L, s, t}); });
+  let skDance = 0;
+  hit(sk, 0.6, 1.0, ()=>{ skDance = 4; sfxRattle(); });
+
+  // ---------- くもの巣とくも（タップ：糸でスルスル降りてくる） ----------
+  const sp = new THREE.Group(); sp.position.copy(at(100, R-0.05, H - 0.25)); face(sp); root.add(sp);
+  const bigWeb = new THREE.Mesh(new THREE.PlaneGeometry(1.6,1.6), new THREE.MeshBasicMaterial({map:tex.web, transparent:true, depthWrite:false})); bigWeb.position.set(0.8, -0.8, 0); bigWeb.rotation.z = Math.PI; sp.add(bigWeb);
+  const spider = new THREE.Group(); spider.position.set(0, -0.6, 0.05); sp.add(spider);
+  add(spider, SPH, hMat(0x111111), [0.1,0.12,0.08], [0,0,0]); add(spider, SPH, hMat(0x111111), [0.07,0.07,0.06], [0,0.14,0]);
+  [-0.03,0.03].forEach(x=>add(spider, SPH, new THREE.MeshBasicMaterial({color:0xff2020}), [0.015,0.015,0.01], [x,0.16,0.055]));
+  for(let k=0;k<4;k++) [-1,1].forEach(s=>{ const l = add(spider, CYLG, hMat(0x111111), [0.01,0.2,0.01], [s*0.13, 0.05 - k*0.04, 0]); l.rotation.z = s*(1.0 + k*0.15); });
+  const silk = add(sp, CYLG, new THREE.MeshBasicMaterial({color:0xddddff}), [0.004, 1, 0.004], [0, -0.3, 0.05]);
+  let spDrop = 0;
+  hit(spider, 0.3, 0, ()=>{ spDrop = 3; sfxDrop(); });
+
+  // ---------- 棺おけ（タップ：ふたが開いて、こうもりと煙が出てくる） ----------
+  const cof = new THREE.Group(); cof.position.copy(at(-55, 3.0, 0)); face(cof); root.add(cof);
+  const cs = new THREE.Shape(); [[0,0],[0.32,0.35],[0.25,1.7],[-0.25,1.7],[-0.32,0.35]].forEach(([x,y],i)=>i ? cs.lineTo(x,y) : cs.moveTo(0.0,0));
+  cs.lineTo(0,0);
+  const cofG = new THREE.ExtrudeGeometry(cs, {depth:0.35, bevelEnabled:false}); cofG.translate(0,0,-0.35);
+  const cofBox = new THREE.Mesh(cofG, hMat(0x2a1208)); cof.add(cofBox);
+  const lidPivot = new THREE.Group(); lidPivot.position.set(0.3, 0, 0.01); cof.add(lidPivot);
+  const lid = new THREE.Mesh(new THREE.ExtrudeGeometry(cs, {depth:0.06, bevelEnabled:false}), hMat(0x4a2010)); lid.position.x = -0.3; lidPivot.add(lid);
+  add(lid, BOXG, hMat(0xc8962a, 0xc8962a, .3), [0.05,0.5,0.02], [0,1.1,0.07]); add(lid, BOXG, hMat(0xc8962a, 0xc8962a, .3), [0.3,0.05,0.02], [0,1.2,0.07]);
+  const inside = glowSprite(cof, 'rgba(160,80,255,0)', 1.4, [0, 0.9, 0.1]);
+  let cofT = 0;
+  hit(cof, 0.7, 0.85, ()=>{ if(cofT <= 0){ cofT = 4; sfxCreak(); setTimeout(()=>{ if(!running) return; batRush = Math.max(batRush, 2.5); sfxScreech(); burstAt(cof, V(0,0.9,0.3), [col(0x8a3cff), col(0x40ff60)], 60, 2.5); }, 700); } });
+
+  // ---------- 浮かぶろうそく（タップ：炎の色が変わる） ----------
+  const candles = []; let candleCol = 0; const CC = [0xffc040, 0x40ff80, 0xb060ff, 0xff4080];
+  for(let k=0;k<7;k++){ const c = new THREE.Group(); const p = at(-60 + k*20, 1.9, 2.4 + Math.random()*0.4); c.position.copy(p); root.add(c);
+    add(c, CYLG, hMat(0xf0e6c8, 0xf0e6c8, .1), [0.035,0.22,0.035], [0,0,0]);
+    const fl = add(c, SPH, new THREE.MeshBasicMaterial({color:CC[0]}), [0.022,0.05,0.022], [0,0.15,0]);
+    const gl = glowSprite(c, 'rgba(255,190,80,.6)', 0.5, [0,0.15,0]);
+    candles.push({c, fl, gl, ph:Math.random()*6, y:p.y});
+    hit(c, 0.25, 0.05, ()=>{ candleCol = (candleCol + 1) % CC.length; candles.forEach(o=>o.fl.material.color.setHex(CC[candleCol])); sfxChime(); });
+  }
+
+  // ---------- シャンデリア ----------
+  const ch = new THREE.Group(); ch.position.set(0, H - 0.6, 0); root.add(ch);
+  add(ch, new THREE.TorusGeometry(0.5, 0.025, 6, 24), hMat(0x6a5a3a, 0x6a5a3a, .2), [1,1,1], [0,0,0], [Math.PI/2,0,0]);
+  add(ch, CYLG, hMat(0x3a3020), [0.01, 0.6, 0.01], [0,0.3,0]);
+  for(let k=0;k<6;k++){ const a = k/6*Math.PI*2; add(ch, CYLG, hMat(0xf0e6c8), [0.025,0.12,0.025], [Math.cos(a)*0.5, 0.07, Math.sin(a)*0.5]);
+    add(ch, SPH, new THREE.MeshBasicMaterial({color:0xffc040}), [0.015,0.035,0.015], [Math.cos(a)*0.5, 0.16, Math.sin(a)*0.5]); }
+  const chLight = new THREE.PointLight(0xffb060, 0.9, 8, 2); ch.add(chLight); glowSprite(ch, 'rgba(255,180,80,.35)', 1.8, [0,0.1,0]);
+
+  // ---------- 空飛ぶほうき（タップ：星をふりまいて速く飛ぶ） ----------
+  const broom = new THREE.Group(); root.add(broom);
+  add(broom, CYLG, hMat(0x7a4a20), [0.025, 1.0, 0.025], [0,0,0], [0,0,Math.PI/2]);
+  add(broom, CONEG, hMat(0xc89a40), [0.12, 0.35, 0.12], [-0.6,0,0], [0,0,-Math.PI/2]);
+  const hat = new THREE.Group(); hat.position.set(0.1, 0.12, 0); broom.add(hat);
+  add(hat, CYLG, hMat(0x2a1040), [0.2,0.02,0.2], [0,0,0]); add(hat, CONEG, hMat(0x2a1040), [0.12,0.35,0.12], [0,0.17,0]); add(hat, CYLG, hMat(0x8a3cff, 0x8a3cff, .4), [0.125,0.04,0.125], [0,0.04,0]);
+  let broomA = 0, broomFast = 0;
+  hit(broom, 0.6, 0, ()=>{ broomFast = 2.5; sfxChime(); });
+
+  // ---------- Trick or Treat の文字 ----------
+  const trick = new THREE.Sprite(new THREE.SpriteMaterial({map:tex.trick, transparent:true, depthTest:false})); trick.renderOrder = 12; trick.scale.set(1.6,1.6,1); trick.material.opacity = 0; root.add(trick);
+  let trickT = 0;
+
+  // ---------- 霧と浮遊する光 ----------
+  const motes = [];
+  for(let k=0;k<26;k++){ const s = glowSprite(root, k%3 ? 'rgba(160,90,255,.35)' : 'rgba(255,150,60,.35)', 0.25 + Math.random()*0.3, [0,0,0]);
+    motes.push({s, a:Math.random()*6.28, r:0.8 + Math.random()*3, y:0.4 + Math.random()*2.6, sp:0.05 + Math.random()*0.15}); }
+
+  // ---------- 効果 ----------
+  const wp = V(0,0,0);
+  function burstAt(obj, local, cols, n, sp){ wp.copy(local); obj.localToWorld(wp);
+    for(let k=0;k<n;k++){ const a = Math.random()*6.28, u = Math.random()*0.8 + 0.2, v = sp*(0.5 + Math.random()*0.5);
+      spawn(wp, Math.cos(a)*v*0.5, u*v, Math.sin(a)*v*0.5, 1.2 + Math.random()*0.6, cols[(Math.random()*cols.length)|0], 3.5, 0); } }
+  const CANDY = [col(0xff3050), col(0xffe000), col(0x40c0ff), col(0x40ff80), col(0xff8a00), col(0xff60e0)];
+  const candies = [];
+  function candyBurst(obj, local){ wp.copy(local); obj.localToWorld(wp);
+    for(let k=0;k<10;k++){ const c = new THREE.Group(); const cc = CANDY[k % CANDY.length].getHex();
+      add(c, SPH, hMat(cc, cc, .5), [0.06,0.05,0.05], [0,0,0]); [-1,1].forEach(s=>{ const w = add(c, CONEG, hMat(cc, cc, .5), [0.04,0.05,0.04], [s*0.07,0,0]); w.rotation.z = -s*Math.PI/2; });
+      c.position.copy(wp); root.worldToLocal(c.position); root.add(c);
+      const a = Math.random()*6.28; candies.push({c, v:V(Math.cos(a)*1.2, 2.4 + Math.random()*1.2, Math.sin(a)*1.2), t:0, rs:V(Math.random()*8, Math.random()*8, 0)}); }
+    burstAt(obj, local, CANDY, 40, 3);
+    trickT = 2.2; trick.position.copy(wp); root.worldToLocal(trick.position); trick.position.y += 0.9; }
+
+  const lights = [fireLight, caulLight, chLight].concat(pumps.map(p=>p.light));
+  return {
+    start(f){
+      // 部屋の正面を、いま向いている方向にそろえ、床を足元にする
+      root.position.copy(camera.position); root.position.y = camera.position.y - CONFIG.eyeHeight;
+      root.rotation.set(0, Math.atan2(-f.x, -f.z), 0);
+      root.visible = true; setRoomLighting(true); startHalloweenMusic();
+    },
+    hide(){ root.visible = false; setRoomLighting(false); },
+    tap(e){
+      if(e){ const ray = new THREE.Raycaster(), ndc = new THREE.Vector2((e.clientX/window.innerWidth)*2 - 1, -(e.clientY/window.innerHeight)*2 + 1);
+        ray.setFromCamera(ndc, camera); const h = ray.intersectObjects(hits, false)[0];
+        if(h && h.object.userData.act){ h.object.userData.act(); return; } }
+      // 何もないところ：こうもりが飛び回る
+      batRush = Math.max(batRush, 1.8); sfxScreech();
+    },
+    update(t, dt){
+      if(!root.visible) return;
+      flags.forEach((f,i)=>{ f.rotation.z = Math.sin(t*1.5 + i)*0.08; });
+      flames.forEach((f,i)=>{ const s = 0.8 + Math.sin(t*14 + i*2)*0.2 + Math.random()*0.1; f.scale.set(1, s, 1); });
+      fireLight.intensity = 1.4 + Math.sin(t*11)*0.25 + Math.random()*0.15; fireGlow.material.opacity = 0.7 + Math.sin(t*9)*0.15;
+      cf.forEach((f,i)=>f.scale.set(1, 0.8 + Math.sin(t*12 + i)*0.25, 1));
+      if(picT > 0){ picT -= dt; if(picT <= 0){ picM.map = tex.portrait0; picM.needsUpdate = true; } }
+      pumps.forEach((P,i)=>{ P.jump = Math.max(0, P.jump - dt*1.4); P.bright = Math.max(0, P.bright - dt*0.8);
+        P.body.position.y = Math.sin(P.jump*Math.PI)*0.35; P.body.rotation.y = Math.sin(P.jump*Math.PI*2)*0.3;
+        const fl = 0.85 + Math.sin(t*10 + i*3)*0.1 + Math.random()*0.05 + P.bright;
+        P.faceM.color.setRGB(Math.min(1, fl), Math.min(1, fl*0.7), 0.1); P.light.intensity = 0.6*fl; P.glow.material.opacity = 0.6 + P.bright*0.4; });
+      // 大釜
+      brew.scale.setScalar(1 + Math.sin(t*3)*0.03);
+      if(Math.random() < dt*6){ wp.set((Math.random()-.5)*0.6, 0.8, (Math.random()-.5)*0.6); caul.localToWorld(wp); spawn(wp, 0, 0.6 + Math.random()*0.4, 0, 1.2, col(Math.random() < 0.5 ? 0x40ff60 : 0xb0ff40), 0.1, 0); }
+      for(let k=pops.length-1;k>=0;k--){ const P = pops[k]; P.t += dt; P.o.position.set(P.vx*P.t, 0.8 + 2.6*P.t - 1.6*P.t*P.t, P.vz*P.t); P.o.rotation.y += dt*4;
+        if(P.t > 2.4){ caul.remove(P.o); pops.splice(k,1); } }
+      // おばけ
+      if(gScare > 0){ gScare -= dt; const k = 2.4 - gScare, near = k < 0.5 ? k/0.5 : k < 1.6 ? 1 : Math.max(0, 1 - (k-1.6)/0.8);
+        wp.set(0, -0.2, -1.5).applyQuaternion(camera.quaternion).add(camera.position); root.worldToLocal(wp);
+        const home = V(Math.sin(gT)*1.8, 2.15 + Math.sin(gT*2)*0.2, -2.7 - Math.cos(gT)*0.4);
+        ghost.position.lerpVectors(home, wp, near*0.9); ghost.rotation.z = Math.sin(k*30)*0.06*near;
+        gmouth.scale.set(0.09, 0.05 + near*0.08, 0.03); boo.material.opacity = Math.min(1, near*1.5); boo.scale.setScalar(1 + near*0.3);
+      } else { gT += dt*0.35; ghost.position.set(Math.sin(gT)*1.8, 2.15 + Math.sin(gT*2)*0.2, -2.7 - Math.cos(gT)*0.4); ghost.rotation.z = Math.sin(t*2)*0.08; boo.material.opacity = 0; gmouth.scale.set(0.07,0.05,0.03); }
+      wp.copy(camera.position); root.worldToLocal(wp); ghost.lookAt(wp.x, ghost.position.y, wp.z);
+      // こうもり
+      batRush = Math.max(0, batRush - dt);
+      bats.forEach(b=>{ const sp = b.sp*(batRush > 0 ? 6 : 1); b.a += dt*sp; const r = b.r + (batRush > 0 ? Math.sin(t*5 + b.ph)*0.8 : 0);
+        b.s.position.set(Math.cos(b.a)*r, b.h + Math.sin(t*3 + b.ph)*(batRush > 0 ? 0.6 : 0.15), Math.sin(b.a)*r);
+        const flap = Math.abs(Math.sin(t*(batRush > 0 ? 22 : 9) + b.ph)); b.s.scale.set(0.5*(0.5 + flap*0.5), 0.5, 1); });
+      // ねこ
+      catJump = Math.max(0, catJump - dt*1.3); catB.position.y = Math.sin(catJump*Math.PI)*0.4; catB.scale.set(1, 1 + Math.sin(catJump*Math.PI)*0.15, 1);
+      tail.rotation.z = Math.sin(t*2.2)*0.4; tail.rotation.x = -0.4;
+      catEyes.forEach(e=>{ const b = catJump > 0 ? 1 : (Math.sin(t*0.7) > 0.97 ? 0.1 : 1); e.scale.y = 0.035*b; e.material.color.setHex(catJump > 0 ? 0x40ff60 : 0xffe000); });
+      cfl.scale.y = 0.05 + Math.sin(t*12)*0.01;
+      // がいこつ
+      skDance = Math.max(0, skDance - dt); const d = skDance > 0 ? 1 : 0;
+      limbs.forEach(({L,s,t:tp},i)=>{ L.rotation.z = tp === 'a' ? s*(0.25 + d*(1.1 + Math.sin(t*10 + i)*0.9)) : s*d*Math.sin(t*10 + i*2)*0.5; L.rotation.x = d*Math.sin(t*10 + i)*0.4; });
+      skull.rotation.z = d*Math.sin(t*8)*0.4; skull.rotation.y = d ? t*6 : Math.sin(t*0.6)*0.3; jaw.position.y = -0.17 - (d ? Math.abs(Math.sin(t*20))*0.05 : 0);
+      sk.position.y = d*Math.abs(Math.sin(t*10))*0.12;
+      // くも
+      spDrop = Math.max(0, spDrop - dt); const dy = spDrop > 0 ? Math.sin((3 - spDrop)/3*Math.PI)*1.6 : 0;
+      spider.position.y = -0.6 - dy + Math.sin(t*1.5)*0.03; silk.scale.y = 0.6 + dy; silk.position.y = -0.3 - dy/2; spider.rotation.z = Math.sin(t*3)*0.1;
+      // 棺おけ
+      if(cofT > 0){ cofT -= dt; const k = 4 - cofT, o = k < 0.6 ? k/0.6 : k < 3 ? 1 : Math.max(0, 1 - (k-3)); lidPivot.rotation.y = -o*1.9; inside.material.opacity = o*0.8; inside.material.color.setRGB(0.7,0.4,1); }
+      // ろうそく
+      candles.forEach(o=>{ o.c.position.y = o.y + Math.sin(t*1.2 + o.ph)*0.08; o.fl.scale.y = 0.05 + Math.sin(t*13 + o.ph)*0.012; });
+      chLight.intensity = 0.85 + Math.sin(t*7)*0.05; ch.rotation.y = Math.sin(t*0.4)*0.05;
+      // ほうき
+      broomFast = Math.max(0, broomFast - dt); broomA += dt*(broomFast > 0 ? 1.6 : 0.4);
+      broom.position.set(Math.cos(broomA)*2.6, 2.5 + Math.sin(broomA*2)*0.3, Math.sin(broomA)*2.6); broom.rotation.set(0, -broomA, Math.sin(broomA*2)*0.2);
+      if(broomFast > 0 && Math.random() < dt*40){ broom.getWorldPosition(wp); spawn(wp, 0, -0.3, 0, 1.4, CANDY[(Math.random()*6)|0], 0.6, 0); }
+      // お菓子
+      for(let k=candies.length-1;k>=0;k--){ const o = candies[k]; o.t += dt; o.v.y -= 6*dt; o.c.position.addScaledVector(o.v, dt); o.c.rotation.x += o.rs.x*dt; o.c.rotation.y += o.rs.y*dt;
+        if(o.c.position.y < 0.05){ o.c.position.y = 0.05; o.v.set(o.v.x*0.5, Math.abs(o.v.y)*0.35, o.v.z*0.5); }
+        if(o.t > 4){ root.remove(o.c); candies.splice(k,1); } }
+      if(trickT > 0){ trickT -= dt; trick.material.opacity = Math.min(1, trickT*1.5); trick.position.y += dt*0.15; }
+      motes.forEach(m=>{ m.a += dt*m.sp; m.s.position.set(Math.cos(m.a)*m.r, m.y + Math.sin(t*0.8 + m.a*3)*0.2, Math.sin(m.a)*m.r); m.s.material.opacity = 0.5 + Math.sin(t*2 + m.a*5)*0.3; });
+    }
+  };
+}
+
+/* ---------- ハロウィンの音 ---------- */
+function tone(type, f, at, dur, vol, f2){
+  const a = au(); if(!a) return;
+  const o = a.createOscillator(), g = a.createGain(); o.type = type; o.frequency.setValueAtTime(f, at);
+  if(f2) o.frequency.exponentialRampToValueAtTime(f2, at + dur);
+  g.gain.setValueAtTime(0.0001, at); g.gain.linearRampToValueAtTime(vol, at + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+  o.connect(g); g.connect(AOUT); o.start(at); o.stop(at + dur + 0.05);
+}
+function sfxLaugh(){ const a = au(); if(!a) return; const n = a.currentTime; [0,0.16,0.32,0.48].forEach((d,i)=>tone('square', 520 - i*50, n + d, 0.13, 0.08, 380 - i*50)); }
+function sfxBoo(){ const a = au(); if(!a) return; const n = a.currentTime; tone('sine', 220, n, 1.2, 0.3, 120); tone('triangle', 330, n, 1.2, 0.12, 170); }
+function sfxScreech(){ const a = au(); if(!a) return; const n = a.currentTime; for(let k=0;k<5;k++) tone('sawtooth', 2400 + Math.random()*1200, n + k*0.07, 0.06, 0.025, 1800); }
+function sfxMeow(){ const a = au(); if(!a) return; const n = a.currentTime; tone('triangle', 600, n, 0.15, 0.18, 900); tone('triangle', 900, n + 0.15, 0.4, 0.18, 500); }
+function sfxRattle(){ const a = au(); if(!a) return; const n = a.currentTime; for(let k=0;k<14;k++) tone('square', [880,1046,784,988][k%4], n + k*0.09, 0.05, 0.06); }
+function sfxDrop(){ const a = au(); if(!a) return; const n = a.currentTime; tone('sine', 900, n, 0.6, 0.12, 200); }
+function sfxCreak(){ const a = au(); if(!a) return; const n = a.currentTime; tone('sawtooth', 90, n, 0.7, 0.08, 160); tone('sawtooth', 140, n + 0.3, 0.5, 0.06, 80); }
+function sfxBubble(){ const a = au(); if(!a) return; const n = a.currentTime; for(let k=0;k<8;k++) tone('sine', 200 + Math.random()*300, n + k*0.07, 0.12, 0.12, 600 + Math.random()*400); }
+function sfxWhoosh(){ const a = au(); if(!a) return; const n = a.currentTime; tone('sawtooth', 120, n, 0.8, 0.05, 900); }
+function sfxChime(){ const a = au(); if(!a) return; const n = a.currentTime; [1319,1568,2093].forEach((f,i)=>tone('sine', f, n + i*0.08, 0.6, 0.1)); }
+
+/* ---------- ハロウィンの音楽：オルゴール風のちょっと不思議なワルツ（自動演奏） ---------- */
+const HW = {timer:null, next:0, step:0, gain:null};
+function startHalloweenMusic(){
+  stopHalloweenMusic();
+  if(!audio) return;
+  HW.gain = audio.createGain(); HW.gain.gain.setValueAtTime(0.0001, audio.currentTime); HW.gain.gain.linearRampToValueAtTime(muted ? 0.0001 : 0.5, audio.currentTime + 3); HW.gain.connect(AOUT);
+  HW.next = audio.currentTime + 0.1; HW.step = 0;
+  // ニ短調のワルツ（1拍＝0.42秒、3拍子）
+  const B = 0.42, MEL = [74,77,81, 79,77,76, 74,0,73, 74,0,0, 77,81,86, 84,82,81, 79,77,76, 77,0,0, 74,77,81, 79,77,76, 74,73,74, 76,0,0, 82,81,79, 77,76,74, 73,76,79, 74,0,0];
+  const BASS = [50,45,46,45, 46,48,46,45, 50,45,43,45, 46,45,45,50];
+  const n = (m, at, dur, v)=>{ const f = 440*Math.pow(2,(m-69)/12), o = audio.createOscillator(), o2 = audio.createOscillator(), g = audio.createGain();
+    o.type = 'sine'; o2.type = 'sine'; o.frequency.value = f; o2.frequency.value = f*3.01;
+    g.gain.setValueAtTime(0.0001, at); g.gain.linearRampToValueAtTime(v, at + 0.008); g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+    const g2 = audio.createGain(); g2.gain.value = 0.15; o.connect(g); o2.connect(g2); g2.connect(g); g.connect(HW.gain); o.start(at); o2.start(at); o.stop(at + dur + 0.05); o2.stop(at + dur + 0.05); };
+  HW.timer = setInterval(()=>{
+    if(!audio || !HW.gain) return;
+    while(HW.next < audio.currentTime + 0.3){
+      const i = HW.step % MEL.length, bar = Math.floor(HW.step/3) % BASS.length, beat = HW.step % 3;
+      if(MEL[i]) n(MEL[i], HW.next, 1.2, 0.18);
+      if(beat === 0) n(BASS[bar] - 12, HW.next, 1.4, 0.16); else n(BASS[bar] + (beat === 1 ? 3 : 7), HW.next, 0.5, 0.06);
+      HW.next += B; HW.step++;
+    }
+  }, 60);
+}
+function stopHalloweenMusic(){
+  if(HW.timer){ clearInterval(HW.timer); HW.timer = null; }
+  if(HW.gain){ try{ HW.gain.disconnect(); }catch(e){} HW.gain = null; }
+}
+
 /* ---------- キャラクターと表示モード ---------- */
 const C = { phoenix:createPhoenix(), whale:createWhale(), butterflies:createButterflies(), fireworks:createFireworks() };
 // d：基本距離に足す距離、off：円軌道の出発位置をずらす角度
@@ -2336,6 +2768,7 @@ const MODES = {
   whale:       {hint:C.whale.tapHint,   list:[{c:C.whale, d:6}]},
   butterflies: {hint:C.butterflies.tapHint, list:[{c:C.butterflies, d:-2}]},
   fireworks:   {hint:C.fireworks.tapHint, list:[{c:C.fireworks, d:0}]},
+  halloween:   {hint:'気になるものをタップしてみよう<small>Tap anything</small>', room:true, list:[]},
   parade:      {hint:'タップするとみんなが応えてくれます<small>Tap to cheer</small>', lookHint:'パレードが右からやってきます<small>Coming from the right</small>',
                 march:true, list:[]}
 };
@@ -2365,7 +2798,7 @@ gl.addEventListener('pointermove', e=>{
   if(!gotOri){ yaw += (e.clientX-lastX)*0.005; pitch = Math.max(-1.2, Math.min(1.2, pitch + (e.clientY-lastY)*0.005)); }
   lastX=e.clientX; lastY=e.clientY;
 });
-gl.addEventListener('pointerup', ()=>{ goFullscreen(); if(dragging && moved < 12) tapAll(); dragging=false; });
+gl.addEventListener('pointerup', e=>{ goFullscreen(); if(dragging && moved < 12) tapAll(e); dragging=false; });
 gl.addEventListener('pointercancel', ()=>{ dragging=false; });
 
 let placedAt = -1;
@@ -2375,6 +2808,8 @@ function placeAll(){
   f.normalize();
   Object.values(C).forEach(c=>{ c.root.visible = false; });
   const right = V(-f.z, 0, f.x), M = MODES[mode];
+  if(Hall) Hall.hide();
+  if(M.room){ if(!Hall) Hall = createHalloween(); Hall.start(f); placedAt = clock.elapsedTime; return; }
   if(M.march){ if(!Parade) Parade = createParade(); Parade.start(f, right); placedAt = clock.elapsedTime; return; }
   C.whale.root.scale.setScalar(0.6);
   M.list.forEach(({c, d, off, s})=>{
@@ -2384,8 +2819,10 @@ function placeAll(){
   placedAt = clock.elapsedTime;
 }
 let lastTap = 0;
-function tapAll(){
-  if(placedAt < 0 || clock.elapsedTime - lastTap < 0.6) return;
+function tapAll(e){
+  if(placedAt < 0) return;
+  if(MODES[mode].room && Hall){ if(clock.elapsedTime - lastTap < 0.25) return; lastTap = clock.elapsedTime; Hall.tap(e); if(navigator.vibrate) try{ navigator.vibrate(30); }catch(_){} return; }
+  if(clock.elapsedTime - lastTap < 0.6) return;
   lastTap = clock.elapsedTime;
   if(MODES[mode].march && Parade) Parade.tap(); else MODES[mode].list.forEach(({c})=>c.tap());
   if(navigator.vibrate) try{ navigator.vibrate([40,30,80]); }catch(e){}
@@ -2401,6 +2838,7 @@ function setHint(s){
 const camFwd = V(0,0,0);
 function updateIndicator(){
   if(placedAt < 0 || clock.elapsedTime - placedAt < 3){ arrow.hidden = true; return; }
+  if(MODES[mode].room){ setHint('tap'); arrow.hidden = true; return; }
   if(MODES[mode].march){ setHint(Parade && Parade.onScreen() ? 'tap' : 'look'); arrow.hidden = true; return; }
   camera.getWorldDirection(camFwd);
   let best = null, bestDot = -2, anyOn = false;
@@ -2432,6 +2870,7 @@ function loop(){
   if(running){
     Object.values(C).forEach(c=>c.update(t, dt));
     if(Parade) Parade.update(t, dt);
+    if(Hall) Hall.update(t, dt);
     updateParticles(t, dt);
     updateIndicator();
   }
@@ -2503,6 +2942,7 @@ function goHome(){
   running = false; placedAt = -1;
   Object.values(C).forEach(c=>{ c.root.visible = false; });
   if(Parade) Parade.hide();
+  if(Hall) Hall.hide();
   silenceAll();
   for(let i=0;i<N;i++){ pLife[i] = 1; pPos[i*3+1] = -999; }
   pGeo.attributes.position.needsUpdate = true;
@@ -2573,6 +3013,7 @@ $('btnAboutStart').addEventListener('click', ()=>{ $('about').hidden = true; sta
 $('btnRecall').addEventListener('click', ()=>placeAll());
 $('btnSound').addEventListener('click', ()=>{
   muted = !muted;
+  if(HW.gain){ HW.gain.gain.cancelScheduledValues(audio.currentTime); HW.gain.gain.setValueAtTime(muted ? 0.0001 : 0.5, audio.currentTime); }
   if(Music.gain){ const gp = Music.gain.gain; gp.cancelScheduledValues(audio.currentTime); gp.setValueAtTime(muted ? 0 : (fwSrc ? 0.95 : themeSrc ? 0.9 : 0.28), audio.currentTime); }
   $('icoSound').innerHTML = muted
     ? '<path d="M4 9v6h4l5 4V5L8 9z"/><path d="M17 9l5 6M22 9l-5 6"/>'
