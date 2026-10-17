@@ -28,7 +28,7 @@ var SHEETS = {
   facilities: {name: '施設',       head: ['event_id', '施設ID', '名前', '説明', '地図X(0-100)', '地図Y(0-100)', '屋根の色', '壁の色', '形(house/windmill/plaza)', '地図に出る条件', '条件を満たす前のヒント', '並び順']},
   routes:     {name: '物語の入口', head: ['event_id', '施設ID（introは開催日の最初）', '優先順', '条件', '最初の場面ID', '公開開始日', '公開終了日', 'メモ']},
   scenes:     {name: '場面',       head: ['event_id', '場面ID', '背景', '次の場面ID', 'もらえるアイテム', '記録する', 'ポイント', 'AR(parade/xmas/fireworks)', 'ARボタンの文字', 'メモ']},
-  lines:      {name: 'セリフ',     head: ['event_id', '場面ID', '順番', '話す住人ID（空欄は地の文）', 'セリフ']},
+  lines:      {name: 'セリフ',     head: ['event_id', '場面ID', '順番', '話す住人ID（空欄は地の文）', 'セリフ', '音声ファイルURL（将来用・空欄でOK）']},
   choices:    {name: '選択肢',     head: ['event_id', '場面ID', '順番', '選択肢ID', '選択肢の文', '次の場面ID', 'ポイント', '記録する', 'もらえるアイテム', '表示する条件']},
   items:      {name: 'アイテム',   head: ['アイテムID', '名前', 'アイコン', '説明']},
   points:     {name: 'ポイント',   head: ['ポイントID', '名前']},
@@ -170,7 +170,7 @@ function buildContent(){
   });
   rows('lines').forEach(function(r){
     var sc = C.scenes[str(r[0]) + '/' + str(r[1])]; if(!sc || !str(r[4])) return;
-    sc.lines.push({o: Number(r[2]) || 0, who: charId(str(r[3])), text: str(r[4])});
+    sc.lines.push({o: Number(r[2]) || 0, who: charId(str(r[3])), text: str(r[4]), voice: str(r[5])});
   });
   rows('choices').forEach(function(r){
     var sc = C.scenes[str(r[0]) + '/' + str(r[1])]; if(!sc || !str(r[4])) return;
@@ -179,7 +179,7 @@ function buildContent(){
   });
   Object.keys(C.scenes).forEach(function(k){
     var sc = C.scenes[k];
-    sc.lines.sort(function(a, b){ return a.o - b.o; }); sc.lines = sc.lines.map(function(l){ return [l.who, l.text]; });
+    sc.lines.sort(function(a, b){ return a.o - b.o; }); sc.lines = sc.lines.map(function(l){ return l.voice ? [l.who, l.text, l.voice] : [l.who, l.text]; });
     sc.choices.sort(function(a, b){ return a.o - b.o; }); sc.choices.forEach(function(c){ delete c.o; });
   });
   delete C.pointByName;
@@ -664,7 +664,7 @@ function seedSample(){
     ['end_wonder', '', '雪がふりはじめ、遠くから鈴の音が近づいてきます。']
   ];
   var cnt = {};
-  put('lines', L.map(function(r){ cnt[r[0]] = (cnt[r[0]] || 0) + 1; return [EV, r[0], cnt[r[0]], r[1], r[2]]; }));
+  put('lines', L.map(function(r){ cnt[r[0]] = (cnt[r[0]] || 0) + 1; return [EV, r[0], cnt[r[0]], r[1], r[2], '']; }));
   put('choices', [
     [EV, 'bakery_1', 1, 'carry', 'いっしょに薪を運ぶ', 'bakery_2a', 'やさしさ+1', '', '', ''],
     [EV, 'bakery_1', 2, 'peek', 'オーブンの中をのぞいてみる', 'bakery_2b', '好奇心+1', '', '', ''],

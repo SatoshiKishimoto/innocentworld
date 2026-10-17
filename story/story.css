@@ -168,3 +168,54 @@ button,input{font:inherit;color:inherit}
 .sloading div{display:flex;flex-direction:column;align-items:center;gap:10px;font-size:13px;font-weight:800;color:var(--navy)}
 .sloading span{width:44px;height:44px;border-radius:50%;border:5px solid #d7dcf2;border-top-color:var(--pink);animation:sspin .8s linear infinite}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+
+/* ===== 絵本形式の場面（顔・名前・短いセリフ・つぎへ） ===== */
+.sbar .sbarr{display:flex;align-items:center;gap:6px;justify-self:end}
+.ssound{width:38px;height:38px;padding:0!important;font-size:17px}
+.sscene{justify-content:flex-end;gap:0}
+.sstop{position:absolute;z-index:3;left:0;right:0;top:calc(10px + env(safe-area-inset-top,0px));display:flex;align-items:center;justify-content:space-between;gap:8px;
+  padding:0 max(12px,env(safe-area-inset-left,0px))}
+.sstop .sfac{position:static;background:rgba(255,255,255,.88);border-radius:999px;padding:7px 14px;font-size:12.5px;font-weight:800}
+.sactor{bottom:auto;top:calc(54px + env(safe-area-inset-top,0px));height:min(42vh,360px)}
+.sbook{position:relative;z-index:2;width:100%;max-width:560px;margin:0 auto;border-radius:24px;padding:16px 18px 16px;
+  background:#fffdf6;border:3px solid #fff;box-shadow:0 14px 34px rgba(0,0,0,.25),inset 0 0 0 1px #f0e0c8;display:flex;flex-direction:column;gap:12px;
+  background-image:linear-gradient(90deg,rgba(200,140,90,.08),transparent 8%,transparent 92%,rgba(200,140,90,.08));animation:spage .3s ease-out}
+@keyframes spage{from{opacity:.4;transform:translateY(8px)}}
+.sspeaker{display:flex;align-items:center;gap:10px}
+.sface{flex:none;width:58px;height:58px;border-radius:50%;overflow:hidden;background:#fff0f5;border:3px solid var(--pink);box-shadow:0 4px 10px rgba(226,61,114,.25)}
+.sface img{width:170%;height:auto;margin-left:-35%;margin-top:-2%;display:block}
+.sspeaker b{font-size:17px;font-weight:800;color:var(--pink)}
+.stext{margin:0;font-size:clamp(17px,4.8vw,20px);line-height:1.75;font-weight:700;color:#1d2766;text-wrap:pretty;min-height:3.5em}
+.sbook.narr .stext{font-weight:500;color:#3a4280;text-align:center;padding:6px 4px}
+.snav{display:flex;align-items:center;justify-content:space-between;min-height:24px;margin-top:-4px}
+.sprev{padding:4px 0!important;font-size:12.5px!important}
+.sdots{display:flex;gap:5px;margin-left:auto}
+.sdots i{width:7px;height:7px;border-radius:50%;background:#e2d6c6}
+.sdots i.on{background:var(--pink);width:18px;border-radius:4px}
+.snextbtn{font-size:17px!important}
+.snextbtn span{font-size:12px}
+.sask{margin:0 0 2px;font-size:13px;font-weight:800;color:var(--muted);text-align:center}
+@media (max-height:640px){.sactor{height:30vh}.sface{width:46px;height:46px}}
+
+/* アイテムをもらった */
+.sitempop{position:fixed;inset:0;z-index:58;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:rgba(18,22,60,.45);cursor:pointer;overflow:hidden}
+.sipcard{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:4px;background:#fff;border-radius:26px;padding:22px 30px;box-shadow:0 18px 40px rgba(0,0,0,.35);
+  border:4px solid #ffd96a;text-align:center;max-width:84vw;animation:spop .5s cubic-bezier(.2,1.6,.4,1)}
+.sipicon{font-size:64px;line-height:1.1;animation:sfloat 1.6s ease-in-out infinite}
+.sipcard b{font-size:20px;color:var(--navy)}.sipcard em{font-style:normal;font-weight:800;color:var(--pink)}
+.sipcard small{font-size:12px;color:var(--muted);line-height:1.6;max-width:16em}
+.siptap{position:relative;z-index:1;margin:0;color:#fff;font-size:12px;font-weight:700;opacity:.85}
+.sitempop i{position:absolute;left:50%;top:50%;width:10px;height:10px;margin:-5px;background:#ffd000;clip-path:polygon(50% 0,61% 39%,100% 50%,61% 61%,50% 100%,39% 61%,0 50%,39% 39%);
+  animation:sray 1.1s var(--d) ease-out forwards;transform:rotate(var(--a)) translateY(0)}
+@keyframes spop{from{transform:scale(.3);opacity:0}}
+@keyframes sfloat{50%{transform:translateY(-6px) rotate(-4deg)}}
+@keyframes sray{to{transform:rotate(var(--a)) translateY(-150px) scale(1.6);opacity:0}}
+
+/* エンディング */
+.sending{position:fixed;inset:0;z-index:58;display:grid;place-items:center;background:radial-gradient(circle at 50% 45%,rgba(255,240,180,.55),rgba(18,22,60,.75) 70%);cursor:pointer;overflow:hidden;animation:sfade .6s ease-out}
+.sendcard{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:2px;color:#fff;text-shadow:0 4px 18px rgba(255,200,60,.9);animation:spop .8s cubic-bezier(.2,1.4,.4,1)}
+.sendcard span{font-size:30px;color:#ffd96a}.sendcard b{font-size:44px;font-weight:800;letter-spacing:.2em}.sendcard em{font-style:normal;font-size:12px;letter-spacing:.4em}
+.sending i{position:absolute;left:var(--x);top:var(--y);width:var(--s);height:var(--s);background:#fff6c8;clip-path:polygon(50% 0,61% 39%,100% 50%,61% 61%,50% 100%,39% 61%,0 50%,39% 39%);
+  animation:stwinkle 1.6s var(--d) ease-in-out infinite;opacity:0}
+@keyframes stwinkle{50%{opacity:1;transform:scale(1.4) rotate(45deg)}}
+@keyframes sfade{from{opacity:0}}

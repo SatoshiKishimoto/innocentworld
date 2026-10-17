@@ -98,7 +98,7 @@
   function topbar(title, opt){
     opt = opt || {};
     return `<header class="sbar">${opt.back ? `<button class="sbtn ghost" data-act="${opt.back}">‹ もどる</button>` : '<span></span>'}<b>${esc(title)}</b>${
-      L.resident && !opt.noCard ? '<button class="sbtn chip" data-act="card">住民票</button>' : '<span></span>'}</header>` + embedBar();
+      `<span class="sbarr">${soundBtn()}${L.resident && !opt.noCard ? '<button class="sbtn chip" data-act="card">住民票</button>' : ''}</span>`}</header>` + embedBar();
   }
   function embedBar(){
     let inFrame = false; try{ inFrame = window.self !== window.top; }catch(e){ inFrame = true; }
@@ -113,11 +113,55 @@
     t.textContent = msg; t.hidden = false; clearTimeout(toast._t); toast._t = setTimeout(() => t.hidden = true, 3800); }
   function modal(html){ let m = $('svModal'); if(!m){ m = document.createElement('div'); m.id = 'svModal'; m.className = 'smodal'; document.body.appendChild(m); } m.innerHTML = html; m.hidden = false; }
   function closeModal(){ const m = $('svModal'); if(m){ m.hidden = true; m.innerHTML = ''; } }
-  function shake(el){ el.classList.remove('sshake'); void el.offsetWidth; el.classList.add('sshake'); }
+  function shake(el){ el.classList.remove('sshake'); void el.offsetWidth; el.classList.add('sshake'); SFX.play('wrong'); }
+  /* ---------- 効果音（音はおまけ。音がなくても内容はすべて文字と動きで分かる） ----------
+     将来の音声：セリフに音声ファイルがあれば SFX.voice(url) で再生（「セリフ」シートの音声列） */
+  const SFX = (() => {
+    let ctx = null, on = true;
+    try{ on = localStorage.getItem('iw_story_sound') !== 'off'; }catch(e){}
+    let voiceEl = null;
+    function ac(){ if(!ctx){ const C = window.AudioContext || window.webkitAudioContext; if(!C) return null; ctx = new C(); } if(ctx.state === 'suspended') ctx.resume(); return ctx; }
+    function tone(f, t, d, type, vol){
+      const c = ac(); if(!c) return;
+      const o = c.createOscillator(), g = c.createGain(), t0 = c.currentTime + t;
+      o.type = type || 'sine'; o.frequency.setValueAtTime(f, t0);
+      g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(vol || 0.12, t0 + 0.012); g.gain.exponentialRampToValueAtTime(0.0001, t0 + d);
+      o.connect(g); g.connect(c.destination); o.start(t0); o.stop(t0 + d + 0.05);
+    }
+    const bell = (f, t, d, v) => { tone(f, t, d, 'sine', v); tone(f*2, t, d*0.6, 'sine', (v || 0.12)*0.35); tone(f*3.01, t, d*0.3, 'triangle', (v || 0.12)*0.12); };
+    const N = n => 440 * Math.pow(2, (n - 69)/12);
+    const play = {
+      page(){ tone(N(88), 0, 0.06, 'triangle', 0.03); },
+      correct(){ [72, 76, 79, 84].forEach((n, i) => bell(N(n), i*0.09, 0.9, 0.11)); },
+      wrong(){ tone(N(57), 0, 0.18, 'triangle', 0.08); tone(N(53), 0.16, 0.28, 'triangle', 0.08); },
+      item(){ [84, 88, 91, 96, 100].forEach((n, i) => bell(N(n), i*0.06, 0.6, 0.07)); },
+      ending(){ [[60,64,67],[65,69,72],[67,71,74],[72,76,79,84]].forEach((ch, i) => ch.forEach(n => { tone(N(n), i*0.32, i === 3 ? 2.2 : 0.4, 'triangle', 0.06); tone(N(n+12), i*0.32, i === 3 ? 1.6 : 0.3, 'sine', 0.03); }));
+        [96, 100, 103, 108].forEach((n, i) => bell(N(n), 1.0 + i*0.12, 1.2, 0.05)); }
+    };
+    return {
+      get on(){ return on; },
+      set(v){ on = v; try{ localStorage.setItem('iw_story_sound', v ? 'on' : 'off'); }catch(e){} if(!v) this.stopVoice(); else ac(); },
+      play(name){ if(!on || !play[name]) return; try{ play[name](); }catch(e){} },
+      voice(url){ this.stopVoice(); if(!on || !url) return; try{ voiceEl = new Audio(url); voiceEl.play().catch(() => {}); }catch(e){} },
+      stopVoice(){ if(voiceEl){ try{ voiceEl.pause(); }catch(e){} voiceEl = null; } }
+    };
+  })();
+  function soundBtn(){ return `<button class="sbtn ghost ssound" data-act="sound" aria-pressed="${SFX.on}" aria-label="効果音 ${SFX.on ? 'オン' : 'オフ'}">${SFX.on ? '🔊' : '🔇'}</button>`; }
+  // アイテムをもらったとき：大きく見せる
+  function itemPop(ids){
+    if(!ids || !ids.length) return;
+    const c = document.createElement('div'); c.className = 'sitempop'; c.setAttribute('role', 'status');
+    c.innerHTML = ids.map(i => { const it = defs().items[i] || {name:i}; return `<div class="sipcard"><span class="sipicon">${esc(it.icon || '★')}</span><b>${esc(it.name)}</b><em>をもらった！</em>${it.desc ? `<small>${esc(it.desc)}</small>` : ''}</div>`; }).join('')
+      + '<p class="siptap">タップでとじる</p>' + Array.from({length:14}, (_, k) => `<i style="--a:${k*360/14}deg;--d:${(k%3)*0.08}s"></i>`).join('');
+    c.addEventListener('click', () => c.remove());
+    document.body.appendChild(c); SFX.play('item');
+    setTimeout(() => c.remove(), 3200);
+  }
   function celebrate(msg){
     const c = document.createElement('div'); c.className = 'scele';
     c.innerHTML = `<p>${esc(msg)}</p>` + Array.from({length:26}, (_, i) => `<i style="--x:${(Math.random()*100).toFixed(1)}%;--d:${(Math.random()*0.5).toFixed(2)}s;--c:${['#ffd000','#e23d72','#1e5aff','#10c050','#ff8a1a'][i%5]}"></i>`).join('');
     document.body.appendChild(c); setTimeout(() => c.remove(), 1900);
+    SFX.play('correct');
   }
 
   /* ---------- 埋め込みから「全画面で開く」で来たとき：住民票を引きつぐ ---------- */
@@ -333,10 +377,24 @@
     (item || []).forEach(i => { if(!st.items[i]){ st.items[i] = L.today; got.push(i); } });
     save(); return got;
   }
+  // 1画面の文は短く：長いセリフは文の切れ目で自動的にページを分ける（目安60文字）
+  const PAGE_MAX = 60;
+  function splitText(t){
+    t = String(t || '');
+    if(t.length <= PAGE_MAX) return [t];
+    const parts = t.match(/[^。！？!?]+[。！？!?」』）)]*|[^。！？!?]+$/g) || [t], out = [];
+    let cur = '';
+    parts.forEach(p => { if(cur && (cur + p).length > PAGE_MAX){ out.push(cur); cur = p; } else cur += p; });
+    if(cur) out.push(cur);
+    return out;
+  }
   function enterScene(){
     const sc = scene();
     if(!sc){ toast('物語の続きが見つかりませんでした。'); return finish(); }
-    P.got = addAll(sc.add, sc.flag, sc.item); P.line = 0; render();
+    P.got = addAll(sc.add, sc.flag, sc.item); P.line = 0; P.gotShown = false;
+    P.pages = [];
+    (sc.lines.length ? sc.lines : [['', '']]).forEach(l => splitText(fill(l[1])).forEach((t, i) => P.pages.push({who:l[0], text:t, voice:i === 0 ? l[2] : ''})));
+    render();
   }
   function check(c){
     if(!c) return true;
@@ -356,36 +414,51 @@
     if(c.doneCount && Object.keys(st.done).length < c.doneCount) return false;
     return true;
   }
+  function face(k){ return `<span class="sface"><img src="${charImg(k)}" alt=""></span>`; }
   function render(){
-    const sc = scene(), lines = sc.lines.length ? sc.lines : [['', '']], ln = lines[P.line] || ['', ''];
-    const who = ln[0], text = ln[1], last = P.line >= lines.length - 1;
+    const sc = scene(), pages = P.pages, pg = pages[P.line] || {who:'', text:''};
+    const who = pg.who, last = P.line >= pages.length - 1;
     const choices = last ? sc.choices.filter(c => check(c.cond)) : [];
     const fac = (L.map || []).find(x => x.id === P.b.facility);
     const bg = /^#[0-9a-f]{3,8}$/i.test(sc.bg) ? `style="background:${sc.bg}"` : '';
     const got = last && P.got.length ? `<div class="sgot">${P.got.map(i => { const it = defs().items[i]; return `<span>${it ? esc((it.icon || '★') + ' ' + it.name) : esc(i)} をもらった！</span>`; }).join('')}</div>` : '';
+    const ending = last && sc.ar;
     let foot;
-    if(choices.length) foot = `<div class="schoices">${choices.map(c => `<button class="sbtn choice" data-act="choose" data-i="${sc.choices.indexOf(c)}">${esc(fill(c.text))}</button>`).join('')}</div>`;
-    else if(last && sc.ar) foot = `<div class="sar"><a class="sbtn main pink" href="${esc(arLink(sc.ar))}" target="_blank" rel="noopener" data-act="ar">${esc(fill(sc.arLabel || 'ARを見る'))}</a>
+    if(choices.length) foot = `<div class="schoices" role="group" aria-label="どうする？"><p class="sask">どうする？</p>${choices.map(c => `<button class="sbtn choice" data-act="choose" data-i="${sc.choices.indexOf(c)}">${esc(fill(c.text))}</button>`).join('')}</div>`;
+    else if(ending) foot = `<div class="sar"><a class="sbtn main pink" href="${esc(arLink(sc.ar))}" target="_blank" rel="noopener" data-act="ar">${esc(fill(sc.arLabel || 'ARを見る'))}</a>
       <small>新しい画面でARが開きます。見終わったら、この画面にもどってきてね。</small><button class="sbtn link" data-act="next">地図にもどる</button></div>`;
-    else foot = `<span class="snext">${last && !sc.next ? 'おわり ▶' : 'タップで次へ ▼'}</span>`;
+    else foot = `<button class="sbtn main snextbtn" data-act="next">${last && !sc.next ? 'とじる' : 'つぎへ'} <span aria-hidden="true">▶</span></button>`;
+    const dots = pages.length > 1 ? `<span class="sdots" aria-label="${P.line + 1} / ${pages.length}">${pages.map((_, i) => `<i class="${i === P.line ? 'on' : ''}"></i>`).join('')}</span>` : '<span></span>';
     set(`<div class="sscene bg-${esc(/^[a-z]+$/.test(sc.bg) ? sc.bg : 'meadow')}" ${bg}>
-      <button class="sbtn ghost scl" data-act="leave">‹ 地図へ</button>${fac ? `<span class="sfac">${esc(fac.name)}</span>` : ''}
-      ${who ? `<img class="sactor" src="${charImg(who)}" alt="${esc(cname(who))}">` : ''}
-      <div class="sbox" ${choices.length || (last && sc.ar) ? '' : 'data-act="next" role="button" tabindex="0" aria-label="次へ"'}>
-        ${who ? `<div class="sname">${esc(cname(who))}</div>` : ''}
-        <p class="${who ? '' : 'narr'}">${esc(fill(text))}</p>${got}${foot}
-      </div></div>`);
+      <div class="sstop"><button class="sbtn ghost" data-act="leave">‹ 地図へ</button>${fac ? `<span class="sfac">${esc(fac.name)}</span>` : '<span></span>'}${soundBtn()}</div>
+      ${who ? `<img class="sactor" src="${charImg(who)}" alt="" aria-hidden="true">` : ''}
+      <article class="sbook ${who ? '' : 'narr'}" aria-live="polite">
+        ${who ? `<header class="sspeaker">${face(who)}<b>${esc(cname(who))}</b></header>` : ''}
+        <p class="stext">${esc(pg.text)}</p>${got}
+        <div class="snav">${P.line > 0 ? '<button class="sbtn link sprev" data-act="prev">◀ もどる</button>' : '<span></span>'}${dots}</div>
+        ${foot}
+      </article></div>`);
+    SFX.voice(pg.voice);
+    if(last && P.got.length && !P.gotShown){ P.gotShown = true; setTimeout(() => itemPop(P.got), 250); }
+    if(ending && !P.endShown){ P.endShown = true; endingFx(); }
+  }
+  function endingFx(){
+    const c = document.createElement('div'); c.className = 'sending'; c.setAttribute('role', 'status');
+    c.innerHTML = '<div class="sendcard"><span>✦</span><b>おしまい</b><em>THE END</em></div>' + Array.from({length:30}, () => `<i style="--x:${(Math.random()*100).toFixed(1)}%;--y:${(Math.random()*70).toFixed(1)}%;--d:${(Math.random()*1.4).toFixed(2)}s;--s:${(6 + Math.random()*10).toFixed(0)}px"></i>`).join('');
+    c.addEventListener('click', () => c.remove());
+    document.body.appendChild(c); SFX.play('ending');
+    setTimeout(() => c.remove(), 3600);
   }
   function arLink(m){ const u = new URL(AR_URL, location.href); u.searchParams.set('ar', m); return u.href; }
   function next(){
     const sc = scene(); if(!sc) return;
-    if(P.line < sc.lines.length - 1){ P.line++; return render(); }
+    if(P.line < P.pages.length - 1){ P.line++; SFX.play('page'); return render(); }
     if(sc.next && P.b.scenes[sc.next]){ P.id = sc.next; return enterScene(); }
     finish();
   }
   function choose(i){
     const sc = scene(), c = sc.choices[i]; if(!c) return;
-    addAll(c.add, c.flag, c.item);
+    const got = addAll(c.add, c.flag, c.item); if(got.length) setTimeout(() => itemPop(got), 300);
     push({type:'choice', scene:P.id, choice:c.id, text:c.text});
     if(c.next && P.b.scenes[c.next]){ P.id = c.next; enterScene(); } else finish();
   }
@@ -449,8 +522,10 @@
     if(a === 'fac') return openFac(b.dataset.id);
     if(a === 'hiddenfac'){ const f = (L.map || []).find(x => x.id === b.dataset.id); return toast(f && f.hint ? f.hint : 'まだ道がひらいていません。ほかの施設の物語を読んでみてね。'); }
     if(a === 'next') return next();
+    if(a === 'prev'){ if(P && P.line > 0){ P.line--; render(); } return; }
+    if(a === 'sound'){ SFX.set(!SFX.on); b.outerHTML = soundBtn(); if(SFX.on) SFX.play('page'); return; }
     if(a === 'choose') return choose(+b.dataset.i);
-    if(a === 'leave'){ P = null; return showMap(); }
+    if(a === 'leave'){ SFX.stopVoice(); P = null; return showMap(); }
     if(a === 'newcode'){
       try{ const j = await api('newRecovery'); if(!j.ok) return toast(errText(j)); L.recovery = j.recovery; save(); showCard(); toast('新しい復元コードを発行しました。前のコードは使えなくなりました。'); }catch(err){ toast(errText(err)); }
       return;
