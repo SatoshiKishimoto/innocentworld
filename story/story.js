@@ -348,23 +348,56 @@
     const r = esc(f.roof), w = esc(f.wall);
     if(f.type === 'windmill') return `<g class="bld"><path d="M-14 26 L-9 -14 L9 -14 L14 26 Z" fill="${w}" stroke="#7a4a20" stroke-width="2"/><path d="M-11 -14 L0 -28 L11 -14 Z" fill="${r}"/>
       <rect x="-5" y="10" width="10" height="16" rx="5" fill="#1e5aff"/><g class="sblades"><path d="M0 -18 L-4 -54 L4 -54 Z M0 -18 L36 -22 L36 -14 Z M0 -18 L4 18 L-4 18 Z M0 -18 L-36 -14 L-36 -22 Z" fill="#fff" stroke="#c89a6a" stroke-width="1.5"/><circle cx="0" cy="-18" r="3.5" fill="#7a4a20"/></g></g>`;
+    if(f.type === 'well') return `<g class="bld"><path d="M-30 -24 L0 -40 L30 -24" fill="none" stroke="${r}" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect x="-24" y="-26" width="5" height="34" fill="#7a5230"/><rect x="19" y="-26" width="5" height="34" fill="#7a5230"/><rect x="-21" y="-20" width="42" height="3" fill="#7a5230"/>
+      <path d="M0 -18 L0 -2" stroke="#5a3a1a" stroke-width="1.5"/><path d="M-5 -2 h10 l-1.5 8 h-7 z" fill="#a0703a"/>
+      <ellipse cx="0" cy="8" rx="28" ry="7" fill="#5aa8e8" stroke="#6a6a72" stroke-width="2"/>
+      <path d="M-28 8 V24 Q0 34 28 24 V8 Q0 18 -28 8 Z" fill="${w}" stroke="#6a6a72" stroke-width="1.5"/>
+      ${[[-20,14],[-6,17],[8,17],[22,14],[-14,24],[0,27],[14,24]].map(([x, y]) => `<rect x="${x-6}" y="${y-3}" width="12" height="6" rx="2" fill="rgba(0,0,0,.08)" stroke="rgba(90,90,100,.45)" stroke-width="1"/>`).join('')}
+      <circle cx="-10" cy="7" r="1.6" fill="#fff"/><circle cx="6" cy="9" r="1.2" fill="#fff"/></g>`;
+    if(f.type === 'tower') return `<g class="bld"><rect x="-16" y="-34" width="32" height="62" rx="2" fill="${w}" stroke="rgba(0,0,0,.25)" stroke-width="1.5"/>
+      <path d="M-22 -32 L0 -58 L22 -32 Z" fill="${r}" stroke="rgba(0,0,0,.25)" stroke-width="1.5"/><circle cx="0" cy="-16" r="11" fill="#fffdf0" stroke="#c89a3a" stroke-width="2.5"/>
+      <path d="M0 -16 V-24 M0 -16 L6 -13" stroke="#3a2a1a" stroke-width="2" stroke-linecap="round"/><rect x="-6" y="10" width="12" height="18" rx="6" fill="${r}"/>
+      <rect x="-5" y="-4" width="10" height="8" fill="#ffd96a" stroke="#fff" stroke-width="1.5"/></g>`;
+    if(f.type === 'forest') return `<g class="bld"><rect x="-3" y="10" width="6" height="16" fill="#7a4a20"/><rect x="-25" y="14" width="5" height="12" fill="#7a4a20"/><rect x="20" y="14" width="5" height="12" fill="#7a4a20"/>
+      <circle cx="-22" cy="4" r="14" fill="${r}"/><circle cx="22" cy="4" r="14" fill="${r}"/><circle cx="0" cy="-8" r="20" fill="${r}"/><circle cx="-6" cy="-14" r="7" fill="rgba(255,255,255,.18)"/>
+      <path d="M-30 24 Q0 16 30 24" stroke="${w}" stroke-width="4" fill="none" stroke-linecap="round"/>
+      <circle cx="10" cy="-2" r="2.5" fill="#ff6a8a"/><circle cx="-14" cy="6" r="2.5" fill="#ffd000"/></g>`;
     if(f.type === 'plaza') return `<g class="bld"><ellipse cx="0" cy="14" rx="40" ry="16" fill="#f3dcc0" stroke="#c89a6a" stroke-width="2"/><circle cx="0" cy="8" r="10" fill="#7ad8ff" stroke="#fff" stroke-width="3"/>
       <path d="M0 -2 L0 -30" stroke="#c89a6a" stroke-width="3"/><path d="M0 -30 L18 -24 L0 -18 Z" fill="${r}"/>${[-30,-15,15,30].map((x, i) => `<circle cx="${x}" cy="${-4 - (i%2)*6}" r="3" fill="${['#ffd000','#e8101e','#10c050','#1e5aff'][i]}"/>`).join('')}</g>`;
     return `<g class="bld"><rect x="-26" y="-6" width="52" height="34" rx="3" fill="${w}" stroke="rgba(0,0,0,.25)" stroke-width="1.5"/>
       <path d="M-32 -4 L0 -30 L32 -4 Z" fill="${r}" stroke="rgba(0,0,0,.25)" stroke-width="1.5"/><rect x="-6" y="10" width="12" height="18" rx="6" fill="${r}"/>
       <rect x="-20" y="2" width="10" height="9" fill="#ffd96a" stroke="#fff" stroke-width="1.5"/><rect x="10" y="2" width="10" height="9" fill="#ffd96a" stroke="#fff" stroke-width="1.5"/></g>`;
   }
+  // 道：広場（なければ地図の中心）から各施設へ、ゆるやかなカーブでつなぐ
+  function roads(facs){
+    const P = f => [Math.max(8, Math.min(92, f.x)) * 4, Math.max(8, Math.min(90, f.y)) * 5 + 26];
+    const hub = facs.find(f => f.type === 'plaza'), c = hub ? P(hub) : [200, 260];
+    let d = `M${c[0]} ${c[1]} L${c[0]} 500 `;
+    facs.filter(f => f !== hub && f.status !== 'hidden').forEach(f => { const p = P(f), mx = (c[0] + p[0]) / 2, my = (c[1] + p[1]) / 2 + 24; d += `M${c[0]} ${c[1]} Q${mx} ${my} ${p[0]} ${p[1]} `; });
+    return d;
+  }
+  // 施設名の札：文字の長さに合わせて幅を決め、長すぎるときは詰めて1行に収める
+  function pinLabel(f, stroke){
+    const nm = T(f.name), est = Array.from(nm).reduce((a, c) => a + (/[\u3000-\u9fff\uff00-\uffef]/.test(c) ? 12.5 : 7), 0);
+    const w = Math.max(80, Math.min(136, est + 20)), fit = est + 20 > 136 ? `textLength="${w - 14}" lengthAdjust="spacingAndGlyphs"` : '';
+    return `<g transform="translate(0,46)"><rect class="pinlabel" x="${-w/2}" y="-12" width="${w}" height="24" rx="12" fill="#fff" stroke="${esc(stroke)}" stroke-width="2"/><text y="5" text-anchor="middle" font-size="12.5" font-weight="800" fill="#1f2f8f" ${fit}>${esc(nm)}</text></g>`;
+  }
   function showMap(){
     VIEW = showMap;
     const facs = L.map || [];
     const pins = facs.map(f => {
       const x = Math.max(8, Math.min(92, f.x)) * 4, y = Math.max(8, Math.min(90, f.y)) * 5;
+      if(f.status === 'blocked') return `<g transform="translate(${x},${y})" class="spin blocked" data-act="hiddenfac" data-id="${esc(f.id)}" role="button" tabindex="0" aria-label="${esc(T(f.name))}（${esc(t('blockedLabel'))}）">
+        <ellipse cx="0" cy="30" rx="34" ry="7" fill="rgba(60,30,10,.18)"/>${building(f)}
+        ${pinLabel(f, '#b8a898')}
+        <g transform="translate(32,-30)"><circle r="13" fill="#b8a898" stroke="#fff" stroke-width="2"/><text y="4.5" text-anchor="middle" font-size="11" font-weight="800" fill="#fff">…</text></g></g>`;
       if(f.status === 'hidden') return `<g transform="translate(${x},${y})" class="spin ghost" data-act="hiddenfac" data-id="${esc(f.id)}" role="button" tabindex="0" aria-label="${esc(t('hiddenPlace'))}">
         <circle r="24" fill="rgba(255,255,255,.6)" stroke="#fff" stroke-width="2.5" stroke-dasharray="5 4"/><text y="8" text-anchor="middle" font-size="24" font-weight="800" fill="#8a7a9a">?</text></g>`;
       const st = f.status, badge = st === 'locked' ? '🔒' : st === 'done' ? '✓' : 'NEW', bc = st === 'done' ? '#10a040' : st === 'open' ? '#e23d72' : '#5a6390';
       return `<g transform="translate(${x},${y})" class="spin ${st}" data-act="fac" data-id="${esc(f.id)}" role="button" tabindex="0" aria-label="${esc(T(f.name))}（${esc(t(st === 'locked' ? 'legendLocked' : st === 'done' ? 'legendDone' : 'legendOpen'))}）">
         <ellipse cx="0" cy="30" rx="34" ry="7" fill="rgba(60,30,10,.18)"/>${building(f)}
-        <g transform="translate(0,46)"><rect class="pinlabel" x="-46" y="-12" width="92" height="24" rx="12" fill="#fff" stroke="${esc(f.roof)}" stroke-width="2"/><text y="5" text-anchor="middle" font-size="12.5" font-weight="800" fill="#1f2f8f" ${T(f.name).length > 9 ? 'textLength="84" lengthAdjust="spacingAndGlyphs"' : ''}>${esc(T(f.name))}</text></g>
+        ${pinLabel(f, f.roof)}
         <g transform="translate(32,-30)"><g class="badge"><circle r="13" fill="${bc}" stroke="#fff" stroke-width="2"/><text y="4.5" text-anchor="middle" font-size="${st === 'open' ? 8.5 : 12}" font-weight="800" fill="#fff">${badge}</text></g></g></g>`;
     }).join('');
     const its = Object.keys(L.state.items).filter(k => L.state.items[k] && defs().items[k]);
@@ -374,9 +407,9 @@
         <defs><pattern id="svBrick" width="24" height="12" patternUnits="userSpaceOnUse"><rect width="24" height="12" fill="#e8a070"/><path d="M0 0H24M0 6H24M0 12H24M6 0V6M18 6V12" stroke="#c87850" stroke-width="1"/></pattern>
         <radialGradient id="svGrass" cx="50%" cy="45%" r="70%"><stop offset="0" stop-color="#b8ec8a"/><stop offset="1" stop-color="#7cc860"/></radialGradient></defs>
         <rect width="400" height="500" fill="url(#svGrass)"/>
-        <path d="M96 150 Q150 220 200 250 Q250 220 304 140 M200 250 Q150 300 88 360 M200 250 Q260 300 312 350 M200 250 L200 500" stroke="url(#svBrick)" stroke-width="26" fill="none" stroke-linecap="round"/>
+        <path d="${roads(facs)}" stroke="url(#svBrick)" stroke-width="24" fill="none" stroke-linecap="round"/>
         <path d="M20 480 Q70 440 120 480 M280 50 Q330 20 380 50" stroke="#5aa8e8" stroke-width="10" fill="none" stroke-linecap="round" opacity=".7"/>
-        ${[[30,90],[360,210],[40,250],[350,440],[150,470],[130,90],[262,470],[200,40]].map(([x, y]) => `<g transform="translate(${x},${y})"><rect x="-3" y="4" width="6" height="12" fill="#7a4a20"/><circle r="14" fill="#3aa848"/><circle cx="-5" cy="-4" r="5" fill="#5ac868"/></g>`).join('')}
+        ${[[30,90],[360,210],[40,250],[350,440],[150,470],[130,90],[262,470],[200,40],[30,420],[370,90]].filter(([x, y]) => facs.every(f => Math.hypot(Math.max(8, Math.min(92, f.x)) * 4 - x, Math.max(8, Math.min(90, f.y)) * 5 + 10 - y) > 62)).map(([x, y]) => `<g transform="translate(${x},${y})"><rect x="-3" y="4" width="6" height="12" fill="#7a4a20"/><circle r="14" fill="#3aa848"/><circle cx="-5" cy="-4" r="5" fill="#5ac868"/></g>`).join('')}
         ${pins}
       </svg></div>
       <div class="slegend"><span><i style="background:#5a6390"></i>${esc(t('legendLocked'))}</span><span><i style="background:#e23d72"></i>${esc(t('legendOpen'))}</span><span><i style="background:#10a040"></i>${esc(t('legendDone'))}</span></div>
@@ -471,8 +504,9 @@
     if(c.notFlags && c.notFlags.some(f => st.flags[f])) return false;
     if(c.items && !c.items.every(i => st.items[i])) return false;
     if(c.points && !Object.keys(c.points).every(k => (st.points[k] || 0) >= c.points[k])) return false;
-    if(c.done && !c.done.every(f => st.done[f])) return false;
-    if(c.doneCount && Object.keys(st.done).length < c.doneCount) return false;
+    const ev = L.day ? L.day.event : '';
+    if(c.done && !c.done.every(f => st.done[ev + ':' + f])) return false;
+    if(c.doneCount && Object.keys(st.done).filter(k => k.indexOf(ev + ':') === 0).length < c.doneCount) return false;
     return true;
   }
   function face(k){ return `<span class="sface"><img src="${charImg(k)}" alt=""></span>`; }
@@ -527,7 +561,8 @@
   async function finish(){
     const b = P && P.b; P = null;
     if(b && b.facility !== 'intro'){
-      if(!L.state.done[b.facility]) L.state.done[b.facility] = L.today;
+      const dk = (L.day ? L.day.event : '') + ':' + b.facility;
+      if(!L.state.done[dk]) L.state.done[dk] = L.today;
       push({type:'done', facility:b.facility, route:b.route});
     }
     save();
@@ -572,7 +607,7 @@
   document.addEventListener('click', async e => {
     const b = e.target.closest('[data-act]'); if(!b) return;
     const a = b.dataset.act;
-    if(a === 'ar'){ if(P && P.b && P.b.facility !== 'intro' && !L.state.done[P.b.facility]){ L.state.done[P.b.facility] = L.today; push({type:'done', facility:P.b.facility, route:P.b.route}); syncSoon(); } return; }   // リンクはそのまま新しいタブで開く
+    if(a === 'ar'){ const dk = P && P.b ? (L.day ? L.day.event : '') + ':' + P.b.facility : ''; if(P && P.b && P.b.facility !== 'intro' && !L.state.done[dk]){ L.state.done[dk] = L.today; push({type:'done', facility:P.b.facility, route:P.b.route}); syncSoon(); } return; }   // リンクはそのまま新しいタブで開く
     e.preventDefault();
     if(a === 'lang') return showLangPicker();
     if(a === 'setlang') return applyLang(b.dataset.lang);

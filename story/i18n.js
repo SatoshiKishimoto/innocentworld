@@ -67,6 +67,7 @@ window.STORY_I18N = {
     items:        {ja: 'もちもの', kana: 'もちもの', en: 'Your items'},
     noItems:      {ja: 'まだ何も持っていません。', kana: 'まだ なにも もっていないよ。', en: 'You have no items yet.'},
     mapNote:      {ja: '建物をタップして、施設に掲示されたひみつのことばを入力すると、その施設の物語がひらきます。<br>一度ひらいた施設は、今日のあいだはそのまま読めます。', kana: 'たてものを タップして、かんばんの ひみつの ことばを いれると、ものがたりが ひらくよ。<br>いちど ひらいたら、きょうは そのまま よめるよ。', en: 'Tap a building and enter the secret word posted there to open its story.<br>Once opened, you can read it again freely today.'},
+    blockedLabel: {ja: 'まだ入れません', kana: 'まだ はいれないよ', en: 'Not open yet'},
     hiddenPlace:  {ja: 'まだひらいていない場所', kana: 'まだ ひらいていない ばしょ', en: 'A place not yet open'},
     hiddenHint:   {ja: 'まだ道がひらいていません。ほかの施設の物語を読んでみてね。', kana: 'まだ みちが ひらいていないよ。ほかの ものがたりを よんでみてね。', en: 'This path is not open yet. Try reading other stories first.'},
     // 施設
@@ -114,6 +115,7 @@ window.STORY_I18N = {
     closed:         {ja: '今日はレンガ村はお休みです。', kana: 'きょうは レンガむらは おやすみ だよ。', en: 'Brick Village is closed today.'},
     no_word:        {ja: '今日は、ここの物語はお休みです。', kana: 'きょうは、ここの ものがたりは おやすみ だよ。', en: 'This story is closed today.'},
     entrance_first: {ja: '先に、入口のひみつのことばを入力してください。', kana: 'さきに、いりぐちの ひみつの ことばを いれてね。', en: 'Please enter the entrance secret word first.'},
+    blocked:        {ja: 'まだ入れません。ほかの場所をめぐってから来てね。', kana: 'まだ はいれないよ。ほかの ばしょを まわってから きてね。', en: 'Not open yet. Visit the other places first.'},
     hidden:         {ja: 'まだ道がひらいていません。', kana: 'まだ みちが ひらいていないよ。', en: 'This path is not open yet.'},
     auth:           {ja: '住民票が確認できませんでした。', kana: 'じゅうみんひょうが たしかめられなかったよ。', en: 'We could not verify your Resident Card.'},
     busy:           {ja: '混み合っています。少し待ってからもう一度お試しください。', kana: 'こんでいるよ。すこし まってから もういちど ためしてね。', en: 'It is busy right now. Please wait a moment and try again.'},

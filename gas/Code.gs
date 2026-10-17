@@ -25,7 +25,7 @@ var SHEETS = {
   events:     {name: 'イベント',   head: ['event_id', 'イベント名', '公開開始日', '公開終了日', 'メモ', 'イベント名（ひらがな）', 'イベント名（English）']},
   days:       {name: '開催日',     head: ['event_id', '開催日', '表示名', '何日目', '表示名（ひらがな）', '表示名（English）']},
   words:      {name: 'ことば',     head: ['開催日', '施設ID', '正解（複数は｜で区切る。日本語・ひらがな・英語などを並べてよい）', '正解したときのメッセージ', 'メッセージ（ひらがな）', 'メッセージ（English）']},
-  facilities: {name: '施設',       head: ['event_id', '施設ID', '名前', '説明', '地図X(0-100)', '地図Y(0-100)', '屋根の色', '壁の色', '形(house/windmill/plaza)', '地図に出る条件', '条件を満たす前のヒント', '並び順', '名前（ひらがな）', '名前（English）', '説明（ひらがな）', '説明（English）', 'ヒント（ひらがな）', 'ヒント（English）']},
+  facilities: {name: '施設',       head: ['event_id', '施設ID', '名前', '説明', '地図X(0-100)', '地図Y(0-100)', '屋根の色', '壁の色', '形(house/windmill/plaza)', '地図に出る条件', '条件を満たす前のヒント', '並び順', '名前（ひらがな）', '名前（English）', '説明（ひらがな）', '説明（English）', 'ヒント（ひらがな）', 'ヒント（English）', '入れる条件（満たすまで地図には出るが入れない）']},
   routes:     {name: '物語の入口', head: ['event_id', '施設ID（introは開催日の最初）', '優先順', '条件', '最初の場面ID', '公開開始日', '公開終了日', 'メモ']},
   scenes:     {name: '場面',       head: ['event_id', '場面ID', '背景', '次の場面ID', 'もらえるアイテム', '記録する', 'ポイント', 'AR(parade/xmas/fireworks)', 'ARボタンの文字', 'メモ', 'ARボタンの文字（ひらがな）', 'ARボタンの文字（English）']},
   lines:      {name: 'セリフ',     head: ['event_id', '場面ID', '順番', '話す住人ID（空欄は地の文）', 'セリフ', '音声ファイルURL（将来用・空欄でOK）', 'セリフ（ひらがな）', 'セリフ（English）']},
@@ -161,7 +161,7 @@ function buildContent(){
   });
   C.facilities = rows('facilities').filter(function(r){ return str(r[0]) && str(r[1]); }).map(function(r){
     return {event: str(r[0]), id: str(r[1]), name: tri(r[2], r[12], r[13]), sub: tri(r[3], r[14], r[15]), x: Number(r[4]) || 50, y: Number(r[5]) || 50,
-      roof: str(r[6]) || '#e8101e', wall: str(r[7]) || '#fff1d6', type: str(r[8]) || 'house', show: parseCond(r[9], C), hint: tri(r[10], r[16], r[17]), order: Number(r[11]) || 0};
+      roof: str(r[6]) || '#e8101e', wall: str(r[7]) || '#fff1d6', type: str(r[8]) || 'house', show: parseCond(r[9], C), open: parseCond(r[18], C), hint: tri(r[10], r[16], r[17]), order: Number(r[11]) || 0};
   }).sort(function(a, b){ return a.order - b.order; });
   C.routes = rows('routes').filter(function(r){ return str(r[0]) && str(r[1]) && str(r[4]); }).map(function(r){
     return {event: str(r[0]), facility: str(r[1]), prio: Number(r[2]) || 0, cond: parseCond(r[3], C), start: str(r[4]), from: ymd(r[5]), to: ymd(r[6])};
@@ -234,6 +234,8 @@ function itemId(nameOrId, C){
   return nameOrId;
 }
 
+/** そのイベントで読み終えた施設の数（前のイベントの読了は数えない。物語の最初 intro は施設に含めない） */
+function doneIn(st, ev){ var n = 0, p = ev + ':'; for(var k in st.done) if(k.indexOf(p) === 0) n++; return n; }
 /** 条件の判定（スマホ側の story.js にも同じ判定があります） */
 function check(c, st, ctx){
   if(!c) return true;
@@ -249,8 +251,8 @@ function check(c, st, ctx){
   if(c.notFlags) for(i = 0; i < c.notFlags.length; i++) if(st.flags[c.notFlags[i]]) return false;
   if(c.items) for(i = 0; i < c.items.length; i++) if(!st.items[c.items[i]]) return false;
   if(c.points) for(var k in c.points) if((st.points[k] || 0) < c.points[k]) return false;
-  if(c.done) for(i = 0; i < c.done.length; i++) if(!st.done[c.done[i]]) return false;
-  if(c.doneCount && Object.keys(st.done).length < c.doneCount) return false;
+  if(c.done) for(i = 0; i < c.done.length; i++) if(!st.done[ctx.event + ':' + c.done[i]]) return false;
+  if(c.doneCount && doneIn(st, ctx.event) < c.doneCount) return false;
   return true;
 }
 
@@ -427,13 +429,14 @@ function apiBoot(me, req){
   return res;
 }
 
-function ctxFor(info, vi){ return {dayNo: info.dayNo, returning: vi.returning, returningThis: vi.returningThis, prevEvent: vi.prevEvent}; }
+function ctxFor(info, vi){ return {event: info.event, dayNo: info.dayNo, returning: vi.returning, returningThis: vi.returningThis, prevEvent: vi.prevEvent}; }
 function mapFor(info, st, vi, un){
   var ctx = ctxFor(info, vi);
   return content().facilities.filter(function(f){ return f.event === info.event; }).map(function(f){
-    var shown = check(f.show, st, ctx);
+    var shown = check(f.show, st, ctx), canEnter = check(f.open, st, ctx);
     return {id: f.id, name: f.name, sub: f.sub, x: f.x, y: f.y, roof: f.roof, wall: f.wall, type: f.type,
-      status: !shown ? 'hidden' : !un.fac[f.id] ? 'locked' : st.done[f.id] ? 'done' : 'open', hint: shown ? '' : f.hint};
+      status: !shown ? 'hidden' : !canEnter ? 'blocked' : !un.fac[f.id] ? 'locked' : st.done[info.event + ':' + f.id] ? 'done' : 'open',
+      hint: shown && canEnter ? '' : f.hint};
   });
 }
 
@@ -470,6 +473,7 @@ function apiFacility(me, req){
   if(!fac) return {ok: false, error: 'no_facility'};
   var st = loadState(me.rid), vi = visitInfo(me.rid, d, info.event), ctx = ctxFor(info, vi), msg = '';
   if(!check(fac.show, st, ctx)) return {ok: false, error: 'hidden', hint: fac.hint};
+  if(!check(fac.open, st, ctx)) return {ok: false, error: 'blocked', hint: fac.hint};
   if(!un.fac[fid]){
     var w = wordFor(d, fid);
     if(!w) return {ok: false, error: 'no_word'};
