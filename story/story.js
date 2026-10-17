@@ -346,7 +346,8 @@
     if(c.returning === true && !L.returning) return false;
     if(c.returning === false && L.returning) return false;
     if(c.prevEvent && !L.prevEvent) return false;
-    if(c.returningThis && !L.returningThis) return false;
+    if(c.returningThis === true && !L.returningThis) return false;
+    if(c.returningThis === false && L.returningThis) return false;
     if(c.flags && !c.flags.every(f => st.flags[f])) return false;
     if(c.notFlags && c.notFlags.some(f => st.flags[f])) return false;
     if(c.items && !c.items.every(i => st.items[i])) return false;

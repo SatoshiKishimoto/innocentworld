@@ -200,6 +200,7 @@ function parseCond(v, C){
     if(t === '初来訪'){ c.returning = false; return; }
     if(t === '前回参加'){ c.prevEvent = true; return; }
     if(t === '今回再訪'){ c.returningThis = true; return; }
+    if(t === '今回初来訪'){ c.returningThis = false; return; }
     if((m = t.match(/^(\d+)日目$/)) || (m = t.match(/^日[:：](\d+)$/))){ c.day = Number(m[1]); return; }
     if((m = t.match(/^アイテム[:：](.+)$/))){ (c.items = c.items || []).push(itemId(m[1].trim(), C)); return; }
     if((m = t.match(/^記録なし[:：](.+)$/))){ (c.notFlags = c.notFlags || []).push(m[1].trim()); return; }
@@ -237,7 +238,8 @@ function check(c, st, ctx){
   if(c.returning === true && !ctx.returning) return false;
   if(c.returning === false && ctx.returning) return false;
   if(c.prevEvent && !ctx.prevEvent) return false;
-  if(c.returningThis && !ctx.returningThis) return false;
+  if(c.returningThis === true && !ctx.returningThis) return false;
+  if(c.returningThis === false && ctx.returningThis) return false;
   var i;
   if(c.flags) for(i = 0; i < c.flags.length; i++) if(!st.flags[c.flags[i]]) return false;
   if(c.notFlags) for(i = 0; i < c.notFlags.length; i++) if(st.flags[c.notFlags[i]]) return false;
@@ -588,8 +590,9 @@ function seedSample(){
     [EV, 'plaza', '中央広場', 'パレードのはじまる場所', 50, 50, '#e23d72', '#fff7ea', 'plaza', '読了数>=2', 'ほかの施設の物語を2つ読むと、広場への道がひらきます。', 5]
   ]);
   put('routes', [
-    [EV, 'intro', 1, '再訪', 'intro_return', '', '', '2回目以降の来場'],
-    [EV, 'intro', 2, '', 'intro_1', '', '', ''],
+    [EV, 'intro', 1, '今回再訪', 'intro_return', '', '', '1日目にも来た住民（両日参加）'],
+    [EV, 'intro', 2, '2日目；今回初来訪', 'intro_day2', '', '', '2日目だけ参加の住民（前回イベント参加者も含む）'],
+    [EV, 'intro', 3, '', 'intro_1', '', '', ''],
     [EV, 'bakery', 1, '今回再訪', 'bakery_r1', '', '', '1日目にも来た住民だけ'],
     [EV, 'bakery', 2, '', 'bakery_1', '', '', ''],
     [EV, 'flower', 1, '', 'flower_1', '', '', ''],
@@ -601,7 +604,7 @@ function seedSample(){
     [EV, 'plaza', 3, '', 'end_wonder', '', '', 'エンディング']
   ]);
   var SC = [
-    ['intro_1', 'meadow', '', '', '', '', '', ''], ['intro_return', 'meadow', '', '', 'returned', '', '', ''],
+    ['intro_1', 'meadow', '', '', '', '', '', ''], ['intro_return', 'meadow', '', '', 'returned', '', '', ''], ['intro_day2', 'meadow', '', '', '', '', '', ''],
     ['bakery_1', 'bakery', '', '', '', '', '', ''], ['bakery_2a', 'bakery', '', 'bread', '', '', '', ''], ['bakery_2b', 'bakery', '', 'bread', 'saw_light', '', '', ''],
     ['bakery_r1', 'bakery', '', 'bread', '', 'やさしさ+1', '', ''],
     ['flower_1', 'flower', '', '', '', '', '', ''], ['flower_2a', 'flower', '', 'seed', '', '', '', ''], ['flower_2b', 'flower', '', 'seed', 'seed_hill', '', '', ''],
@@ -620,6 +623,9 @@ function seedSample(){
     ['intro_1', 'esper', '地図の建物をタップして、施設に掲示された「ひみつのことば」を入れてみて。物語がひらくよ！'],
     ['intro_return', 'esper', 'あっ、{name}さん！ また来てくれたんだね。会えてうれしいな。'],
     ['intro_return', 'esper', '今日は、再訪した住民さんにしか見えない物語があるんだ。パン屋さんと図書館をのぞいてみて！'],
+    ['intro_day2', '', 'ページをめくると、レンガ村はきのうより少しにぎやかでした。'],
+    ['intro_day2', 'esper', 'はじめまして、{name}さん！ じつはきのう、村でふしぎなことがあったんだ。'],
+    ['intro_day2', 'esper', '絵本の最後のページが見つからないの。みんなで手がかりを探しているところなんだ。いっしょに来てくれる？'],
     ['bakery_1', 'niko', 'いらっしゃい！ 焼きたてのパンのにおい、するでしょ？'],
     ['bakery_1', 'niko', 'でもね、今朝からオーブンの火がちょっと元気ないの……。'],
     ['bakery_2a', 'niko', 'ありがとう！ ふたりで運ぶと、あっという間だね。'],

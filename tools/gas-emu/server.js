@@ -59,6 +59,10 @@ http.createServer((req, res) => {
   const send = (o, code) => { res.writeHead(code || 200, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}); res.end(JSON.stringify(o)); };
   if(u.pathname === '/__date'){ const d = u.searchParams.get('d'); if(d) props.TEST_DATE = d; else delete props.TEST_DATE; return send({ok: true, date: d}); }
   if(u.pathname === '/__dump'){ return send(Object.fromEntries(book.sheets.map(s => [s.name, s.data.map(r => r.map(v => v instanceof Date ? fmt(v, 'Asia/Tokyo', 'yyyy-MM-dd HH:mm:ss') : v))]))); }
+  if(u.pathname === '/__append'){   // テスト用：シートに行を足す ?sheet=名前&row=JSON配列
+    const sh = book.getSheetByName(u.searchParams.get('sheet')); if(!sh) return send({ok: false});
+    sh.appendRow(JSON.parse(u.searchParams.get('row'))); Object.keys(cache).forEach(k => delete cache[k]); return send({ok: true});
+  }
   if(u.pathname === '/__clearcache'){ Object.keys(cache).forEach(k => delete cache[k]); return send({ok: true}); }
   if(req.method === 'OPTIONS'){ res.writeHead(405); return res.end(); }   // 本物の GAS も事前確認（OPTIONS）には応じない
   if(u.pathname !== '/exec') { res.writeHead(404); return res.end(); }
