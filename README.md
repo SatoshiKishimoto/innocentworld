@@ -18,3 +18,7 @@
 ## クリスマスパレードの音楽（オリジナル曲）
 - `music/xmas.mp3`：クリスマスパレードで流れるBGM（約116秒・ループ再生、鈴とチェレスタ入り）
 - `music/xmas.py`：作曲・音源生成スクリプト（`python3 music/xmas.py`）
+
+## 更新を公開するとき
+
+`sh tools/bump.sh` を実行してから commit / push してください。版番号（version.txt）が変わると、iPhoneのホーム画面から開いたときも自動で新しい版に読み込み直されます。
