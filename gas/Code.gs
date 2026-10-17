@@ -22,18 +22,18 @@ var TZ = 'Asia/Tokyo';
 /* ================= シートの定義（列の順番を変えないでください） ================= */
 var SHEETS = {
   // ---- 物語の中身（運営・芽美が編集） ----
-  events:     {name: 'イベント',   head: ['event_id', 'イベント名', '公開開始日', '公開終了日', 'メモ']},
-  days:       {name: '開催日',     head: ['event_id', '開催日', '表示名', '何日目']},
-  words:      {name: 'ことば',     head: ['開催日', '施設ID', '正解（複数は｜で区切る）', '正解したときのメッセージ']},
-  facilities: {name: '施設',       head: ['event_id', '施設ID', '名前', '説明', '地図X(0-100)', '地図Y(0-100)', '屋根の色', '壁の色', '形(house/windmill/plaza)', '地図に出る条件', '条件を満たす前のヒント', '並び順']},
+  events:     {name: 'イベント',   head: ['event_id', 'イベント名', '公開開始日', '公開終了日', 'メモ', 'イベント名（ひらがな）', 'イベント名（English）']},
+  days:       {name: '開催日',     head: ['event_id', '開催日', '表示名', '何日目', '表示名（ひらがな）', '表示名（English）']},
+  words:      {name: 'ことば',     head: ['開催日', '施設ID', '正解（複数は｜で区切る。日本語・ひらがな・英語などを並べてよい）', '正解したときのメッセージ', 'メッセージ（ひらがな）', 'メッセージ（English）']},
+  facilities: {name: '施設',       head: ['event_id', '施設ID', '名前', '説明', '地図X(0-100)', '地図Y(0-100)', '屋根の色', '壁の色', '形(house/windmill/plaza)', '地図に出る条件', '条件を満たす前のヒント', '並び順', '名前（ひらがな）', '名前（English）', '説明（ひらがな）', '説明（English）', 'ヒント（ひらがな）', 'ヒント（English）']},
   routes:     {name: '物語の入口', head: ['event_id', '施設ID（introは開催日の最初）', '優先順', '条件', '最初の場面ID', '公開開始日', '公開終了日', 'メモ']},
-  scenes:     {name: '場面',       head: ['event_id', '場面ID', '背景', '次の場面ID', 'もらえるアイテム', '記録する', 'ポイント', 'AR(parade/xmas/fireworks)', 'ARボタンの文字', 'メモ']},
-  lines:      {name: 'セリフ',     head: ['event_id', '場面ID', '順番', '話す住人ID（空欄は地の文）', 'セリフ', '音声ファイルURL（将来用・空欄でOK）']},
-  choices:    {name: '選択肢',     head: ['event_id', '場面ID', '順番', '選択肢ID', '選択肢の文', '次の場面ID', 'ポイント', '記録する', 'もらえるアイテム', '表示する条件']},
-  items:      {name: 'アイテム',   head: ['アイテムID', '名前', 'アイコン', '説明']},
-  points:     {name: 'ポイント',   head: ['ポイントID', '名前']},
-  characters: {name: '住人',       head: ['住人ID', '名前', '英語表記']},
-  regfields:  {name: '登録項目',   head: ['項目ID', '表示名', '種類(text/choice/character)', '選択肢（｜区切り）', '必須(TRUE/FALSE)', '最大文字数', '入力例']},
+  scenes:     {name: '場面',       head: ['event_id', '場面ID', '背景', '次の場面ID', 'もらえるアイテム', '記録する', 'ポイント', 'AR(parade/xmas/fireworks)', 'ARボタンの文字', 'メモ', 'ARボタンの文字（ひらがな）', 'ARボタンの文字（English）']},
+  lines:      {name: 'セリフ',     head: ['event_id', '場面ID', '順番', '話す住人ID（空欄は地の文）', 'セリフ', '音声ファイルURL（将来用・空欄でOK）', 'セリフ（ひらがな）', 'セリフ（English）']},
+  choices:    {name: '選択肢',     head: ['event_id', '場面ID', '順番', '選択肢ID', '選択肢の文', '次の場面ID', 'ポイント', '記録する', 'もらえるアイテム', '表示する条件', '選択肢の文（ひらがな）', '選択肢の文（English）']},
+  items:      {name: 'アイテム',   head: ['アイテムID', '名前', 'アイコン', '説明', '名前（ひらがな）', '名前（English）', '説明（ひらがな）', '説明（English）']},
+  points:     {name: 'ポイント',   head: ['ポイントID', '名前', '名前（ひらがな）', '名前（English）']},
+  characters: {name: '住人',       head: ['住人ID', '名前', '英語表記（English）', '名前（ひらがな）']},
+  regfields:  {name: '登録項目',   head: ['項目ID', '表示名', '種類(text/choice/character)', '選択肢（｜区切り）', '必須(TRUE/FALSE)', '最大文字数', '入力例', '表示名（ひらがな）', '表示名（English）', '選択肢（ひらがな・｜区切り）', '選択肢（English・｜区切り）', '入力例（ひらがな）', '入力例（English）']},
   // ---- 住民の記録（自動で書き込まれます。手で編集しないでください） ----
   residents:  {name: '住民',       head: ['住民番号', 'トークンハッシュ', '登録項目(JSON)', '登録日時', '最終来訪日時', '状態']},
   recovery:   {name: '復元コード', head: ['住民番号', '復元コードハッシュ', '発行日時', '状態']},
@@ -129,6 +129,8 @@ function withLock(fn){
   try{ return fn(); } finally { lock.releaseLock(); }
 }
 function str(v){ return v === null || v === undefined ? '' : String(v).trim(); }
+/** 3種類の文：ひらがな・英語がなければ日本語の文字列のまま（スマホ側で日本語を代わりに表示） */
+function tri(ja, kana, en){ ja = str(ja); kana = str(kana); en = str(en); return (kana || en) ? {ja: ja, kana: kana, en: en} : ja; }
 function splitList(v){ return str(v).split(/[｜|,、，\n]/).map(function(x){ return x.trim(); }).filter(String); }
 
 /* ================= 物語の中身（5分間キャッシュ） ================= */
@@ -146,18 +148,20 @@ function clearCache(){ CacheService.getScriptCache().remove('content_v1'); }
 
 function buildContent(){
   var C = {};
-  C.events = rows('events').filter(function(r){ return str(r[0]); }).map(function(r){ return {id: str(r[0]), name: str(r[1]), from: ymd(r[2]), to: ymd(r[3])}; });
-  C.days = rows('days').filter(function(r){ return str(r[0]) && ymd(r[1]); }).map(function(r){ return {event: str(r[0]), date: ymd(r[1]), label: str(r[2]), dayNo: Number(r[3]) || 0}; });
-  C.items = {}; rows('items').forEach(function(r){ if(str(r[0])) C.items[str(r[0])] = {name: str(r[1]), icon: str(r[2]), desc: str(r[3])}; });
+  C.events = rows('events').filter(function(r){ return str(r[0]); }).map(function(r){ return {id: str(r[0]), name: tri(r[1], r[5], r[6]), from: ymd(r[2]), to: ymd(r[3])}; });
+  C.days = rows('days').filter(function(r){ return str(r[0]) && ymd(r[1]); }).map(function(r){ return {event: str(r[0]), date: ymd(r[1]), label: tri(r[2], r[4], r[5]), dayNo: Number(r[3]) || 0}; });
+  C.items = {}; rows('items').forEach(function(r){ if(str(r[0])) C.items[str(r[0])] = {name: tri(r[1], r[4], r[5]), icon: str(r[2]), desc: tri(r[3], r[6], r[7])}; });
   C.points = {}; C.pointByName = {};
-  rows('points').forEach(function(r){ if(str(r[0])){ C.points[str(r[0])] = str(r[1]); C.pointByName[str(r[1])] = str(r[0]); } });
-  C.characters = {}; C.charactersEn = {}; rows('characters').forEach(function(r){ if(str(r[0])){ C.characters[str(r[0])] = str(r[1]); C.charactersEn[str(r[0])] = str(r[2]); } });
+  rows('points').forEach(function(r){ if(str(r[0])){ C.points[str(r[0])] = tri(r[1], r[2], r[3]); C.pointByName[str(r[1])] = str(r[0]); } });
+  C.characters = {}; C.charactersEn = {}; rows('characters').forEach(function(r){ if(str(r[0])){ C.characters[str(r[0])] = tri(r[1], r[3], r[2]); C.charactersEn[str(r[0])] = str(r[2]); } });
   C.regfields = rows('regfields').filter(function(r){ return str(r[0]); }).map(function(r){
-    return {id: str(r[0]), label: str(r[1]), type: str(r[2]) || 'text', options: splitList(r[3]), required: r[4] === true || str(r[4]).toUpperCase() === 'TRUE', max: Number(r[5]) || 20, placeholder: str(r[6])};
+    var oj = splitList(r[3]), ok = splitList(r[9]), oe = splitList(r[10]);
+    return {id: str(r[0]), label: tri(r[1], r[7], r[8]), type: str(r[2]) || 'text', options: oj.map(function(o, i){ return tri(o, ok[i], oe[i]); }),
+      required: r[4] === true || str(r[4]).toUpperCase() === 'TRUE', max: Number(r[5]) || 20, placeholder: tri(r[6], r[11], r[12])};
   });
   C.facilities = rows('facilities').filter(function(r){ return str(r[0]) && str(r[1]); }).map(function(r){
-    return {event: str(r[0]), id: str(r[1]), name: str(r[2]), sub: str(r[3]), x: Number(r[4]) || 50, y: Number(r[5]) || 50,
-      roof: str(r[6]) || '#e8101e', wall: str(r[7]) || '#fff1d6', type: str(r[8]) || 'house', show: parseCond(r[9], C), hint: str(r[10]), order: Number(r[11]) || 0};
+    return {event: str(r[0]), id: str(r[1]), name: tri(r[2], r[12], r[13]), sub: tri(r[3], r[14], r[15]), x: Number(r[4]) || 50, y: Number(r[5]) || 50,
+      roof: str(r[6]) || '#e8101e', wall: str(r[7]) || '#fff1d6', type: str(r[8]) || 'house', show: parseCond(r[9], C), hint: tri(r[10], r[16], r[17]), order: Number(r[11]) || 0};
   }).sort(function(a, b){ return a.order - b.order; });
   C.routes = rows('routes').filter(function(r){ return str(r[0]) && str(r[1]) && str(r[4]); }).map(function(r){
     return {event: str(r[0]), facility: str(r[1]), prio: Number(r[2]) || 0, cond: parseCond(r[3], C), start: str(r[4]), from: ymd(r[5]), to: ymd(r[6])};
@@ -166,15 +170,15 @@ function buildContent(){
   rows('scenes').forEach(function(r){
     var ev = str(r[0]), id = str(r[1]); if(!ev || !id) return;
     C.scenes[ev + '/' + id] = {id: id, bg: str(r[2]) || 'meadow', next: str(r[3]), item: splitList(r[4]), flag: splitList(r[5]), add: parsePoints(r[6], C),
-      ar: str(r[7]), arLabel: str(r[8]), lines: [], choices: []};
+      ar: str(r[7]), arLabel: tri(r[8], r[10], r[11]), lines: [], choices: []};
   });
   rows('lines').forEach(function(r){
     var sc = C.scenes[str(r[0]) + '/' + str(r[1])]; if(!sc || !str(r[4])) return;
-    sc.lines.push({o: Number(r[2]) || 0, who: charId(str(r[3])), text: str(r[4]), voice: str(r[5])});
+    sc.lines.push({o: Number(r[2]) || 0, who: charId(str(r[3])), text: tri(r[4], r[6], r[7]), voice: str(r[5])});
   });
   rows('choices').forEach(function(r){
     var sc = C.scenes[str(r[0]) + '/' + str(r[1])]; if(!sc || !str(r[4])) return;
-    sc.choices.push({o: Number(r[2]) || 0, id: str(r[3]) || ('c' + (sc.choices.length + 1)), text: str(r[4]), next: str(r[5]),
+    sc.choices.push({o: Number(r[2]) || 0, id: str(r[3]) || ('c' + (sc.choices.length + 1)), text: tri(r[4], r[10], r[11]), next: str(r[5]),
       add: parsePoints(r[6], C), flag: splitList(r[7]), item: splitList(r[8]), cond: parseCond(r[9], C)});
   });
   Object.keys(C.scenes).forEach(function(k){
@@ -308,7 +312,7 @@ function applySync(me, req){
     if(req.state) saveState(me.rid, req.state);
     (req.events || []).slice(0, 200).forEach(function(x){
       var at = str(x.at) || nowStr(), dd = ymd(x.date) || d, e2 = str(x.event) || ev;
-      if(x.type === 'choice') append('picks', [me.rid, e2, dd, str(x.scene), str(x.choice), str(x.text).slice(0, 200), at]);
+      if(x.type === 'choice') append('picks', [me.rid, e2, dd, str(x.scene), str(x.choice), str(typeof x.text === 'object' ? x.text.ja : x.text).slice(0, 200), at]);
       if(x.type === 'start' || x.type === 'done') append('progress', [me.rid, e2, dd, str(x.facility), str(x.route), x.type === 'done' ? '読み終えた' : '読んだ', at]);
     });
   });
@@ -336,7 +340,7 @@ function publicDefs(){
 }
 function apiConfig(){
   var d = today(), info = dayInfo(d), C = content();
-  var upcoming = C.days.filter(function(x){ return x.date >= d; }).slice(0, 6).map(function(x){ return {date: x.date, label: x.label}; });
+  var upcoming = C.days.filter(function(x){ return x.date >= d; }).slice(0, 6).map(function(x){ return {date: x.date, label: x.label}; });   // label は3言語
   return {ok: true, today: d, day: info, upcoming: upcoming, defs: publicDefs()};
 }
 
@@ -344,7 +348,7 @@ function apiRegister(req){
   var C = content(), f = req.fields || {}, clean = {};
   for(var i = 0; i < C.regfields.length; i++){
     var rf = C.regfields[i], v = str(f[rf.id]).slice(0, rf.max || 20);
-    if(rf.type === 'choice' && v && rf.options.indexOf(v) < 0) v = '';
+    if(rf.type === 'choice' && v && !rf.options.some(function(o){ return (typeof o === 'object' ? o.ja : o) === v; })) v = '';
     if(rf.type === 'character' && v && !C.characters[v]) v = '';
     if(rf.required && !v) return {ok: false, error: 'required', field: rf.id};
     clean[rf.id] = v;
@@ -501,7 +505,7 @@ function bundle(ev, route, fid){
 /* ---------- ひみつのことば ---------- */
 function wordFor(d, fid){
   var all = rows('words');
-  for(var i = 0; i < all.length; i++) if(ymd(all[i][0]) === d && str(all[i][1]) === fid) return {answers: splitList(all[i][2]), message: str(all[i][3])};
+  for(var i = 0; i < all.length; i++) if(ymd(all[i][0]) === d && str(all[i][1]) === fid) return {answers: splitList(all[i][2]), message: tri(all[i][3], all[i][4], all[i][5])};
   return null;
 }
 function norm(s){
@@ -570,24 +574,30 @@ function setupStats(){
 /** 見本の物語（仕組みを確かめるための仮のもの。芽美のシナリオに差し替えてください） */
 function seedSample(){
   var EV = 'iw2026xmas';
-  var put = function(key, data){ if(data.length) sh(key).getRange(2, 1, data.length, SHEETS[key].head.length).setValues(data); };
-  put('events', [[EV, 'innocent world 2026 クリスマス', '2026-12-01', '2026-12-31', '見本']]);
-  put('days', [[EV, '2026-12-19', '1日目', 1], [EV, '2026-12-20', '2日目', 2]]);
+  var put = function(key, data){
+    var n = SHEETS[key].head.length;
+    data = data.map(function(r){ r = r.slice(0, n); while(r.length < n) r.push(''); return r; });   // 足りない列は空欄
+    if(data.length) sh(key).getRange(2, 1, data.length, n).setValues(data);
+  };
+  // 見本の ひらがな・English（芽美のシナリオに差し替えるまでの仮のもの）
+  var K = SAMPLE_KANA_EN;
+  put('events', [[EV, 'innocent world 2026 クリスマス', '2026-12-01', '2026-12-31', '見本', 'innocent world 2026 クリスマス', 'innocent world 2026 Christmas']]);
+  put('days', [[EV, '2026-12-19', '1日目', 1, '1にちめ', 'Day 1'], [EV, '2026-12-20', '2日目', 2, '2にちめ', 'Day 2']]);
   // ※ 見本のことばです。公開コードに載っているので、本番では必ず「ことば」シートで書きかえてください
   put('words', [
-    ['2026-12-19', 'entrance', 'みほんほしのかけら', 'ようこそ、レンガ村へ！ 今日の村の地図がひらきました。'],
+    ['2026-12-19', 'entrance', 'みほんほしのかけら｜sample star', 'ようこそ、レンガ村へ！ 今日の村の地図がひらきました。', 'ようこそ、レンガむらへ！ きょうの ちずが ひらいたよ。', 'Welcome to Brick Village! Today’s map is open.'],
     ['2026-12-19', 'bakery', 'みほんやきたて', ''], ['2026-12-19', 'flower', 'みほんひまわり', ''], ['2026-12-19', 'library', 'みほんほんのとびら', ''],
     ['2026-12-19', 'windmill', 'みほんかぜのうた', ''], ['2026-12-19', 'plaza', 'みほんみんなのひかり', ''],
-    ['2026-12-20', 'entrance', 'みほんゆきのしずく', 'おかえりなさい。今日のレンガ村の地図がひらきました。'],
+    ['2026-12-20', 'entrance', 'みほんゆきのしずく｜sample snow', 'おかえりなさい。今日のレンガ村の地図がひらきました。', 'おかえりなさい。きょうの ちずが ひらいたよ。', 'Welcome back. Today’s map is open.'],
     ['2026-12-20', 'bakery', 'みほんしろいパン', ''], ['2026-12-20', 'flower', 'みほんすずらん', ''], ['2026-12-20', 'library', 'みほんしおり', ''],
     ['2026-12-20', 'windmill', 'みほんゆきかぜ', ''], ['2026-12-20', 'plaza', 'みほんみんなのひかり', '']
   ]);
   put('facilities', [
-    [EV, 'bakery', 'パン屋さん', '真っ赤な屋根', 24, 30, '#e8101e', '#fff1d6', 'house', '', '', 1],
-    [EV, 'flower', '花屋さん', '黄色い壁', 76, 28, '#ff8a1a', '#ffe04a', 'house', '', '', 2],
-    [EV, 'library', '図書館', '青い扉', 22, 72, '#1e5aff', '#e8eefc', 'house', '', '', 3],
-    [EV, 'windmill', '風車', 'ゆっくり回る', 78, 70, '#7a4a20', '#ffffff', 'windmill', '', '', 4],
-    [EV, 'plaza', '中央広場', 'パレードのはじまる場所', 50, 50, '#e23d72', '#fff7ea', 'plaza', '読了数>=2', 'ほかの施設の物語を2つ読むと、広場への道がひらきます。', 5]
+    [EV, 'bakery', 'パン屋さん', '真っ赤な屋根', 24, 30, '#e8101e', '#fff1d6', 'house', '', '', 1, 'パンやさん', 'Bakery', 'まっかな やね', 'Red roof', '', ''],
+    [EV, 'flower', '花屋さん', '黄色い壁', 76, 28, '#ff8a1a', '#ffe04a', 'house', '', '', 2, 'はなやさん', 'Flower Shop', 'きいろい かべ', 'Yellow walls', '', ''],
+    [EV, 'library', '図書館', '青い扉', 22, 72, '#1e5aff', '#e8eefc', 'house', '', '', 3, 'としょかん', 'Library', 'あおい とびら', 'Blue door', '', ''],
+    [EV, 'windmill', '風車', 'ゆっくり回る', 78, 70, '#7a4a20', '#ffffff', 'windmill', '', '', 4, 'ふうしゃ', 'Windmill', 'ゆっくり まわる', 'Turning slowly', '', ''],
+    [EV, 'plaza', '中央広場', 'パレードのはじまる場所', 50, 50, '#e23d72', '#fff7ea', 'plaza', '読了数>=2', 'ほかの施設の物語を2つ読むと、広場への道がひらきます。', 5, 'ひろば', 'Central Plaza', 'パレードの はじまる ところ', 'Where the parade begins', 'ほかの ものがたりを 2つ よむと、ひろばへの みちが ひらくよ。', 'Read two other stories to open the path to the plaza.']
   ]);
   put('routes', [
     [EV, 'intro', 1, '今回再訪', 'intro_return', '', '', '1日目にも来た住民（両日参加）'],
@@ -611,11 +621,11 @@ function seedSample(){
     ['library_1', 'library', '', '', '', '', '', ''], ['library_2a', 'library', '', 'bookmark', '', '', '', ''], ['library_2b', 'library', '', 'bookmark', '', '', '', ''],
     ['library_r1', 'library', 'library_r2', 'key', 'secret_door', '', '', ''], ['library_r2', 'library', '', '', '', '', '', ''],
     ['windmill_1', 'windmill', '', '', '', '', '', ''], ['windmill_2a', 'windmill', '', 'feather', '', '', '', ''], ['windmill_2b', 'windmill', '', 'feather', '', '', '', ''],
-    ['end_kind', 'plaza', '', '', 'ending_kind', '', 'parade', 'ARパレードを見る'],
-    ['end_brave', 'plaza', '', '', 'ending_brave', '', 'fireworks', 'フィナーレ花火を見る'],
-    ['end_wonder', 'plaza', '', '', 'ending_wonder', '', 'xmas', 'クリスマスパレードを見る']
+    ['end_kind', 'plaza', '', '', 'ending_kind', '', 'parade', 'ARパレードを見る', 'ARパレードを みる', 'Watch the AR Parade'],
+    ['end_brave', 'plaza', '', '', 'ending_brave', '', 'fireworks', 'フィナーレ花火を見る', 'はなびを みる', 'Watch the Finale Fireworks'],
+    ['end_wonder', 'plaza', '', '', 'ending_wonder', '', 'xmas', 'クリスマスパレードを見る', 'クリスマスパレードを みる', 'Watch the Christmas Parade']
   ];
-  put('scenes', SC.map(function(r){ return [EV, r[0], r[1], r[2], r[3], r[4], r[5], r[6], r[7], '']; }));
+  put('scenes', SC.map(function(r){ return [EV, r[0], r[1], r[2], r[3], r[4], r[5], r[6], r[7], '', r[8] || '', r[9] || '']; }));
   var L = [
     ['intro_1', '', 'ページをめくると、レンガの小道が目の前にのびていました。'],
     ['intro_1', 'esper', 'わあ、{name}さんだね！ ようこそ、レンガ村へ！'],
@@ -664,29 +674,213 @@ function seedSample(){
     ['end_wonder', '', '雪がふりはじめ、遠くから鈴の音が近づいてきます。']
   ];
   var cnt = {};
-  put('lines', L.map(function(r){ cnt[r[0]] = (cnt[r[0]] || 0) + 1; return [EV, r[0], cnt[r[0]], r[1], r[2], '']; }));
+  put('lines', L.map(function(r){ cnt[r[0]] = (cnt[r[0]] || 0) + 1; var x = K[r[2]] || ['', '']; return [EV, r[0], cnt[r[0]], r[1], r[2], '', x[0], x[1]]; }));
   put('choices', [
-    [EV, 'bakery_1', 1, 'carry', 'いっしょに薪を運ぶ', 'bakery_2a', 'やさしさ+1', '', '', ''],
-    [EV, 'bakery_1', 2, 'peek', 'オーブンの中をのぞいてみる', 'bakery_2b', '好奇心+1', '', '', ''],
-    [EV, 'flower_1', 1, 'sun', 'ひなたの花だんにまく', 'flower_2a', 'やさしさ+1', '', '', ''],
-    [EV, 'flower_1', 2, 'hill', '風車の丘にまく', 'flower_2b', '勇気+1', '', '', ''],
-    [EV, 'library_1', 1, 'write', '白紙のページに名前を書く', 'library_2a', '勇気+1', 'wrote_name', '', ''],
-    [EV, 'library_1', 2, 'listen', 'じいじに本のお話を聞く', 'library_2b', '好奇心+1', '', '', ''],
-    [EV, 'windmill_1', 1, 'climb', 'のぼってみる！', 'windmill_2a', '勇気+1', '', '', ''],
-    [EV, 'windmill_1', 2, 'watch', '下から見守る', 'windmill_2b', 'やさしさ+1', '', '', '']
+    [EV, 'bakery_1', 1, 'carry', 'いっしょに薪を運ぶ', 'bakery_2a', 'やさしさ+1', '', '', '', 'いっしょに まきを はこぶ', 'Help carry the firewood'],
+    [EV, 'bakery_1', 2, 'peek', 'オーブンの中をのぞいてみる', 'bakery_2b', '好奇心+1', '', '', '', 'オーブンの なかを のぞく', 'Peek inside the oven'],
+    [EV, 'flower_1', 1, 'sun', 'ひなたの花だんにまく', 'flower_2a', 'やさしさ+1', '', '', '', 'ひなたの はなだんに まく', 'Plant them in the sunny flowerbed'],
+    [EV, 'flower_1', 2, 'hill', '風車の丘にまく', 'flower_2b', '勇気+1', '', '', '', 'ふうしゃの おかに まく', 'Plant them on the windmill hill'],
+    [EV, 'library_1', 1, 'write', '白紙のページに名前を書く', 'library_2a', '勇気+1', 'wrote_name', '', '', 'しろい ページに なまえを かく', 'Write your name on the blank page'],
+    [EV, 'library_1', 2, 'listen', 'じいじに本のお話を聞く', 'library_2b', '好奇心+1', '', '', '', 'じいじに ほんの おはなしを きく', 'Ask Jiji about the book'],
+    [EV, 'windmill_1', 1, 'climb', 'のぼってみる！', 'windmill_2a', '勇気+1', '', '', '', 'のぼってみる！', 'I’ll climb up!'],
+    [EV, 'windmill_1', 2, 'watch', '下から見守る', 'windmill_2b', 'やさしさ+1', '', '', '', 'したから みまもる', 'Watch from below']
   ]);
   put('items', [
-    ['bread', '焼きたてのパン', '🍞', 'ほかほかで、いいにおい。'],
-    ['seed', 'ふしぎな種', '🌱', '光の当たる場所でまくと、なにかが咲くらしい。'],
-    ['bookmark', '星のしおり', '🔖', '図書館の古い本にはさまっていた。'],
-    ['feather', '風の羽根', '🪶', '風車のてっぺんで見つけた、きらきらの羽根。'],
-    ['key', '小さな鍵', '🗝️', '再訪した住民だけがもらえる、ひみつの扉の鍵。']
+    ['bread', '焼きたてのパン', '🍞', 'ほかほかで、いいにおい。', 'やきたての パン', 'Fresh bread', 'ほかほかで、いい におい。', 'Warm and smells wonderful.'],
+    ['seed', 'ふしぎな種', '🌱', '光の当たる場所でまくと、なにかが咲くらしい。', 'ふしぎな たね', 'Mysterious seed', 'ひかりの あたる ところに まくと、なにかが さくらしい。', 'Plant it in the light and something may bloom.'],
+    ['bookmark', '星のしおり', '🔖', '図書館の古い本にはさまっていた。', 'ほしの しおり', 'Star bookmark', 'としょかんの ふるい ほんに はさまっていた。', 'Found tucked in an old library book.'],
+    ['feather', '風の羽根', '🪶', '風車のてっぺんで見つけた、きらきらの羽根。', 'かぜの はね', 'Wind feather', 'ふうしゃの てっぺんで みつけた、きらきらの はね。', 'A sparkling feather from the top of the windmill.'],
+    ['key', '小さな鍵', '🗝️', '再訪した住民だけがもらえる、ひみつの扉の鍵。', 'ちいさな かぎ', 'Little key', 'また きてくれた じゅうみんだけが もらえる、ひみつの とびらの かぎ。', 'The key to a secret door, only for returning residents.']
   ]);
-  put('points', [['courage', '勇気'], ['kindness', 'やさしさ'], ['wonder', '好奇心']]);
-  put('characters', [['esper', 'エスパー', 'ESPER'], ['mimi', 'ミミ', 'MIMI'], ['lily', 'リリィ', 'LILY'], ['luke', 'ルーク', 'LUKE'], ['niko', 'ニコ', 'NIKO'], ['hal', 'ハル', 'HAL'], ['arika', 'アリカ', 'ARIKA'], ['nuru', 'ヌール', 'NOUR'], ['mock', 'モック', 'MOCK'], ['jiiji', 'じいじ', 'JIJI']]);
+  put('points', [['courage', '勇気', 'ゆうき', 'Courage'], ['kindness', 'やさしさ', 'やさしさ', 'Kindness'], ['wonder', '好奇心', 'わくわく', 'Curiosity']]);
+  put('characters', [['esper', 'エスパー', 'Esper', 'エスパー'], ['mimi', 'ミミ', 'Mimi', 'ミミ'], ['lily', 'リリィ', 'Lily', 'リリィ'], ['luke', 'ルーク', 'Luke', 'ルーク'], ['niko', 'ニコ', 'Niko', 'ニコ'], ['hal', 'ハル', 'Hal', 'ハル'], ['arika', 'アリカ', 'Arika', 'アリカ'], ['nuru', 'ヌール', 'Nour', 'ヌール'], ['mock', 'モック', 'Mock', 'モック'], ['jiiji', 'じいじ', 'Jiji', 'じいじ']]);
   put('regfields', [
-    ['name', '住民名（ニックネーム）', 'text', '', true, 12, 'れい：ほしのこ'],
-    ['friend', 'いちばん会いたい住人', 'character', '', false, 20, ''],
-    ['color', '好きな色', 'choice', 'あか｜あお｜きいろ｜みどり｜ピンク｜むらさき', false, 10, '']
+    ['name', '住民名（ニックネーム）', 'text', '', true, 12, 'れい：ほしのこ', 'なまえ（ニックネーム）', 'Nickname', '', '', 'れい：ほしのこ', 'e.g. Star Kid'],
+    ['friend', 'いちばん会いたい住人', 'character', '', false, 20, '', 'いちばん あいたい なかま', 'Who do you most want to meet?', '', '', '', ''],
+    ['color', '好きな色', 'choice', 'あか｜あお｜きいろ｜みどり｜ピンク｜むらさき', false, 10, '', 'すきな いろ', 'Favorite color', 'あか｜あお｜きいろ｜みどり｜ピンク｜むらさき', 'Red｜Blue｜Yellow｜Green｜Pink｜Purple', '', '']
   ]);
 }
+
+/* 見本の物語の ひらがな・English（seedSample で使用） */
+var SAMPLE_KANA_EN = {
+"ページをめくると、レンガの小道が目の前にのびていました。": [
+"ページを めくると、レンガの こみちが めのまえに のびていました。",
+"When you turned the page, a brick path stretched out before you."
+],
+"わあ、{name}さんだね！ ようこそ、レンガ村へ！": [
+"わあ、{name}さんだね！ ようこそ、レンガむらへ！",
+"Wow, you must be {name}! Welcome to Brick Village!"
+],
+"ぼくはエスパー。村のあちこちで、ふしぎなことが起きているんだ。": [
+"ぼくは エスパー。むらの あちこちで、ふしぎな ことが おきているんだ。",
+"I’m Esper. Strange things are happening all over the village."
+],
+"地図の建物をタップして、施設に掲示された「ひみつのことば」を入れてみて。物語がひらくよ！": [
+"ちずの たてものを タップして、かんばんの「ひみつの ことば」を いれてみて。ものがたりが ひらくよ！",
+"Tap a building on the map and enter the secret word on its sign. A story will open!"
+],
+"あっ、{name}さん！ また来てくれたんだね。会えてうれしいな。": [
+"あっ、{name}さん！ また きてくれたんだね。あえて うれしいな。",
+"Oh, {name}! You came back! I’m so happy to see you."
+],
+"今日は、再訪した住民さんにしか見えない物語があるんだ。パン屋さんと図書館をのぞいてみて！": [
+"きょうは、また きてくれた ひとだけの ものがたりが あるんだ。パンやさんと としょかんを のぞいてみて！",
+"Today there are stories only returning residents can see. Visit the bakery and the library!"
+],
+"ページをめくると、レンガ村はきのうより少しにぎやかでした。": [
+"ページを めくると、レンガむらは きのうより すこし にぎやかでした。",
+"When you turned the page, Brick Village was a little livelier than yesterday."
+],
+"はじめまして、{name}さん！ じつはきのう、村でふしぎなことがあったんだ。": [
+"はじめまして、{name}さん！ じつは きのう、むらで ふしぎな ことが あったんだ。",
+"Nice to meet you, {name}! Something strange happened in the village yesterday."
+],
+"絵本の最後のページが見つからないの。みんなで手がかりを探しているところなんだ。いっしょに来てくれる？": [
+"えほんの さいごの ページが みつからないの。みんなで てがかりを さがしているんだ。いっしょに きてくれる？",
+"The last page of the picture book is missing. We’re all searching for clues. Will you come with us?"
+],
+"いらっしゃい！ 焼きたてのパンのにおい、するでしょ？": [
+"いらっしゃい！ やきたての パンの におい、するでしょ？",
+"Welcome! Can you smell the fresh bread?"
+],
+"でもね、今朝からオーブンの火がちょっと元気ないの……。": [
+"でもね、けさから オーブンの ひが ちょっと げんき ないの……。",
+"But since this morning, the oven fire has been a little weak…"
+],
+"ありがとう！ ふたりで運ぶと、あっという間だね。": [
+"ありがとう！ ふたりで はこぶと、あっというまだね。",
+"Thank you! With two of us, it’s done in no time."
+],
+"お礼に、いちばんおいしく焼けたパンをどうぞ！": [
+"おれいに、いちばん おいしく やけた パンを どうぞ！",
+"As thanks, here’s my best loaf!"
+],
+"えっ、オーブンの奥に……小さな光の粒？": [
+"えっ、オーブンの おくに……ちいさな ひかりの つぶ？",
+"Huh? Deep in the oven… tiny specks of light?"
+],
+"ふしぎ……。これ、きっと広場と関係があるよ。持っていって！": [
+"ふしぎ……。これ、きっと ひろばと かんけいが あるよ。もっていって！",
+"How strange… This must have something to do with the plaza. Take it with you!"
+],
+"きのうの住民さん！ 待ってたよ。": [
+"きのうの じゅうみんさん！ まってたよ。",
+"You were here yesterday! I’ve been waiting for you."
+],
+"きのうのお礼に、ひみつのレシピで焼いた「星のパン」をどうぞ。": [
+"きのうの おれいに、ひみつの レシピで やいた「ほしの パン」を どうぞ。",
+"To thank you for yesterday, here’s “Star Bread” from my secret recipe."
+],
+"それとね、図書館のじいじが、あなたに渡したいものがあるって。": [
+"それとね、としょかんの じいじが、あなたに わたしたい ものが あるって。",
+"Also, Jiji at the library has something to give you."
+],
+"こんにちは！ ここは村いちばんの花屋さん。": [
+"こんにちは！ ここは むらで いちばんの はなやさん。",
+"Hello! This is the best flower shop in the village."
+],
+"この種、どこにまいたらいいと思う？": [
+"この たね、どこに まいたら いいと おもう？",
+"Where do you think we should plant these seeds?"
+],
+"すてき！ 明日には、きっと芽が出るよ。": [
+"すてき！ あしたには、きっと めが でるよ。",
+"Lovely! They’ll surely sprout by tomorrow."
+],
+"これはあなたの分。だいじにしてね。": [
+"これは あなたの ぶん。だいじに してね。",
+"This one is for you. Take good care of it."
+],
+"風に乗って、村じゅうに花が咲くかも！": [
+"かぜに のって、むらじゅうに はなが さくかも！",
+"The wind might carry them so flowers bloom all over the village!"
+],
+"はい、あなたの分の種。": [
+"はい、あなたの ぶんの たね。",
+"Here, these seeds are for you."
+],
+"ほっほっ。よく来たのう。ここには村の歴史がぜんぶ眠っておる。": [
+"ほっほっ。よく きたのう。ここには むらの むかしの ことが ぜんぶ ねむっておる。",
+"Ho ho. Welcome. All of the village’s history sleeps here."
+],
+"この古い本、最後のページだけ白紙なんじゃ。": [
+"この ふるい ほん、さいごの ページだけ まっしろ なんじゃ。",
+"Only the last page of this old book is blank."
+],
+"おお……文字が光っておる！ あんたも、この物語の一部になったようじゃ。": [
+"おお……もじが ひかっておる！ あんたも、この ものがたりの なかまに なったようじゃ。",
+"Oh… the letters are glowing! It seems you’ve become part of this story."
+],
+"むかしむかし、この村は一冊の絵本から生まれたんじゃよ……。": [
+"むかし むかし、この むらは いっさつの えほんから うまれたんじゃよ……。",
+"Long, long ago, this village was born from a single picture book…"
+],
+"このしおりを持っておいき。": [
+"この しおりを もっておいき。",
+"Take this bookmark with you."
+],
+"また来てくれたのう。2日目の住民にだけ、見せたいものがある。": [
+"また きてくれたのう。2にちめに きた じゅうみんにだけ、みせたい ものが ある。",
+"You came back. There’s something I want to show only to residents who return."
+],
+"本棚のうしろの、小さな扉じゃ。この鍵で開くはずじゃよ。": [
+"ほんだなの うしろの、ちいさな とびらじゃ。この かぎで あくはずじゃよ。",
+"A little door behind the bookshelf. This key should open it."
+],
+"扉の向こうには、きのうあなたが書いた名前の本が、光りながら並んでいました。": [
+"とびらの むこうには、きのう あなたが かいた なまえの ほんが、ひかりながら ならんでいました。",
+"Beyond the door, books with the name you wrote yesterday stood glowing in a row."
+],
+"あんたの選んだことは、ちゃんと村に残っておるんじゃ。": [
+"あんたが えらんだ ことは、ちゃんと むらに のこっておるんじゃ。",
+"The choices you made remain here in the village."
+],
+"やあ！ 風車のてっぺん、のぼってみる？ ちょっと高いけど……。": [
+"やあ！ ふうしゃの てっぺん、のぼってみる？ ちょっと たかいけど……。",
+"Hi! Want to climb to the top of the windmill? It’s a bit high…"
+],
+"すごい！ 村ぜんぶが見えるね！": [
+"すごい！ むらが ぜんぶ みえるね！",
+"Amazing! You can see the whole village!"
+],
+"あ、てっぺんにきらきらの羽根が。あなたにあげる！": [
+"あ、てっぺんに きらきらの はねが。あなたに あげる！",
+"Oh, there’s a sparkling feather at the top. It’s yours!"
+],
+"見守ってくれてありがとう。おかげで安心してのぼれたよ。": [
+"みまもってくれて ありがとう。おかげで あんしんして のぼれたよ。",
+"Thanks for watching over me. I felt safe climbing."
+],
+"おみやげの羽根、どうぞ！": [
+"おみやげの はね、どうぞ！",
+"Here’s a feather as a souvenir!"
+],
+"みんなが、あなたのやさしさの話をしてるよ。": [
+"みんなが、あなたの やさしさの はなしを してるよ。",
+"Everyone is talking about your kindness."
+],
+"その気持ちが、広場いっぱいの光になったの！": [
+"その きもちが、ひろば いっぱいの ひかりに なったの！",
+"That feeling turned into light that fills the plaza!"
+],
+"夜空に光がともり、パレードの音楽が聞こえてきました。": [
+"よぞらに ひかりが ともり、パレードの おんがくが きこえてきました。",
+"Lights glowed in the night sky, and parade music began to play."
+],
+"あなたの勇気が、村に新しい風を運んできたんだ！": [
+"あなたの ゆうきが、むらに あたらしい かぜを はこんできたんだ！",
+"Your courage brought a fresh wind to the village!"
+],
+"広場の真ん中で、大きな花火が打ち上がりました。": [
+"ひろばの まんなかで、おおきな はなびが あがりました。",
+"Big fireworks burst above the middle of the plaza."
+],
+"あなたの好奇心が、村のひみつをたくさん見つけてくれたね。": [
+"あなたの わくわくする きもちが、むらの ひみつを たくさん みつけてくれたね。",
+"Your curiosity found so many of the village’s secrets."
+],
+"雪がふりはじめ、遠くから鈴の音が近づいてきます。": [
+"ゆきが ふりはじめ、とおくから すずの おとが ちかづいてきます。",
+"Snow began to fall, and the sound of bells drew closer."
+]
+};

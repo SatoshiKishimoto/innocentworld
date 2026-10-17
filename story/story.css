@@ -219,3 +219,33 @@ button,input{font:inherit;color:inherit}
   animation:stwinkle 1.6s var(--d) ease-in-out infinite;opacity:0}
 @keyframes stwinkle{50%{opacity:1;transform:scale(1.4) rotate(45deg)}}
 @keyframes sfade{from{opacity:0}}
+
+/* ===== 3種類の表示モード（日本語・ひらがな・English） ===== */
+.sbar{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.sbarr{display:flex;align-items:center;gap:6px;flex-wrap:nowrap}
+.sbartitle{margin:2px 0 0;text-align:center;font-size:15px;font-weight:800}
+.slang{padding:8px 11px!important;font-size:12px!important;white-space:nowrap;gap:4px!important}
+.slang span{font-size:11px;font-weight:800}
+@media (max-width:360px){.slang span{display:none}}
+.sstop .sbarr .sbtn.ghost{background:rgba(255,255,255,.88)}
+.sscene .sfac{position:absolute;top:calc(58px + env(safe-area-inset-top,0px));left:50%;right:auto;transform:translateX(-50%);z-index:3;
+  background:rgba(255,255,255,.9);border-radius:999px;padding:6px 14px;font-size:12.5px;font-weight:800;white-space:nowrap}
+.sscene .sactor{top:calc(92px + env(safe-area-inset-top,0px))}
+.slangs{display:flex;flex-direction:column;gap:10px}
+.slangcard{appearance:none;border:2.5px solid transparent;background:#fff;border-radius:18px;padding:16px 18px;text-align:left;cursor:pointer;
+  display:flex;flex-direction:column;gap:3px;box-shadow:0 6px 16px rgba(31,47,143,.12);color:var(--navy)}
+.slangcard b{font-size:20px;font-weight:800}
+.slangcard span{font-size:12.5px;color:var(--muted);font-weight:700}
+.slangcard.on{border-color:var(--pink);background:#fff0f5}
+.slangcard:active{transform:scale(.98)}
+.sdlg .slangcard{box-shadow:none;border-color:#e6e8f5}
+.sdlg .slangcard.on{border-color:var(--pink)}
+.sfirst{min-height:90vh;justify-content:center}
+.sfirst h2 small{display:block;font-size:14px;color:var(--muted);margin-top:4px}
+/* ひらがなモード：少し大きく、行間ひろめ */
+html[data-lang="kana"] .stext{font-size:clamp(18px,5.2vw,21px);line-height:1.85;letter-spacing:.02em}
+html[data-lang="en"] .stext{font-weight:600}
+html[data-lang="kana"] .srtop b,html[data-lang="en"] .srtop b{letter-spacing:.04em;font-size:20px}
+.srtop{flex-wrap:wrap}
+.srbody dd.mono{white-space:nowrap;font-size:12px}
+html[data-lang="kana"] .srbody dl{font-size:12px}

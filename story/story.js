@@ -16,6 +16,16 @@
   const app = $('app');
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
+  /* ---------- 表示モード（日本語・ひらがな・English） ---------- */
+  const I = window.STORY_I18N;
+  let LANG = (() => { try{ const v = localStorage.getItem('iw_story_lang'); return I.langs[v] ? v : ''; }catch(e){ return ''; } })();
+  function setLang(v){ LANG = v; try{ localStorage.setItem('iw_story_lang', v); }catch(e){} document.documentElement.lang = I.langs[v].html; document.documentElement.dataset.lang = v; }
+  if(LANG) setLang(LANG);
+  const lang = () => LANG || 'ja';
+  // スプレッドシートの文：文字列（日本語だけ）または {ja, kana, en}。ない言語は日本語を使う
+  function T(x){ if(x == null) return ''; if(typeof x !== 'object') return String(x); return x[lang()] || x.ja || x.en || x.kana || ''; }
+  function t(key){ const v = I.ui[key]; let s = v ? (v[lang()] || v.ja) : key; for(let i = 1; i < arguments.length; i++) s = s.replace('{' + (i - 1) + '}', arguments[i]); return s; }
+
   /* ---------- スマホ内の保存（控え） ---------- */
   function emptyState(){ return {points:{}, flags:{}, items:{}, done:{}, introSeen:{}}; }
   function fresh(){ return {rid:'', token:'', recovery:'', resident:null, state:emptyState(), outbox:[], defs:null, day:null, today:'', visits:[], returning:false, unlocked:null, map:null, stories:{}, intro:null}; }
@@ -23,13 +33,14 @@
   function load(){ try{ const v = JSON.parse(localStorage.getItem(KEY)); if(v && typeof v === 'object') return Object.assign(fresh(), v); }catch(e){} return fresh(); }
   function save(){ try{ localStorage.setItem(KEY, JSON.stringify(L)); }catch(e){} }
   const defs = () => L.defs || {items:{}, points:{}, characters:{}, regfields:[]};
+  let VIEW = null, MODAL = null;   // 言語を切りかえたときに描き直す画面
 
   /* ---------- 通信 ---------- */
   let busyN = 0;
   function loading(on){
     busyN += on ? 1 : -1;
     let el = $('svLoading');
-    if(busyN > 0 && !el){ el = document.createElement('div'); el.id = 'svLoading'; el.className = 'sloading'; el.innerHTML = '<div><span></span>通信しています…</div>'; document.body.appendChild(el); }
+    if(busyN > 0 && !el){ el = document.createElement('div'); el.id = 'svLoading'; el.className = 'sloading'; el.innerHTML = '<div><span></span>' + esc(t('loading')) + '</div>'; document.body.appendChild(el); }
     if(busyN <= 0 && el){ busyN = 0; el.remove(); }
   }
   async function api(action, data, opt){
@@ -68,37 +79,40 @@
 
   function onAuthLost(){ L.rid = ''; L.token = ''; save(); }
   function errText(j){
-    const m = {
-      wrong:'ことばがちがうみたい。掲示をもう一度見てみてね。', wait:'まちがいが続いたので、5分ほど待ってからもう一度入力してください。',
-      closed:'今日はレンガ村はお休みです。', no_word:'今日は、ここの物語はお休みです。', entrance_first:'先に、入口のひみつのことばを入力してください。',
-      hidden:'まだ道がひらいていません。', auth:'住民票が確認できませんでした。', busy:'混み合っています。少し待ってからもう一度お試しください。',
-      not_found:'その復元コードは見つかりませんでした。', bad_code:'復元コードは12文字です（ハイフンはなくても大丈夫）。', required:'必須の項目を入力してください。',
-      server:'サーバーでエラーが起きました。少し待ってからもう一度お試しください。', network:'通信できませんでした。電波のよい場所で、もう一度お試しください。',
-      noapi:'サーバーの設定がまだです（story/config.js）。'
-    };
-    return (j && (j.hint || m[j.error || j.code])) || m.server;
+    if(j && j.hint) return T(j.hint);
+    const k = (j && (j.error || j.code)) || 'server', m = I.errors[k] || I.errors.server;
+    return m[lang()] || m.ja;
   }
 
   /* ---------- 画面の部品 ---------- */
   function charImg(k){ return '../characters2/' + encodeURIComponent(k) + '.png'; }
-  function cname(k){ return defs().characters[k] || k; }
-  function cnameEn(k){ return (defs().charactersEn || {})[k] || ''; }
+  function cname(k){ return T(defs().characters[k]) || k; }
+  function cnameEn(k){ const c = defs().characters[k]; return (c && typeof c === 'object' && c.en) || (defs().charactersEn || {})[k] || ''; }
   // セリフの差し込み：{name}（または {住民名}）＝住民名。ほかの登録項目も {項目ID} で差し込めます
   function fill(t){
     const r = L.resident, f = (r && r.fields) || {}, regs = defs().regfields || [];
     const nameF = regs.find(x => x.type === 'text');
     return String(t == null ? '' : t).replace(/\{(name|住民名|[A-Za-z_][A-Za-z0-9_]*)\}/g, (m, k) => {
-      if(k === 'name' || k === '住民名') return f.name || (nameF && f[nameF.id]) || 'あなた';
+      if(k === 'name' || k === '住民名') return f.name || (nameF && f[nameF.id]) || t('you');
       if(!(k in f)) return m;
       const rf = regs.find(x => x.id === k);
-      return rf && rf.type === 'character' ? cname(f[k]) : f[k];
+      return rf && rf.type === 'character' ? cname(f[k]) : optLabel(rf, f[k]);
     });
   }
-  function fmtDate(d){ if(!d) return ''; const [y, m, dd] = d.split('-').map(Number); const w = '日月火水木金土'[new Date(y, m-1, dd).getDay()]; return `${m}月${dd}日（${w}）`; }
+  // 登録項目の「選択肢」：保存する値は日本語のまま、表示だけ切りかえる
+  function optLabel(rf, v){ if(!rf || !rf.options) return v; const o = rf.options.find(x => (typeof x === 'object' ? x.ja : x) === v); return o ? T(o) : v; }
+  function fmtDate(d){
+    if(!d) return ''; const [y, m, dd] = d.split('-').map(Number), wd = new Date(y, m-1, dd).getDay();
+    if(lang() === 'en') return `${I.week.en[wd]}, ${I.months[m-1]} ${dd}`;
+    if(lang() === 'kana') return `${m}がつ${dd}にち（${I.week.kana[wd]}）`;
+    return `${m}月${dd}日（${I.week.ja[wd]}）`;
+  }
+  function langBtn(){ return `<button class="sbtn ghost slang" data-act="lang" aria-label="ことば / Language">🌐 <span>${esc(t('langBtn'))}</span></button>`; }
   function topbar(title, opt){
     opt = opt || {};
-    return `<header class="sbar">${opt.back ? `<button class="sbtn ghost" data-act="${opt.back}">‹ もどる</button>` : '<span></span>'}<b>${esc(title)}</b>${
-      `<span class="sbarr">${soundBtn()}${L.resident && !opt.noCard ? '<button class="sbtn chip" data-act="card">住民票</button>' : ''}</span>`}</header>` + embedBar();
+    return `<header class="sbar">${opt.back ? `<button class="sbtn ghost" data-act="${opt.back}">‹ ${esc(t('back'))}</button>` : '<span></span>'}
+      <span class="sbarr">${langBtn()}${soundBtn()}${L.resident && !opt.noCard ? `<button class="sbtn chip" data-act="card">${esc(t('card'))}</button>` : ''}</span></header>
+      ${title ? `<p class="sbartitle">${esc(title)}</p>` : ''}` + embedBar();
   }
   function embedBar(){
     let inFrame = false; try{ inFrame = window.self !== window.top; }catch(e){ inFrame = true; }
@@ -106,13 +120,13 @@
     // 埋め込みの中と全画面では、スマホ内の保存場所が別になるため、住民票の鍵をリンクに付けて引きつぐ（# 以降はサーバーに送られない）
     const u = new URL(location.href); u.hash = '';
     if(L.rid) u.hash = 'login=' + encodeURIComponent(btoa(unescape(encodeURIComponent(JSON.stringify({rid:L.rid, token:L.token, recovery:L.recovery})))));
-    return `<div class="embedbar"><span>全画面で開くと、もっと見やすくなります</span><a href="${esc(u.href)}" target="_blank" rel="noopener">全画面で開く</a></div>`;
+    return `<div class="embedbar"><span>${esc(t('embedLead'))}</span><a href="${esc(u.href)}" target="_blank" rel="noopener">${esc(t('embedOpen'))}</a></div>`;
   }
   function set(html){ app.innerHTML = html; window.scrollTo(0, 0); }
   function toast(msg){ let t = $('svToast'); if(!t){ t = document.createElement('div'); t.id = 'svToast'; t.className = 'stoast'; t.setAttribute('role', 'status'); document.body.appendChild(t); }
     t.textContent = msg; t.hidden = false; clearTimeout(toast._t); toast._t = setTimeout(() => t.hidden = true, 3800); }
-  function modal(html){ let m = $('svModal'); if(!m){ m = document.createElement('div'); m.id = 'svModal'; m.className = 'smodal'; document.body.appendChild(m); } m.innerHTML = html; m.hidden = false; }
-  function closeModal(){ const m = $('svModal'); if(m){ m.hidden = true; m.innerHTML = ''; } }
+  function modal(html, again){ MODAL = again || null; let m = $('svModal'); if(!m){ m = document.createElement('div'); m.id = 'svModal'; m.className = 'smodal'; document.body.appendChild(m); } m.innerHTML = html; m.hidden = false; }
+  function closeModal(){ MODAL = null; const m = $('svModal'); if(m){ m.hidden = true; m.innerHTML = ''; } }
   function shake(el){ el.classList.remove('sshake'); void el.offsetWidth; el.classList.add('sshake'); SFX.play('wrong'); }
   /* ---------- 効果音（音はおまけ。音がなくても内容はすべて文字と動きで分かる） ----------
      将来の音声：セリフに音声ファイルがあれば SFX.voice(url) で再生（「セリフ」シートの音声列） */
@@ -146,13 +160,13 @@
       stopVoice(){ if(voiceEl){ try{ voiceEl.pause(); }catch(e){} voiceEl = null; } }
     };
   })();
-  function soundBtn(){ return `<button class="sbtn ghost ssound" data-act="sound" aria-pressed="${SFX.on}" aria-label="効果音 ${SFX.on ? 'オン' : 'オフ'}">${SFX.on ? '🔊' : '🔇'}</button>`; }
+  function soundBtn(){ return `<button class="sbtn ghost ssound" data-act="sound" aria-pressed="${SFX.on}" aria-label="${esc(t(SFX.on ? 'soundOn' : 'soundOff'))}">${SFX.on ? '🔊' : '🔇'}</button>`; }
   // アイテムをもらったとき：大きく見せる
   function itemPop(ids){
     if(!ids || !ids.length) return;
     const c = document.createElement('div'); c.className = 'sitempop'; c.setAttribute('role', 'status');
-    c.innerHTML = ids.map(i => { const it = defs().items[i] || {name:i}; return `<div class="sipcard"><span class="sipicon">${esc(it.icon || '★')}</span><b>${esc(it.name)}</b><em>をもらった！</em>${it.desc ? `<small>${esc(it.desc)}</small>` : ''}</div>`; }).join('')
-      + '<p class="siptap">タップでとじる</p>' + Array.from({length:14}, (_, k) => `<i style="--a:${k*360/14}deg;--d:${(k%3)*0.08}s"></i>`).join('');
+    c.innerHTML = ids.map(i => { const it = defs().items[i] || {name:i}; return `<div class="sipcard"><span class="sipicon">${esc(it.icon || '★')}</span><b>${esc(T(it.name))}</b><em>${esc(t('gotItem'))}</em>${T(it.desc) ? `<small>${esc(T(it.desc))}</small>` : ''}</div>`; }).join('')
+      + `<p class="siptap">${esc(t('tapClose'))}</p>` + Array.from({length:14}, (_, k) => `<i style="--a:${k*360/14}deg;--d:${(k%3)*0.08}s"></i>`).join('');
     c.addEventListener('click', () => c.remove());
     document.body.appendChild(c); SFX.play('item');
     setTimeout(() => c.remove(), 3200);
@@ -172,17 +186,43 @@
     history.replaceState(null, '', location.pathname + location.search);
   })();
 
+  /* ---------- 表示モードをえらぶ ---------- */
+  function langChoices(){
+    return `<div class="slangs">${Object.keys(I.langs).map(k => `<button class="slangcard ${k === LANG ? 'on' : ''}" data-act="setlang" data-lang="${k}">
+      <b>${esc(I.langs[k].label)}</b><span>${esc(I.langs[k].sub)}</span></button>`).join('')}</div>`;
+  }
+  function showLangFirst(){
+    VIEW = showLangFirst;
+    set(`<div class="spage sfirst"><div class="shero"><p class="skicker">INNOCENT WORLD</p><div class="sbig-icon">🌐</div>
+      <h2>ことばを えらんでください<br><small>Choose your language</small></h2></div>${langChoices()}</div>`);
+  }
+  function showLangPicker(){
+    modal(`<div class="sdlg" role="dialog" aria-label="ことば / Language"><div class="sdlghead" style="--c:#1f2f8f"><b>🌐 ことば / Language</b><span>${esc(t('langTitle'))}</span></div>
+      ${langChoices()}<p>${esc(t('langNote'))}</p><button class="sbtn link" data-act="close">${esc(t('close'))}</button></div>`);
+  }
+  function applyLang(v){
+    const first = !LANG;
+    setLang(v);
+    const again = MODAL;
+    closeModal();
+    if(first) return start();
+    if(P){ rePage(); render(); }
+    else if(VIEW) VIEW();
+    if(again) again();
+  }
+
   /* ---------- はじまり ---------- */
   async function start(){
-    if(!API){ return set(topbar('レンガ村の物語', {noCard:true}) + `<div class="spage"><div class="shero"><h2>準備中です</h2><p>${esc(errText({code:'noapi'}))}</p></div></div>`); }
+    if(!LANG) return showLangFirst();
+    if(!API){ VIEW = start; return set(topbar('', {noCard:true}) + `<div class="spage"><div class="shero"><h2>${esc(t('preparing'))}</h2><p>${esc(errText({code:'noapi'}))}</p></div></div>`); }
     if(!L.rid) return showWelcome();
     try{
       const j = await api('boot');
-      if(!j.ok){ if(j.error === 'auth') return showWelcome('住民票が見つかりませんでした。復元コードで戻すか、新しく登録してください。'); return showError(j); }
+      if(!j.ok){ if(j.error === 'auth') return showWelcome('authLost'); return showError(j); }
       takeBoot(j); route();
     }catch(e){
       // 通信できないときは、今日の控えがあれば地図を出す
-      if(L.today === todayLocal() && L.unlocked && L.unlocked.entrance && L.map){ toast('通信できないため、保存してある地図を表示しています。'); return showMap(); }
+      if(L.today === todayLocal() && L.unlocked && L.unlocked.entrance && L.map){ toast(t('offlineMap')); return showMap(); }
       showError({code:'network'}, true);
     }
   }
@@ -203,8 +243,9 @@
     showMap();
   }
   function showError(j, retry){
-    set(topbar('レンガ村の物語') + `<div class="spage"><div class="shero"><div class="sbig-icon">📡</div><h2>うまくつながりませんでした</h2><p>${esc(errText(j))}</p></div>
-      ${retry ? '<button class="sbtn main" data-act="retry">もう一度ためす</button>' : ''}</div>`);
+    VIEW = () => showError(j, retry);
+    set(topbar('') + `<div class="spage"><div class="shero"><div class="sbig-icon">📡</div><h2>${esc(t('errTitle'))}</h2><p>${esc(errText(j))}</p></div>
+      ${retry ? `<button class="sbtn main" data-act="retry">${esc(t('retry'))}</button>` : ''}</div>`);
   }
 
   /* ---------- ようこそ・住民登録・復元 ---------- */
@@ -213,32 +254,37 @@
     try{ const j = await api('config'); if(j.ok){ L.defs = j.defs; L.today = j.today; L.day = j.day; save(); return true; } }catch(e){}
     return false;
   }
-  async function showWelcome(msg){
-    set(topbar('レンガ村の物語', {noCard:true}) + `<div class="spage">
-      <div class="shero"><p class="skicker">INNOCENT WORLD</p><h1>レンガ村の物語</h1>
-        <p>絵本の中の小さな村へようこそ。<br>住民登録をして、あなただけの住民票をつくりましょう。</p></div>
-      ${msg ? `<div class="scard"><p class="snote" style="color:#d0201e">${esc(msg)}</p></div>` : ''}
-      <button class="sbtn main" data-act="register">住民登録をする</button>
-      <button class="sbtn sub" data-act="restore">住民票を復元する（機種変更・2回目以降）</button>
-      <p class="snote">名前やメールアドレスなどの個人情報は必要ありません。ニックネームで参加できます。</p></div>`);
+  async function showWelcome(msgKey){
+    VIEW = () => showWelcome(msgKey);
+    set(topbar('', {noCard:true}) + `<div class="spage">
+      <div class="shero"><p class="skicker">INNOCENT WORLD</p><h1>${esc(t('appTitle'))}</h1>
+        <p>${t('welcomeLead')}</p></div>
+      ${msgKey ? `<div class="scard"><p class="snote" style="color:#d0201e">${esc(t(msgKey))}</p></div>` : ''}
+      <button class="sbtn main" data-act="register">${esc(t('register'))}</button>
+      <button class="sbtn sub" data-act="restore">${esc(t('restoreBtn'))}</button>
+      <p class="snote">${esc(t('noPersonal'))}</p></div>`);
   }
   async function showRegister(){
     if(!(await ensureDefs())) return showError({code:'network'}, true);
+    // 入力中に言語を切りかえても、入れた内容は残す
+    const keep = {}; const old = $('svReg'); if(old) new FormData(old).forEach((v, k) => keep[k] = v);
+    VIEW = showRegister;
     const fields = defs().regfields.map(f => {
-      if(f.type === 'character') return `<fieldset class="sfield"><legend>${esc(f.label)}</legend><div class="schars">${
-        Object.keys(defs().characters).map((k, i) => `<label class="schar"><input type="radio" name="${esc(f.id)}" value="${esc(k)}" ${i ? '' : 'checked'}><img src="${charImg(k)}" alt="" loading="lazy"><span>${esc(cname(k))}</span>${cnameEn(k) ? `<em>${esc(cnameEn(k))}</em>` : ''}</label>`).join('')}</div></fieldset>`;
-      if(f.type === 'choice') return `<fieldset class="sfield"><legend>${esc(f.label)}</legend><div class="sopts">${
-        f.options.map((o, i) => `<label class="sopt"><input type="radio" name="${esc(f.id)}" value="${esc(o)}" ${i ? '' : 'checked'}><span>${esc(o)}</span></label>`).join('')}</div></fieldset>`;
-      return `<label class="sfield"><span class="slabel">${esc(f.label)}${f.required ? '' : '（なくてもOK）'}</span><input class="sinput" name="${esc(f.id)}" maxlength="${f.max || 20}" placeholder="${esc(f.placeholder || '')}" autocomplete="off"></label>`;
+      const lab = T(f.label);
+      if(f.type === 'character') return `<fieldset class="sfield"><legend>${esc(lab)}</legend><div class="schars">${
+        Object.keys(defs().characters).map((k, i) => `<label class="schar"><input type="radio" name="${esc(f.id)}" value="${esc(k)}" ${(keep[f.id] ? keep[f.id] === k : !i) ? 'checked' : ''}><img src="${charImg(k)}" alt="" loading="lazy"><span>${esc(cname(k))}</span>${cnameEn(k) && lang() !== 'en' ? `<em>${esc(cnameEn(k))}</em>` : ''}</label>`).join('')}</div></fieldset>`;
+      if(f.type === 'choice') return `<fieldset class="sfield"><legend>${esc(lab)}</legend><div class="sopts">${
+        f.options.map((o, i) => { const v = typeof o === 'object' ? o.ja : o; return `<label class="sopt"><input type="radio" name="${esc(f.id)}" value="${esc(v)}" ${(keep[f.id] ? keep[f.id] === v : !i) ? 'checked' : ''}><span>${esc(T(o))}</span></label>`; }).join('')}</div></fieldset>`;
+      return `<label class="sfield"><span class="slabel">${esc(lab)}${f.required ? '' : esc(t('optional'))}</span><input class="sinput" name="${esc(f.id)}" maxlength="${f.max || 20}" placeholder="${esc(T(f.placeholder))}" value="${esc(keep[f.id] || '')}" autocomplete="off"></label>`;
     }).join('');
-    set(topbar('住民登録', {back:'welcome', noCard:true}) + `<div class="spage">
-      <div class="shero"><p class="skicker">RESIDENT REGISTRATION</p><h2>レンガ村の住民になる</h2></div>
-      <form id="svReg" class="scard">${fields}<button class="sbtn main pink" type="submit">住民登録する</button></form>
-      <p class="snote">ニックネームには本名を入れないでください。<br>記録は innocent world の運営と、物語の集計だけに使います。</p></div>`);
+    set(topbar(t('regTitle'), {back:'welcome', noCard:true}) + `<div class="spage">
+      <div class="shero"><p class="skicker">RESIDENT REGISTRATION</p><h2>${esc(t('regHead'))}</h2></div>
+      <form id="svReg" class="scard">${fields}<button class="sbtn main pink" type="submit">${esc(t('regSubmit'))}</button></form>
+      <p class="snote">${t('regNote')}</p></div>`);
     $('svReg').addEventListener('submit', async e => {
       e.preventDefault();
       const fd = new FormData(e.target), fields = {};
-      for(const f of defs().regfields){ fields[f.id] = String(fd.get(f.id) || '').trim(); if(f.required && !fields[f.id]){ toast(f.label + 'を入れてください'); return; } }
+      for(const f of defs().regfields){ fields[f.id] = String(fd.get(f.id) || '').trim(); if(f.required && !fields[f.id]){ toast(t('fillIn', T(f.label))); return; } }
       try{
         const j = await api('register', {fields});
         if(!j.ok) return toast(errText(j));
@@ -248,17 +294,19 @@
     });
   }
   function showRestore(){
-    set(topbar('住民票の復元', {back:'welcome', noCard:true}) + `<div class="spage">
-      <div class="shero"><div class="sbig-icon">🔑</div><h2>住民票を復元する</h2><p>住民票に書かれた「復元コード」（12文字）を入力してください。<br>もちものや物語の続きも戻ります。</p></div>
-      <form id="svRes" class="scard"><input class="sinput big mono" name="c" placeholder="XXXX-XXXX-XXXX" autocomplete="off" autocapitalize="characters" aria-label="復元コード"><button class="sbtn main" type="submit">復元する</button></form>
-      <p class="snote">復元すると、前に使っていたスマホでは住民票が使えなくなります。</p></div>`);
+    const keep = $('svRes') ? $('svRes').c.value : '';
+    VIEW = showRestore;
+    set(topbar(t('restoreTitle'), {back:'welcome', noCard:true}) + `<div class="spage">
+      <div class="shero"><div class="sbig-icon">🔑</div><h2>${esc(t('restoreHead'))}</h2><p>${t('restoreLead')}</p></div>
+      <form id="svRes" class="scard"><input class="sinput big mono" name="c" placeholder="XXXX-XXXX-XXXX" value="${esc(keep)}" autocomplete="off" autocapitalize="characters" aria-label="${esc(t('restoreCode'))}"><button class="sbtn main" type="submit">${esc(t('restoreDo'))}</button></form>
+      <p class="snote">${esc(t('restoreNote'))}</p></div>`);
     $('svRes').addEventListener('submit', async e => {
       e.preventDefault();
       try{
         const j = await api('restore', {code:e.target.c.value});
         if(!j.ok){ shake(e.target); return toast(errText(j)); }
         Object.assign(L, fresh(), {defs:L.defs, rid:j.rid, token:j.token, recovery:'', resident:j.resident, state:Object.assign(emptyState(), j.state)}); save();
-        celebrate('おかえりなさい！ 住民票を復元しました');
+        celebrate(t('restored'));
         setTimeout(start, 900);
       }catch(err){ toast(errText(err)); }
     });
@@ -266,19 +314,22 @@
 
   /* ---------- お休みの日 ---------- */
   function showClosed(){
+    VIEW = showClosed;
     const up = L.upcoming || [];
-    set(topbar('レンガ村の物語') + `<div class="spage"><div class="shero"><div class="sbig-icon">🌙</div><p class="skicker">CLOSED TODAY</p><h2>今日のレンガ村はお休みです</h2>
-      <p>物語は、開催日にだけひらきます。住民票はいつでも見られます。</p></div>
-      ${up.length ? `<div class="scard"><b class="sh">次の開催日</b><ul class="sdays">${up.map(d => `<li>${esc(d.label)}　${esc(fmtDate(d.date))}</li>`).join('')}</ul></div>` : ''}
-      <button class="sbtn sub" data-act="card">住民票を見る</button></div>`);
+    set(topbar('') + `<div class="spage"><div class="shero"><div class="sbig-icon">🌙</div><p class="skicker">CLOSED TODAY</p><h2>${esc(t('closedHead'))}</h2>
+      <p>${esc(t('closedLead'))}</p></div>
+      ${up.length ? `<div class="scard"><b class="sh">${esc(t('nextDays'))}</b><ul class="sdays">${up.map(d => `<li>${esc(T(d.label))}　${esc(fmtDate(d.date))}</li>`).join('')}</ul></div>` : ''}
+      <button class="sbtn sub" data-act="card">${esc(t('seeCard'))}</button></div>`);
   }
 
   /* ---------- 入口のひみつのことば ---------- */
   function showGate(){
-    set(topbar('レンガ村の物語') + `<div class="spage"><div class="shero">
-      <div class="sbig-icon">🗝️</div><p class="skicker">${esc(L.day.label)}　${esc(fmtDate(L.today))}</p>
-      <h2>村の入口のひみつのことば</h2><p>入口に掲示された「ひみつのことば」を入力してください。<br>今日のレンガ村の地図と物語がひらきます。</p></div>
-      <form id="svGate" class="scard"><input class="sinput big" name="w" placeholder="ひみつのことば" autocomplete="off" aria-label="入口のひみつのことば"><button class="sbtn main" type="submit">村に入る</button></form></div>`);
+    const keep = $('svGate') ? $('svGate').w.value : '';
+    VIEW = showGate;
+    set(topbar('') + `<div class="spage"><div class="shero">
+      <div class="sbig-icon">🗝️</div><p class="skicker">${esc(T(L.day.label))}　${esc(fmtDate(L.today))}</p>
+      <h2>${esc(t('gateHead'))}</h2><p>${t('gateLead')}</p></div>
+      <form id="svGate" class="scard"><input class="sinput big" name="w" placeholder="${esc(t('secretWord'))}" value="${esc(keep)}" autocomplete="off" aria-label="${esc(t('gateHead'))}"><button class="sbtn main" type="submit">${esc(t('enter'))}</button></form></div>`);
     $('svGate').addEventListener('submit', async e => {
       e.preventDefault();
       const w = e.target.w.value.trim(); if(!w) return;
@@ -286,7 +337,7 @@
         const j = await api('entrance', {word:w});
         if(!j.ok){ if(j.error === 'auth') return start(); shake(e.target); return toast(errText(j)); }
         L.unlocked = j.unlocked; L.map = j.map; L.visits = j.visits || L.visits; L.returning = !!j.returning; L.returningThis = !!j.returningThis; L.prevEvent = !!j.prevEvent; L.intro = j.intro || null; save();
-        celebrate(fill(j.message || 'ようこそ！ 今日の村の地図がひらきました'));
+        celebrate(fill(T(j.message) || t('entered')));
         setTimeout(route, 1000);
       }catch(err){ toast(errText(err)); }
     });
@@ -304,21 +355,22 @@
       <rect x="-20" y="2" width="10" height="9" fill="#ffd96a" stroke="#fff" stroke-width="1.5"/><rect x="10" y="2" width="10" height="9" fill="#ffd96a" stroke="#fff" stroke-width="1.5"/></g>`;
   }
   function showMap(){
+    VIEW = showMap;
     const facs = L.map || [];
     const pins = facs.map(f => {
       const x = Math.max(8, Math.min(92, f.x)) * 4, y = Math.max(8, Math.min(90, f.y)) * 5;
-      if(f.status === 'hidden') return `<g transform="translate(${x},${y})" class="spin ghost" data-act="hiddenfac" data-id="${esc(f.id)}" role="button" tabindex="0" aria-label="まだひらいていない場所">
+      if(f.status === 'hidden') return `<g transform="translate(${x},${y})" class="spin ghost" data-act="hiddenfac" data-id="${esc(f.id)}" role="button" tabindex="0" aria-label="${esc(t('hiddenPlace'))}">
         <circle r="24" fill="rgba(255,255,255,.6)" stroke="#fff" stroke-width="2.5" stroke-dasharray="5 4"/><text y="8" text-anchor="middle" font-size="24" font-weight="800" fill="#8a7a9a">?</text></g>`;
       const st = f.status, badge = st === 'locked' ? '🔒' : st === 'done' ? '✓' : 'NEW', bc = st === 'done' ? '#10a040' : st === 'open' ? '#e23d72' : '#5a6390';
-      return `<g transform="translate(${x},${y})" class="spin ${st}" data-act="fac" data-id="${esc(f.id)}" role="button" tabindex="0" aria-label="${esc(f.name)}（${st === 'locked' ? 'ひみつのことばが必要' : st === 'done' ? '読み終えた' : 'ひらいている'}）">
+      return `<g transform="translate(${x},${y})" class="spin ${st}" data-act="fac" data-id="${esc(f.id)}" role="button" tabindex="0" aria-label="${esc(T(f.name))}（${esc(t(st === 'locked' ? 'legendLocked' : st === 'done' ? 'legendDone' : 'legendOpen'))}）">
         <ellipse cx="0" cy="30" rx="34" ry="7" fill="rgba(60,30,10,.18)"/>${building(f)}
-        <g transform="translate(0,46)"><rect class="pinlabel" x="-46" y="-12" width="92" height="24" rx="12" fill="#fff" stroke="${esc(f.roof)}" stroke-width="2"/><text y="5" text-anchor="middle" font-size="12.5" font-weight="800" fill="#1f2f8f">${esc(f.name)}</text></g>
+        <g transform="translate(0,46)"><rect class="pinlabel" x="-46" y="-12" width="92" height="24" rx="12" fill="#fff" stroke="${esc(f.roof)}" stroke-width="2"/><text y="5" text-anchor="middle" font-size="12.5" font-weight="800" fill="#1f2f8f" ${T(f.name).length > 9 ? 'textLength="84" lengthAdjust="spacingAndGlyphs"' : ''}>${esc(T(f.name))}</text></g>
         <g transform="translate(32,-30)"><g class="badge"><circle r="13" fill="${bc}" stroke="#fff" stroke-width="2"/><text y="4.5" text-anchor="middle" font-size="${st === 'open' ? 8.5 : 12}" font-weight="800" fill="#fff">${badge}</text></g></g></g>`;
     }).join('');
     const its = Object.keys(L.state.items).filter(k => L.state.items[k] && defs().items[k]);
-    set(topbar('レンガ村の地図') + `<div class="spage">
-      <div class="sday"><span>${esc(L.day ? L.day.label : '')}</span>${esc(fmtDate(L.today))}</div>
-      <div class="smap"><svg viewBox="0 0 400 500" role="img" aria-label="レンガ村の地図">
+    set(topbar(t('mapTitle')) + `<div class="spage">
+      <div class="sday"><span>${esc(L.day ? T(L.day.label) : '')}</span>${esc(fmtDate(L.today))}</div>
+      <div class="smap"><svg viewBox="0 0 400 500" role="img" aria-label="${esc(t('mapTitle'))}">
         <defs><pattern id="svBrick" width="24" height="12" patternUnits="userSpaceOnUse"><rect width="24" height="12" fill="#e8a070"/><path d="M0 0H24M0 6H24M0 12H24M6 0V6M18 6V12" stroke="#c87850" stroke-width="1"/></pattern>
         <radialGradient id="svGrass" cx="50%" cy="45%" r="70%"><stop offset="0" stop-color="#b8ec8a"/><stop offset="1" stop-color="#7cc860"/></radialGradient></defs>
         <rect width="400" height="500" fill="url(#svGrass)"/>
@@ -327,19 +379,20 @@
         ${[[30,90],[360,210],[40,250],[350,440],[150,470],[130,90],[262,470],[200,40]].map(([x, y]) => `<g transform="translate(${x},${y})"><rect x="-3" y="4" width="6" height="12" fill="#7a4a20"/><circle r="14" fill="#3aa848"/><circle cx="-5" cy="-4" r="5" fill="#5ac868"/></g>`).join('')}
         ${pins}
       </svg></div>
-      <div class="slegend"><span><i style="background:#5a6390"></i>ことばが必要</span><span><i style="background:#e23d72"></i>読める</span><span><i style="background:#10a040"></i>読み終えた</span></div>
-      <div class="scard"><b class="sh">もちもの</b>${its.length ? `<ul class="sitems">${its.map(k => `<li><span>${esc(defs().items[k].icon || '★')}</span>${esc(defs().items[k].name)}</li>`).join('')}</ul>` : '<p class="snote" style="text-align:left">まだ何も持っていません。</p>'}</div>
-      <p class="snote">建物をタップして、施設に掲示されたひみつのことばを入力すると、その施設の物語がひらきます。<br>一度ひらいた施設は、今日のあいだはそのまま読めます。</p></div>`);
+      <div class="slegend"><span><i style="background:#5a6390"></i>${esc(t('legendLocked'))}</span><span><i style="background:#e23d72"></i>${esc(t('legendOpen'))}</span><span><i style="background:#10a040"></i>${esc(t('legendDone'))}</span></div>
+      <div class="scard"><b class="sh">${esc(t('items'))}</b>${its.length ? `<ul class="sitems">${its.map(k => `<li title="${esc(T(defs().items[k].desc))}"><span>${esc(defs().items[k].icon || '★')}</span>${esc(T(defs().items[k].name))}</li>`).join('')}</ul>` : `<p class="snote" style="text-align:left">${esc(t('noItems'))}</p>`}</div>
+      <p class="snote">${t('mapNote')}</p></div>`);
   }
 
   /* ---------- 施設のひみつのことば ---------- */
   function openFac(id){
     const f = (L.map || []).find(x => x.id === id); if(!f) return;
     if(f.status !== 'locked') return fetchStory(f, '');
-    modal(`<div class="sdlg" role="dialog" aria-label="${esc(f.name)}"><div class="sdlghead" style="--c:${esc(f.roof)}"><b>${esc(f.name)}</b><span>${esc(f.sub || '')}</span></div>
-      <p>施設に掲示されたひみつのことばを入力してください。</p>
-      <form id="svFac"><input class="sinput big" name="w" placeholder="ひみつのことば" autocomplete="off" aria-label="${esc(f.name)}のひみつのことば"><button class="sbtn main" type="submit">ひらく</button></form>
-      <button class="sbtn link" data-act="close">とじる</button></div>`);
+    const keep = $('svFac') ? $('svFac').w.value : '';
+    modal(`<div class="sdlg" role="dialog" aria-label="${esc(T(f.name))}"><div class="sdlghead" style="--c:${esc(f.roof)}"><b>${esc(T(f.name))}</b><span>${esc(T(f.sub))}</span></div>
+      <p>${esc(t('facLead'))}</p>
+      <form id="svFac"><input class="sinput big" name="w" placeholder="${esc(t('secretWord'))}" value="${esc(keep)}" autocomplete="off" aria-label="${esc(T(f.name))} ${esc(t('secretWord'))}"><button class="sbtn main" type="submit">${esc(t('open'))}</button></form>
+      <button class="sbtn link" data-act="close">${esc(t('close'))}</button></div>`, () => openFac(id));
     const form = $('svFac'); setTimeout(() => form.w.focus(), 60);
     form.addEventListener('submit', async e => {
       e.preventDefault();
@@ -355,9 +408,9 @@
       if(!j.ok){ if(form) shake(form); if(j.error === 'entrance_first'){ closeModal(); return start(); } return toast(errText(j)); }
       closeModal();
       if(j.map) L.map = j.map;
-      if(!j.story){ save(); showMap(); return toast('今はまだ、ここの物語はありません。'); }
+      if(!j.story){ save(); showMap(); return toast(t('noStory')); }
       L.stories[f.id] = j.story; save();
-      if(word){ celebrate(fill(j.message || f.name + 'の物語がひらきました')); setTimeout(() => play(j.story), 900); }
+      if(word){ celebrate(fill(T(j.message) || t('facOpened', T(f.name)))); setTimeout(() => play(j.story), 900); }
       else play(j.story);
     }catch(err){ toast(errText(err)); }
   }
@@ -378,11 +431,11 @@
     save(); return got;
   }
   // 1画面の文は短く：長いセリフは文の切れ目で自動的にページを分ける（目安60文字）
-  const PAGE_MAX = 60;
   function splitText(t){
     t = String(t || '');
+    const PAGE_MAX = lang() === 'en' ? 140 : lang() === 'kana' ? 70 : 60;   // 英語は文字数が多くなるので長め
     if(t.length <= PAGE_MAX) return [t];
-    const parts = t.match(/[^。！？!?]+[。！？!?」』）)]*|[^。！？!?]+$/g) || [t], out = [];
+    const parts = t.match(/[^。！？!?.]+[。！？!?.」』）)"]*\s*|[^。！？!?.]+$/g) || [t], out = [];
     let cur = '';
     parts.forEach(p => { if(cur && (cur + p).length > PAGE_MAX){ out.push(cur); cur = p; } else cur += p; });
     if(cur) out.push(cur);
@@ -390,12 +443,20 @@
   }
   function enterScene(){
     const sc = scene();
-    if(!sc){ toast('物語の続きが見つかりませんでした。'); return finish(); }
+    if(!sc){ toast(t('sceneMissing')); return finish(); }
     P.got = addAll(sc.add, sc.flag, sc.item); P.line = 0; P.gotShown = false;
-    P.pages = [];
-    (sc.lines.length ? sc.lines : [['', '']]).forEach(l => splitText(fill(l[1])).forEach((t, i) => P.pages.push({who:l[0], text:t, voice:i === 0 ? l[2] : ''})));
-    render();
+    rePage(); render();
   }
+  // 表示モードに合わせてページを作る（切りかえたときは、同じセリフの最初のページから）
+  function rePage(){
+    const sc = scene(); if(!sc) return;
+    const src = P.pages && P.pages[P.line] ? P.pages[P.line].src : 0;
+    P.pages = [];
+    (sc.lines.length ? sc.lines : [['', '']]).forEach((l, n) => splitText(fill(T(l[1]))).forEach((tx, i) => P.pages.push({who:l[0], text:tx, voice:i === 0 ? voiceOf(l[2]) : '', src:n})));
+    const at = P.pages.findIndex(p => p.src === src);
+    P.line = at < 0 ? 0 : at;
+  }
+  function voiceOf(v){ return T(v); }
   function check(c){
     if(!c) return true;
     if(c.unknown && c.unknown.length) return false;
@@ -421,21 +482,22 @@
     const choices = last ? sc.choices.filter(c => check(c.cond)) : [];
     const fac = (L.map || []).find(x => x.id === P.b.facility);
     const bg = /^#[0-9a-f]{3,8}$/i.test(sc.bg) ? `style="background:${sc.bg}"` : '';
-    const got = last && P.got.length ? `<div class="sgot">${P.got.map(i => { const it = defs().items[i]; return `<span>${it ? esc((it.icon || '★') + ' ' + it.name) : esc(i)} をもらった！</span>`; }).join('')}</div>` : '';
+    const got = last && P.got.length ? `<div class="sgot">${P.got.map(i => { const it = defs().items[i]; return `<span>${it ? esc((it.icon || '★') + ' ' + T(it.name)) : esc(i)} ${esc(t('gotItem'))}</span>`; }).join('')}</div>` : '';
     const ending = last && sc.ar;
     let foot;
-    if(choices.length) foot = `<div class="schoices" role="group" aria-label="どうする？"><p class="sask">どうする？</p>${choices.map(c => `<button class="sbtn choice" data-act="choose" data-i="${sc.choices.indexOf(c)}">${esc(fill(c.text))}</button>`).join('')}</div>`;
-    else if(ending) foot = `<div class="sar"><a class="sbtn main pink" href="${esc(arLink(sc.ar))}" target="_blank" rel="noopener" data-act="ar">${esc(fill(sc.arLabel || 'ARを見る'))}</a>
-      <small>新しい画面でARが開きます。見終わったら、この画面にもどってきてね。</small><button class="sbtn link" data-act="next">地図にもどる</button></div>`;
-    else foot = `<button class="sbtn main snextbtn" data-act="next">${last && !sc.next ? 'とじる' : 'つぎへ'} <span aria-hidden="true">▶</span></button>`;
+    if(choices.length) foot = `<div class="schoices" role="group" aria-label="${esc(t('whatDo'))}"><p class="sask">${esc(t('whatDo'))}</p>${choices.map(c => `<button class="sbtn choice" data-act="choose" data-i="${sc.choices.indexOf(c)}">${esc(fill(T(c.text)))}</button>`).join('')}</div>`;
+    else if(ending) foot = `<div class="sar"><a class="sbtn main pink" href="${esc(arLink(sc.ar))}" target="_blank" rel="noopener" data-act="ar">${esc(fill(T(sc.arLabel) || t('arDefault')))}</a>
+      <small>${esc(t('arNote'))}</small><button class="sbtn link" data-act="next">${esc(t('backToMap'))}</button></div>`;
+    else foot = `<button class="sbtn main snextbtn" data-act="next">${esc(t(last && !sc.next ? 'close' : 'next'))} <span aria-hidden="true">▶</span></button>`;
     const dots = pages.length > 1 ? `<span class="sdots" aria-label="${P.line + 1} / ${pages.length}">${pages.map((_, i) => `<i class="${i === P.line ? 'on' : ''}"></i>`).join('')}</span>` : '<span></span>';
     set(`<div class="sscene bg-${esc(/^[a-z]+$/.test(sc.bg) ? sc.bg : 'meadow')}" ${bg}>
-      <div class="sstop"><button class="sbtn ghost" data-act="leave">‹ 地図へ</button>${fac ? `<span class="sfac">${esc(fac.name)}</span>` : '<span></span>'}${soundBtn()}</div>
+      <div class="sstop"><button class="sbtn ghost" data-act="leave">‹ ${esc(t('toMap'))}</button><span class="sbarr">${langBtn()}${soundBtn()}</span></div>
+      ${fac ? `<span class="sfac">${esc(T(fac.name))}</span>` : ''}
       ${who ? `<img class="sactor" src="${charImg(who)}" alt="" aria-hidden="true">` : ''}
       <article class="sbook ${who ? '' : 'narr'}" aria-live="polite">
         ${who ? `<header class="sspeaker">${face(who)}<b>${esc(cname(who))}</b></header>` : ''}
         <p class="stext">${esc(pg.text)}</p>${got}
-        <div class="snav">${P.line > 0 ? '<button class="sbtn link sprev" data-act="prev">◀ もどる</button>' : '<span></span>'}${dots}</div>
+        <div class="snav">${P.line > 0 ? `<button class="sbtn link sprev" data-act="prev">◀ ${esc(t('prev'))}</button>` : '<span></span>'}${dots}</div>
         ${foot}
       </article></div>`);
     SFX.voice(pg.voice);
@@ -444,7 +506,7 @@
   }
   function endingFx(){
     const c = document.createElement('div'); c.className = 'sending'; c.setAttribute('role', 'status');
-    c.innerHTML = '<div class="sendcard"><span>✦</span><b>おしまい</b><em>THE END</em></div>' + Array.from({length:30}, () => `<i style="--x:${(Math.random()*100).toFixed(1)}%;--y:${(Math.random()*70).toFixed(1)}%;--d:${(Math.random()*1.4).toFixed(2)}s;--s:${(6 + Math.random()*10).toFixed(0)}px"></i>`).join('');
+    c.innerHTML = `<div class="sendcard"><span>✦</span><b>${esc(t('theEnd'))}</b><em>${lang() === 'en' ? '' : 'THE END'}</em></div>` + Array.from({length:30}, () => `<i style="--x:${(Math.random()*100).toFixed(1)}%;--y:${(Math.random()*70).toFixed(1)}%;--d:${(Math.random()*1.4).toFixed(2)}s;--s:${(6 + Math.random()*10).toFixed(0)}px"></i>`).join('');
     c.addEventListener('click', () => c.remove());
     document.body.appendChild(c); SFX.play('ending');
     setTimeout(() => c.remove(), 3600);
@@ -459,7 +521,7 @@
   function choose(i){
     const sc = scene(), c = sc.choices[i]; if(!c) return;
     const got = addAll(c.add, c.flag, c.item); if(got.length) setTimeout(() => itemPop(got), 300);
-    push({type:'choice', scene:P.id, choice:c.id, text:c.text});
+    push({type:'choice', scene:P.id, choice:c.id, text:typeof c.text === 'object' ? (c.text.ja || T(c.text)) : c.text});   // 集計は日本語の文で（言語で分かれない）
     if(c.next && P.b.scenes[c.next]){ P.id = c.next; enterScene(); } else finish();
   }
   async function finish(){
@@ -483,27 +545,27 @@
     const extra = regs.filter(x => x !== nameF && x !== friendF && f[x.id]);
     const friend = friendF && f[friendF.id];
     const days = Array.from(new Set(L.visits || [])).sort();
-    const stamps = days.length ? days.map(d => `<div class="sstamp on"><b>${esc(fmtDate(d).replace(/（.）/, ''))}</b><span>来村</span></div>`).join('') : '<div class="sstamp"><b>まだ</b><span>来村前</span></div>';
-    const P2 = defs().points || {}, pts = Object.keys(P2).map(k => `<li><span>${esc(P2[k])}</span><b>${L.state.points[k] || 0}</b></li>`).join('');
+    const stamps = days.length ? days.map(d => `<div class="sstamp on"><b>${esc(d.slice(5).replace('-', '/').replace(/^0/, '').replace('/0', '/'))}</b><span>${esc(t('visited'))}</span></div>`).join('') : `<div class="sstamp"><b>${esc(t('notYet'))}</b><span>${esc(t('beforeVisit'))}</span></div>`;
+    const P2 = defs().points || {}, pts = Object.keys(P2).map(k => `<li><span>${esc(T(P2[k]))}</span><b>${L.state.points[k] || 0}</b></li>`).join('');
     const its = Object.keys(L.state.items).filter(k => L.state.items[k] && defs().items[k]);
-    modal(`<div class="sresident" role="dialog" aria-label="住民票">
-      <div class="srtop"><span>レンガ村</span><b>住民票</b><em>RESIDENT CARD</em></div>
+    modal(`<div class="sresident" role="dialog" aria-label="${esc(t('card'))}">
+      <div class="srtop"><span>${esc(t('village'))}</span><b>${esc(t('card'))}</b>${lang() === 'en' ? '' : '<em>RESIDENT CARD</em>'}</div>
       <div class="srbody">
-        ${friend ? `<div class="srphoto"><img src="${charImg(friend)}" alt=""><span>${esc(cname(friend))}となかよし</span></div>` : ''}
-        <dl><dt>住民番号</dt><dd class="mono">${esc(r.rid)}</dd><dt>住民名</dt><dd class="nm">${esc(f[nameF.id] || '')}</dd>
-        ${extra.map(x => `<dt>${esc(x.label.replace(/（.*?）/, ''))}</dt><dd>${esc(f[x.id])}</dd>`).join('')}
-        <dt>登録日</dt><dd>${esc(fmtDate(String(r.createdAt || '').slice(0, 10)))}</dd></dl>
-        <div class="srseal" aria-hidden="true">レンガ村<br>村長之印</div>
+        ${friend ? `<div class="srphoto"><img src="${charImg(friend)}" alt=""><span>${esc(t('friendOf', cname(friend)))}</span></div>` : ''}
+        <dl><dt>${esc(t('residentNo'))}</dt><dd class="mono">${esc(r.rid)}</dd><dt>${esc(t('residentName'))}</dt><dd class="nm">${esc(f[nameF.id] || '')}</dd>
+        ${extra.map(x => `<dt>${esc(T(x.label).replace(/（.*?）|\s*\(.*?\)/, ''))}</dt><dd>${esc(optLabel(x, f[x.id]))}</dd>`).join('')}
+        <dt>${esc(t('registered'))}</dt><dd>${esc(fmtDate(String(r.createdAt || '').slice(0, 10)))}</dd></dl>
+        <div class="srseal" aria-hidden="true">${t('seal')}</div>
       </div>
       <div class="srstamps">${stamps}</div>
       ${pts ? `<ul class="srpts">${pts}</ul>` : ''}
-      ${its.length ? `<div class="sritems">${its.map(k => `<span>${esc((defs().items[k].icon || '★') + ' ' + defs().items[k].name)}</span>`).join('')}</div>` : ''}
-      ${L.recovery ? `<div class="srcode"><small>復元コード（機種変更のときに使います）<br>このページのスクリーンショットを残してください</small><b class="mono">${esc(L.recovery)}</b></div>`
-        : '<button class="sbtn sub" data-act="newcode">復元コードを表示する（新しく発行）</button>'}
-      ${opt.first ? '<p class="srwelcome">ようこそ、レンガ村へ！ 住民登録が完了しました。</p>' : ''}
-      <button class="sbtn main" data-act="${opt.first ? 'closego' : 'close'}">${opt.first ? '村へ行く' : 'とじる'}</button>
-      ${opt.first ? '' : '<button class="sbtn link" data-act="delete">住民票を削除する</button>'}
-    </div>`);
+      ${its.length ? `<div class="sritems">${its.map(k => `<span>${esc((defs().items[k].icon || '★') + ' ' + T(defs().items[k].name))}</span>`).join('')}</div>` : ''}
+      ${L.recovery ? `<div class="srcode"><small>${t('codeLabel')}</small><b class="mono">${esc(L.recovery)}</b></div>`
+        : `<button class="sbtn sub" data-act="newcode">${esc(t('newCode'))}</button>`}
+      ${opt.first ? `<p class="srwelcome">${esc(t('regDone'))}</p>` : ''}
+      <button class="sbtn main" data-act="${opt.first ? 'closego' : 'close'}">${esc(t(opt.first ? 'goVillage' : 'close'))}</button>
+      ${opt.first ? '' : `<button class="sbtn link" data-act="delete">${esc(t('deleteBtn'))}</button>`}
+    </div>`, () => showCard(opt));
   }
 
   /* ---------- 操作 ---------- */
@@ -512,6 +574,8 @@
     const a = b.dataset.act;
     if(a === 'ar'){ if(P && P.b && P.b.facility !== 'intro' && !L.state.done[P.b.facility]){ L.state.done[P.b.facility] = L.today; push({type:'done', facility:P.b.facility, route:P.b.route}); syncSoon(); } return; }   // リンクはそのまま新しいタブで開く
     e.preventDefault();
+    if(a === 'lang') return showLangPicker();
+    if(a === 'setlang') return applyLang(b.dataset.lang);
     if(a === 'welcome') return showWelcome();
     if(a === 'register') return showRegister();
     if(a === 'restore') return showRestore();
@@ -520,20 +584,20 @@
     if(a === 'close') return closeModal();
     if(a === 'closego'){ closeModal(); return start(); }
     if(a === 'fac') return openFac(b.dataset.id);
-    if(a === 'hiddenfac'){ const f = (L.map || []).find(x => x.id === b.dataset.id); return toast(f && f.hint ? f.hint : 'まだ道がひらいていません。ほかの施設の物語を読んでみてね。'); }
+    if(a === 'hiddenfac'){ const f = (L.map || []).find(x => x.id === b.dataset.id); return toast(f && T(f.hint) ? T(f.hint) : t('hiddenHint')); }
     if(a === 'next') return next();
     if(a === 'prev'){ if(P && P.line > 0){ P.line--; render(); } return; }
     if(a === 'sound'){ SFX.set(!SFX.on); b.outerHTML = soundBtn(); if(SFX.on) SFX.play('page'); return; }
     if(a === 'choose') return choose(+b.dataset.i);
     if(a === 'leave'){ SFX.stopVoice(); P = null; return showMap(); }
     if(a === 'newcode'){
-      try{ const j = await api('newRecovery'); if(!j.ok) return toast(errText(j)); L.recovery = j.recovery; save(); showCard(); toast('新しい復元コードを発行しました。前のコードは使えなくなりました。'); }catch(err){ toast(errText(err)); }
+      try{ const j = await api('newRecovery'); if(!j.ok) return toast(errText(j)); L.recovery = j.recovery; save(); showCard(); toast(t('newCodeDone')); }catch(err){ toast(errText(err)); }
       return;
     }
     if(a === 'delete'){
-      if(!confirm('住民票と、これまでの記録をすべて削除します。元には戻せません。よろしいですか？')) return;
+      if(!confirm(t('deleteAsk'))) return;
       try{ const j = await api('delete'); if(!j.ok) return toast(errText(j)); }catch(err){ return toast(errText(err)); }
-      L = fresh(); save(); closeModal(); showWelcome(); toast('住民票を削除しました。');
+      L = fresh(); save(); closeModal(); showWelcome(); toast(t('deleted'));
     }
   });
   document.addEventListener('keydown', e => {
