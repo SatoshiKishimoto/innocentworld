@@ -69,7 +69,7 @@
       }
     } finally { if(!opt.quiet) loading(false); }
   }
-  function push(ev){ L.outbox.push(Object.assign({at:stamp(), date:L.today, event:L.day && L.day.event}, ev)); save(); }
+  function push(ev){ L.outbox.push(Object.assign({id:Date.now().toString(36) + Math.random().toString(36).slice(2, 8), at:stamp(), date:L.today, event:L.day && L.day.event}, ev)); save(); }
   function stamp(){ const d = new Date(), p = n => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`; }
   let syncT = 0;
   function syncSoon(){ clearTimeout(syncT); syncT = setTimeout(() => { if(L.rid && L.outbox.length) api('sync', {}, {quiet:true}).catch(() => {}); }, 1500); }

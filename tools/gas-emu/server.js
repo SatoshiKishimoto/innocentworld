@@ -44,7 +44,7 @@ const ctx = {
     computeDigest: (alg, s) => Array.from(crypto.createHash('sha256').update(s, 'utf8').digest()).map(b => b > 127 ? b - 256 : b)
   },
   PropertiesService: {getScriptProperties: () => ({getProperty: k => props[k] || null, setProperty: (k, v) => { props[k] = v; }, deleteProperty: k => { delete props[k]; }})},
-  CacheService: {getScriptCache: () => ({get: k => cache[k] === undefined ? null : cache[k], put: (k, v) => { cache[k] = v; }, remove: k => { delete cache[k]; }})},
+  CacheService: {getScriptCache: () => ({get: k => cache[k] === undefined ? null : cache[k], put: (k, v) => { cache[k] = v; }, remove: k => { delete cache[k]; }, getAll: ks => Object.fromEntries(ks.filter(k => cache[k] !== undefined).map(k => [k, cache[k]])), putAll: o => { Object.assign(cache, o); }})},
   LockService: {getScriptLock: () => ({waitLock(){}, releaseLock(){}})},
   ContentService: {MimeType: {JSON: 'json'}, createTextOutput: s => ({s, setMimeType(){ return this; }})}
 };

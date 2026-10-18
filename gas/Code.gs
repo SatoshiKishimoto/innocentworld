@@ -317,11 +317,18 @@ function applySync(me, req){
   var d = today(), info = dayInfo(d), ev = info ? info.event : '';
   withLock(function(){
     if(req.state) saveState(me.rid, req.state);
-    (req.events || []).slice(0, 200).forEach(function(x){
+    // 同じ記録が2回以上届いても1回だけ書く（電波が悪いときの送り直しや、同時に出た通信で重なるため）
+    var evs = (req.events || []).slice(0, 200), cache = CacheService.getScriptCache();
+    var keys = evs.map(function(x){ return 'ev|' + hash([me.rid, x.id || '', x.type, x.scene || '', x.choice || '', x.facility || '', x.at || ''].join('|')).slice(0, 40); });
+    var seen = keys.length ? cache.getAll(keys) : {}, fresh = {};
+    evs.forEach(function(x, i){
+      if(seen[keys[i]] || fresh[keys[i]]) return;
+      fresh[keys[i]] = '1';
       var at = str(x.at) || nowStr(), dd = ymd(x.date) || d, e2 = str(x.event) || ev;
       if(x.type === 'choice') append('picks', [me.rid, e2, dd, str(x.scene), str(x.choice), str(typeof x.text === 'object' ? x.text.ja : x.text).slice(0, 200), at]);
       if(x.type === 'start' || x.type === 'done') append('progress', [me.rid, e2, dd, str(x.facility), str(x.route), x.type === 'done' ? '読み終えた' : '読んだ', at]);
     });
+    if(Object.keys(fresh).length) try{ cache.putAll(fresh, 21600); }catch(e){}
   });
 }
 function visitInfo(rid, d, ev){
