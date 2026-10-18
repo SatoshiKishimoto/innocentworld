@@ -14,7 +14,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;800&display=swap">
 <script>
 /* 更新の確認：古い版が残っていたら新しい版を読み込み直す（物語の途中では切りかえない） */
-var BUILD = '20261019011941';
+var BUILD = '20261019012133';
 (function(){
   function go(v){
     try{ if(sessionStorage.getItem('storyReloadedTo') === v) return; sessionStorage.setItem('storyReloadedTo', v); }catch(e){}
@@ -23,11 +23,16 @@ var BUILD = '20261019011941';
   function check(){
     fetch('../version.txt?t=' + Date.now(), {cache:'no-store'}).then(function(r){ return r.ok ? r.text() : ''; }).then(function(v){
       v = (v || '').trim();
-      if(v && BUILD !== 'dev' && v !== BUILD && !document.querySelector('.sscene')) go(v);
+      // 物語の途中・入力中・住民票などを開いているときは切りかえない（地図や入口の画面に戻ったときに切りかえる）
+      var busy = document.querySelector('.sscene, .smodal:not([hidden]), .sitempop, .sending') || (document.activeElement && /INPUT|TEXTAREA/.test(document.activeElement.tagName));
+      if(v && BUILD !== 'dev' && v !== BUILD && !busy) go(v);
     }).catch(function(){});
   }
   check();
   document.addEventListener('visibilitychange', function(){ if(document.visibilityState === 'visible') check(); });
+  // 開いたままでも1分ごとに確かめる。物語を閉じて地図に戻ったときにも確かめる
+  setInterval(function(){ if(document.visibilityState === 'visible') check(); }, 60000);
+  window.IWCheckUpdate = check;
   document.write('<link rel="stylesheet" href="story.css?v=' + BUILD + '">');
   document.write('<script src="config.js?v=' + BUILD + '"><\/script>');
 })();

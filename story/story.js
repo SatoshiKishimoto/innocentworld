@@ -417,6 +417,7 @@
   }
   function showMap(){
     VIEW = showMap;
+    if(window.IWCheckUpdate) setTimeout(window.IWCheckUpdate, 400);   // 地図に戻ったら新しい版を確かめる
     const facs = L.map || [];
     const pins = facs.map(f => {
       const x = Math.max(8, Math.min(92, f.x)) * 4, y = Math.max(8, Math.min(90, f.y)) * 5;
