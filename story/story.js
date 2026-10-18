@@ -407,6 +407,13 @@
   function mapBridges(){
     return `<g transform="translate(200,22)"><rect x="-22" y="-16" width="44" height="32" rx="3" fill="#c8915e" stroke="#1d1414" stroke-width="2.5"/><path d="M-22 -10H22M-22 -3H22M-22 4H22M-22 11H22" stroke="#1d1414" stroke-width="1.4"/></g>`;
   }
+  // 水路（上の水路と左下の水路）の上やすぐそばには、生け垣を置かない
+  function offWater(x, y){
+    if(y < 34 + 30) return false;
+    for(let i = 0; i <= 40; i++){ const t = i / 40, bx = (1-t)*(1-t)*-10 + 2*(1-t)*t*80 + t*t*150, by = (1-t)*(1-t)*372 + 2*(1-t)*t*420 + t*t*510;
+      if(Math.hypot(bx - x, by - y) < 42) return false; }
+    return true;
+  }
   function lawn(x, y){
     const dots = Array.from({length: 11}, (_, i) => { const a = Math.PI * (0.08 + 0.84 * i / 10); return `<circle cx="${(Math.cos(a) * 50).toFixed(1)}" cy="${(14 + Math.sin(a) * 22).toFixed(1)}" r="5" fill="#00a844"/>`; }).join('');
     return `<g transform="translate(${x},${y})" filter="url(#svOl)"><ellipse cx="0" cy="14" rx="54" ry="26" fill="#58d854"/>${dots}</g>`;
@@ -446,7 +453,7 @@
         <path d="${roads(facs)}" stroke="url(#svLane)" stroke-width="24" fill="none" stroke-linecap="round"/>
         ${mapBridges()}
         ${facs.filter(f => f.status !== 'hidden' && f.type !== 'plaza').map(f => lawn(Math.max(8, Math.min(92, f.x)) * 4, Math.max(8, Math.min(90, f.y)) * 5)).join('')}
-        ${[[36,190],[364,200],[150,150],[250,150],[364,420],[36,440],[290,470],[110,470]].filter(([x, y]) => facs.every(f => Math.hypot(Math.max(8, Math.min(92, f.x)) * 4 - x, Math.max(8, Math.min(90, f.y)) * 5 + 10 - y) > 66)).map(([x, y]) => hedge(x, y)).join('')}
+        ${[[36,190],[364,200],[150,150],[250,150],[364,420],[36,470],[290,470],[110,470]].filter(([x, y]) => offWater(x, y) && facs.every(f => Math.hypot(Math.max(8, Math.min(92, f.x)) * 4 - x, Math.max(8, Math.min(90, f.y)) * 5 + 10 - y) > 66)).map(([x, y]) => hedge(x, y)).join('')}
         ${pins}
       </svg></div>
       <div class="slegend"><span><i style="background:#5a6390"></i>${esc(t('legendLocked'))}</span><span><i style="background:#e23d72"></i>${esc(t('legendOpen'))}</span><span><i style="background:#10a040"></i>${esc(t('legendDone'))}</span></div>
