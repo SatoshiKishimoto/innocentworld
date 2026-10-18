@@ -153,12 +153,20 @@
       g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(vol || 0.12, t0 + 0.012); g.gain.exponentialRampToValueAtTime(0.0001, t0 + d);
       o.connect(g); g.connect(c.destination); o.start(t0); o.stop(t0 + d + 0.05);
     }
+    function bellStrike(f, t, v){
+      [[1, 1, 4.2], [2.0, 0.55, 3.2], [2.42, 0.35, 2.6], [3.0, 0.3, 2.0], [4.16, 0.18, 1.4], [5.43, 0.1, 1.0], [0.5, 0.25, 4.8]].forEach(([m, a, d]) => tone(f * m, t, d, 'sine', v * a));
+      tone(f * 6.8, t, 0.08, 'triangle', v * 0.15);   // 打った瞬間のカン、という音
+    }
     const bell = (f, t, d, v) => { tone(f, t, d, 'sine', v); tone(f*2, t, d*0.6, 'sine', (v || 0.12)*0.35); tone(f*3.01, t, d*0.3, 'triangle', (v || 0.12)*0.12); };
     const N = n => 440 * Math.pow(2, (n - 69)/12);
     const play = {
       page(){ tone(N(88), 0, 0.06, 'triangle', 0.03); },
       correct(){ [72, 76, 79, 84].forEach((n, i) => bell(N(n), i*0.09, 0.9, 0.11)); },
       wrong(){ tone(N(57), 0, 0.18, 'triangle', 0.08); tone(N(53), 0.16, 0.28, 'triangle', 0.08); },
+      // 時計台の鐘：金属の鐘らしい、整数倍でない倍音を重ねて長く響かせる
+      bell(){ bellStrike(N(52), 0, 0.2); },
+      chime(){ [[64, 0], [60, 0.9], [62, 1.8], [55, 2.7], [55, 4.2], [62, 5.1], [64, 6.0], [60, 6.9]].forEach(([n, t]) => bellStrike(N(n), t, 0.12));
+        [8.4, 10.2].forEach(t => bellStrike(N(48), t, 0.16)); },
       knock(){ [0, 0.22].forEach(t => { tone(260, t, 0.09, 'triangle', 0.22); tone(520, t, 0.05, 'sine', 0.08); tone(1400, t, 0.02, 'square', 0.02); }); },
       item(){ [84, 88, 91, 96, 100].forEach((n, i) => bell(N(n), i*0.06, 0.6, 0.07)); },
       ending(){ [[60,64,67],[65,69,72],[67,71,74],[72,76,79,84]].forEach((ch, i) => ch.forEach(n => { tone(N(n), i*0.32, i === 3 ? 2.2 : 0.4, 'triangle', 0.06); tone(N(n+12), i*0.32, i === 3 ? 1.6 : 0.3, 'sine', 0.03); }));
@@ -703,6 +711,10 @@
         ${foot}
       </article></div>`);
     SFX.voice(pg.voice);
+    // 「鐘」が「鳴る」ページで鐘の音（日本語の文で判断するので、どの言語でも鳴る）。同じページでは1回だけ
+    const sfxKey = P.id + ':' + P.line;
+    if(P.sfxKey !== sfxKey){ P.sfxKey = sfxKey;
+      if(/鐘/.test(jaText) && /鳴/.test(jaText)) setTimeout(() => SFX.play(/一度/.test(jaText) ? 'bell' : 'chime'), 350); }
     if(last && P.got.length && !P.gotShown){ P.gotShown = true; setTimeout(() => itemPop(P.got), 250); }
     if(ending && !P.endShown){ P.endShown = true; endingFx(); }
     if(finale && last && !P.endShown){ P.endShown = true; endingFx(true); }
