@@ -572,6 +572,7 @@
     </svg>`;
   }
   function sceneArt(bg){
+    if(window.IWScenes && window.IWScenes.has(bg)) return window.IWScenes.art(bg);
     if(!/^bedroom/.test(bg)) return '';
     const win = bg === 'bedroom_window', mark = bg === 'bedroom_bookmark';
     const stars = [[148,128],[176,170],[222,118],[258,160],[196,222],[240,250],[160,262],[268,214]].map(([x, y], i) => `<circle class="star ns" style="--d:${(i*0.37).toFixed(2)}s" cx="${x}" cy="${y}" r="${i%3 ? 1.8 : 2.6}" fill="#fff8d0"/>`).join('');

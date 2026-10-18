@@ -294,3 +294,13 @@ html[data-lang=en] .sfinale.last span{letter-spacing:.08em;padding:18px 22px}
 .smap .bld .sblades path{stroke-width:1.6}
 .sbgart :is(rect,path,circle,ellipse):not(.ns):not([fill=none]){stroke:#1d1414;stroke-width:2;stroke-linejoin:round}
 .smark :is(rect,path,circle,ellipse):not(.ns):not([fill=none]){stroke:#1d1414;stroke-width:2;stroke-linejoin:round}
+
+/* ---------- 場所の背景イラストの動き ---------- */
+.sbgart .sparkle{animation:stwinkle 1.8s ease-in-out infinite;animation-delay:var(--d)}
+.sbgart .flame{transform-box:fill-box;transform-origin:50% 100%;animation:sflame .5s ease-in-out infinite alternate}
+@keyframes sflame{from{transform:scaleY(.9)}to{transform:scaleY(1.08)}}
+.sbgart .beam{animation:sbeam 5s ease-in-out infinite;animation-delay:var(--d)}
+@keyframes sbeam{0%,100%{opacity:.5}50%{opacity:1}}
+.sbgart .water{animation:swater 1.2s ease-in-out infinite alternate}
+@keyframes swater{from{opacity:.6}to{opacity:1}}
+@media (prefers-reduced-motion:reduce){.sbgart *{animation:none!important}}
