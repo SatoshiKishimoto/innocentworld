@@ -257,13 +257,22 @@
           <rect x="-10" y="-30" width="20" height="64" fill="#cfc8bb"/><ellipse cx="0" cy="-30" rx="34" ry="9" fill="#cfc8bb"/>
         </g>
         <g class="fount" transform="translate(200,330)">
-          ${[0, 1, 2].map(i => `<ellipse class="ns ripple" style="--d:${i * 0.8}s" cx="0" cy="34" rx="30" ry="7" fill="none" stroke="#e8f8ff" stroke-width="2"/>`).join('')}
-          <path class="ns plume" d="M0 -32 V-98" stroke="#9ad8fc" stroke-width="9" stroke-linecap="round"/><path class="ns plume" d="M0 -32 V-98" stroke="#ffffff" stroke-width="4" stroke-linecap="round"/>
-          ${[-1, 1].map(sd => [[64, 30], [44, 18], [86, 34]].map(([w, h], k) => { const d = `M0 -96 Q${sd * w * 0.55} ${-124 + k * 6} ${sd * w} ${h}`;
-            return `<path class="ns jet" style="--d:${(k * 0.17).toFixed(2)}s" d="${d}" fill="none" stroke="#9ad8fc" stroke-width="5" stroke-linecap="round"/><path class="ns jet" style="--d:${(k * 0.17).toFixed(2)}s" d="${d}" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round"/>`; }).join('')).join('')}
-          ${[-1, 1].map(sd => `<path class="ns jet small" d="M${sd * 30} -30 Q${sd * 50} -44 ${sd * 62} 28" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round"/>`).join('')}
-          ${[[-86,34],[-64,30],[-44,18],[44,18],[64,30],[86,34],[-62,28],[62,28]].map(([x, y], i) => `<circle class="ns splash" style="--d:${(i * 0.13).toFixed(2)}s" cx="${x}" cy="${y}" r="3" fill="#ffffff"/>`).join('')}
-          ${[[-14,-112],[10,-118],[-4,-126],[18,-104],[-22,-100]].map(([x, y], i) => `<circle class="ns spray" style="--d:${(i * 0.21).toFixed(2)}s" cx="${x}" cy="${y}" r="2.4" fill="#ffffff"/>`).join('')}
+          <defs><linearGradient id="scWater" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e6f8ff" stop-opacity=".95"/><stop offset="1" stop-color="#7fd0fc" stop-opacity=".85"/></linearGradient>
+            <linearGradient id="scSheet" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#8fd8fc" stop-opacity=".75"/><stop offset=".5" stop-color="#e8f9ff" stop-opacity=".9"/><stop offset="1" stop-color="#8fd8fc" stop-opacity=".75"/></linearGradient></defs>
+          ${[0, 1, 2].map(i => `<ellipse class="ns ripple" style="--d:${i * 0.8}s" cx="0" cy="34" rx="34" ry="7" fill="none" stroke="#e8f8ff" stroke-width="2"/>`).join('')}
+          <!-- 上の皿からあふれて池へ落ちる水のカーテン -->
+          <path class="ns" d="M-36 -29 Q-44 -8 -50 30 Q0 40 50 30 Q44 -8 36 -29 Q0 -20 -36 -29 Z" fill="url(#scSheet)"/>
+          ${[-30, -15, 0, 15, 30].map((x, i) => `<path class="ns glint" style="--d:${(i * 0.23).toFixed(2)}s" d="M${x} -22 Q${x * 1.12} 2 ${x * 1.3} 26" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round"/>`).join('')}
+          <!-- まん中から噴き上がる水の柱 -->
+          <g class="plume"><path class="ns" d="M-5 -30 Q-6 -70 -3 -100 Q0 -108 3 -100 Q6 -70 5 -30 Z" fill="url(#scWater)"/>
+            <path class="ns" d="M-1 -34 Q-1.5 -70 -0.5 -98" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/></g>
+          <!-- てっぺんで傘のように広がって、上の皿へ落ちる水 -->
+          <path class="ns crown" d="M0 -104 Q-26 -106 -34 -78 Q-38 -56 -32 -32 L-24 -32 Q-30 -56 -26 -76 Q-18 -96 0 -96 Q18 -96 26 -76 Q30 -56 24 -32 L32 -32 Q38 -56 34 -78 Q26 -106 0 -104 Z" fill="url(#scWater)"/>
+          <path class="ns crown" d="M-4 -102 Q-28 -100 -31 -70 M4 -102 Q28 -100 31 -70" fill="none" stroke="#ffffff" stroke-width="1.8" stroke-linecap="round"/>
+          <!-- 水が落ちるところの白いあわ -->
+          <path class="ns foam" d="M-52 30 q6 -6 12 0 q6 -6 12 0 M40 30 q6 -6 12 0 M-12 34 q6 -5 12 0 q6 -5 12 0" fill="none" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round"/>
+          <path class="ns foam" d="M-34 -30 q5 -4 10 0 M24 -30 q5 -4 10 0" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+          ${[[-14,-112],[10,-116],[-2,-122],[18,-106],[-22,-104]].map(([x, y], i) => `<circle class="ns spray" style="--d:${(i * 0.21).toFixed(2)}s" cx="${x}" cy="${y}" r="2.2" fill="#ffffff"/>`).join('')}
         </g>
         ${[[40,300],[360,300]].map(([x, y]) => `<g ${F} transform="translate(${x},${y})"><rect x="-3" y="-60" width="6" height="70" fill="#3a3a4a"/><circle cx="0" cy="-64" r="10" fill="#ffe08a"/></g>`).join('')}
         ${[[60,420,'#ff6a8a'],[80,430,'#ffd000'],[320,424,'#8a5ab8'],[344,432,'#ff6a8a']].map(([x, y, c]) => flower(x, y, c)).join('')}`);
