@@ -159,6 +159,7 @@
       page(){ tone(N(88), 0, 0.06, 'triangle', 0.03); },
       correct(){ [72, 76, 79, 84].forEach((n, i) => bell(N(n), i*0.09, 0.9, 0.11)); },
       wrong(){ tone(N(57), 0, 0.18, 'triangle', 0.08); tone(N(53), 0.16, 0.28, 'triangle', 0.08); },
+      knock(){ [0, 0.22].forEach(t => { tone(260, t, 0.09, 'triangle', 0.22); tone(520, t, 0.05, 'sine', 0.08); tone(1400, t, 0.02, 'square', 0.02); }); },
       item(){ [84, 88, 91, 96, 100].forEach((n, i) => bell(N(n), i*0.06, 0.6, 0.07)); },
       ending(){ [[60,64,67],[65,69,72],[67,71,74],[72,76,79,84]].forEach((ch, i) => ch.forEach(n => { tone(N(n), i*0.32, i === 3 ? 2.2 : 0.4, 'triangle', 0.06); tone(N(n+12), i*0.32, i === 3 ? 1.6 : 0.3, 'sine', 0.03); }));
         [96, 100, 103, 108].forEach((n, i) => bell(N(n), 1.0 + i*0.12, 1.2, 0.05)); }
@@ -359,26 +360,26 @@
   /* ---------- 地図 ---------- */
   function building(f){
     const r = esc(f.roof), w = esc(f.wall);
-    if(f.type === 'windmill') return `<g class="bld"><path d="M-14 26 L-9 -14 L9 -14 L14 26 Z" fill="${w}" stroke="#7a4a20" stroke-width="2"/><path d="M-11 -14 L0 -28 L11 -14 Z" fill="${r}"/>
+    if(f.type === 'windmill') return `<g class="bld" filter="url(#svOl)"><path d="M-14 26 L-9 -14 L9 -14 L14 26 Z" fill="${w}" stroke="#7a4a20" stroke-width="2"/><path d="M-11 -14 L0 -28 L11 -14 Z" fill="${r}"/>
       <rect x="-5" y="10" width="10" height="16" rx="5" fill="#1e5aff"/><g class="sblades"><path d="M0 -18 L-4 -54 L4 -54 Z M0 -18 L36 -22 L36 -14 Z M0 -18 L4 18 L-4 18 Z M0 -18 L-36 -14 L-36 -22 Z" fill="#fff" stroke="#c89a6a" stroke-width="1.5"/><circle cx="0" cy="-18" r="3.5" fill="#7a4a20"/></g></g>`;
-    if(f.type === 'well') return `<g class="bld"><path d="M-30 -24 L0 -40 L30 -24" fill="none" stroke="${r}" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+    if(f.type === 'well') return `<g class="bld" filter="url(#svOl)"><path d="M-30 -24 L0 -40 L30 -24" fill="none" stroke="${r}" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
       <rect x="-24" y="-26" width="5" height="34" fill="#7a5230"/><rect x="19" y="-26" width="5" height="34" fill="#7a5230"/><rect x="-21" y="-20" width="42" height="3" fill="#7a5230"/>
       <path d="M0 -18 L0 -2" stroke="#5a3a1a" stroke-width="1.5"/><path d="M-5 -2 h10 l-1.5 8 h-7 z" fill="#a0703a"/>
       <ellipse cx="0" cy="8" rx="28" ry="7" fill="#5aa8e8" stroke="#6a6a72" stroke-width="2"/>
       <path d="M-28 8 V24 Q0 34 28 24 V8 Q0 18 -28 8 Z" fill="${w}" stroke="#6a6a72" stroke-width="1.5"/>
       ${[[-20,14],[-6,17],[8,17],[22,14],[-14,24],[0,27],[14,24]].map(([x, y]) => `<rect x="${x-6}" y="${y-3}" width="12" height="6" rx="2" fill="rgba(0,0,0,.08)" stroke="#1d1414" stroke-width="1"/>`).join('')}
       <circle class="ns" cx="-10" cy="7" r="1.6" fill="#fff"/><circle class="ns" cx="6" cy="9" r="1.2" fill="#fff"/></g>`;
-    if(f.type === 'tower') return `<g class="bld"><rect x="-16" y="-34" width="32" height="62" rx="2" fill="${w}" stroke="rgba(0,0,0,.25)" stroke-width="1.5"/>
+    if(f.type === 'tower') return `<g class="bld" filter="url(#svOl)"><rect x="-16" y="-34" width="32" height="62" rx="2" fill="${w}" stroke="rgba(0,0,0,.25)" stroke-width="1.5"/>
       <path d="M-22 -32 L0 -58 L22 -32 Z" fill="${r}" stroke="rgba(0,0,0,.25)" stroke-width="1.5"/><circle cx="0" cy="-16" r="11" fill="#fffdf0" stroke="#c89a3a" stroke-width="2.5"/>
       <path d="M0 -16 V-24 M0 -16 L6 -13" stroke="#3a2a1a" stroke-width="2" stroke-linecap="round"/><rect x="-6" y="10" width="12" height="18" rx="6" fill="${r}"/>
       <rect x="-5" y="-4" width="10" height="8" fill="#ffd96a" stroke="#fff" stroke-width="1.5"/></g>`;
-    if(f.type === 'forest') return `<g class="bld"><rect x="-3" y="10" width="6" height="16" fill="#7a4a20"/><rect x="-25" y="14" width="5" height="12" fill="#7a4a20"/><rect x="20" y="14" width="5" height="12" fill="#7a4a20"/>
+    if(f.type === 'forest') return `<g class="bld" filter="url(#svOl)"><rect x="-3" y="10" width="6" height="16" fill="#7a4a20"/><rect x="-25" y="14" width="5" height="12" fill="#7a4a20"/><rect x="20" y="14" width="5" height="12" fill="#7a4a20"/>
       <circle cx="-22" cy="4" r="14" fill="${r}"/><circle cx="22" cy="4" r="14" fill="${r}"/><circle cx="0" cy="-8" r="20" fill="${r}"/><circle class="ns" cx="-6" cy="-14" r="7" fill="rgba(255,255,255,.18)"/>
       <path d="M-30 24 Q0 16 30 24" stroke="${w}" stroke-width="4" fill="none" stroke-linecap="round"/>
       <circle cx="10" cy="-2" r="2.5" fill="#ff6a8a"/><circle cx="-14" cy="6" r="2.5" fill="#ffd000"/></g>`;
-    if(f.type === 'plaza') return `<g class="bld"><ellipse cx="0" cy="14" rx="40" ry="16" fill="#f3dcc0" stroke="#c89a6a" stroke-width="2"/><circle cx="0" cy="8" r="10" fill="#7ad8ff" stroke="#fff" stroke-width="3"/>
+    if(f.type === 'plaza') return `<g class="bld" filter="url(#svOl)"><ellipse cx="0" cy="14" rx="40" ry="16" fill="#f3dcc0" stroke="#c89a6a" stroke-width="2"/><circle cx="0" cy="8" r="10" fill="#7ad8ff" stroke="#fff" stroke-width="3"/>
       <path d="M0 -2 L0 -30" stroke="#c89a6a" stroke-width="3"/><path d="M0 -30 L18 -24 L0 -18 Z" fill="${r}"/>${[-30,-15,15,30].map((x, i) => `<circle cx="${x}" cy="${-4 - (i%2)*6}" r="3" fill="${['#ffd000','#e8101e','#10c050','#1e5aff'][i]}"/>`).join('')}</g>`;
-    return `<g class="bld"><rect x="-26" y="-6" width="52" height="34" rx="3" fill="${w}" stroke="rgba(0,0,0,.25)" stroke-width="1.5"/>
+    return `<g class="bld" filter="url(#svOl)"><rect x="-26" y="-6" width="52" height="34" rx="3" fill="${w}" stroke="rgba(0,0,0,.25)" stroke-width="1.5"/>
       <path d="M-32 -4 L0 -30 L32 -4 Z" fill="${r}" stroke="rgba(0,0,0,.25)" stroke-width="1.5"/><rect x="-6" y="10" width="12" height="18" rx="6" fill="${r}"/>
       <rect x="-20" y="2" width="10" height="9" fill="#ffd96a" stroke="#fff" stroke-width="1.5"/><rect x="10" y="2" width="10" height="9" fill="#ffd96a" stroke="#fff" stroke-width="1.5"/></g>`;
   }
@@ -407,12 +408,12 @@
     return `<g transform="translate(200,22)"><rect x="-22" y="-16" width="44" height="32" rx="3" fill="#c8915e" stroke="#1d1414" stroke-width="2.5"/><path d="M-22 -10H22M-22 -3H22M-22 4H22M-22 11H22" stroke="#1d1414" stroke-width="1.4"/></g>`;
   }
   function lawn(x, y){
-    const dots = Array.from({length: 11}, (_, i) => { const a = Math.PI * (0.08 + 0.84 * i / 10); return `<circle cx="${(Math.cos(a) * 50).toFixed(1)}" cy="${(14 + Math.sin(a) * 22).toFixed(1)}" r="5" fill="#2f8a3e" stroke="#1d1414" stroke-width="1.2"/>`; }).join('');
-    return `<g transform="translate(${x},${y})"><ellipse cx="0" cy="14" rx="54" ry="26" fill="#7cc860" stroke="#1d1414" stroke-width="2.2"/>${dots}</g>`;
+    const dots = Array.from({length: 11}, (_, i) => { const a = Math.PI * (0.08 + 0.84 * i / 10); return `<circle cx="${(Math.cos(a) * 50).toFixed(1)}" cy="${(14 + Math.sin(a) * 22).toFixed(1)}" r="5" fill="#00a844"/>`; }).join('');
+    return `<g transform="translate(${x},${y})" filter="url(#svOl)"><ellipse cx="0" cy="14" rx="54" ry="26" fill="#58d854"/>${dots}</g>`;
   }
   function hedge(x, y){
     const c = [[-12,-8],[0,-8],[12,-8],[-12,4],[0,4],[12,4]];
-    return `<g transform="translate(${x},${y})"><rect x="-22" y="-17" width="44" height="32" rx="8" fill="#2f7a38" stroke="#1d1414" stroke-width="2.2"/>${c.map(([a, b]) => `<circle cx="${a}" cy="${b}" r="7" fill="#3f9a48" stroke="#1d1414" stroke-width="1.3"/><circle cx="${a - 2}" cy="${b - 2}" r="2.5" fill="#6cc070"/>`).join('')}</g>`;
+    return `<g transform="translate(${x},${y})" filter="url(#svOl)"><rect x="-22" y="-17" width="44" height="32" rx="8" fill="#008830"/>${c.map(([a, b]) => `<circle cx="${a}" cy="${b}" r="7" fill="#00a844" stroke="#003a10" stroke-width="1.2"/><circle cx="${a - 2}" cy="${b - 2}" r="2.5" fill="#58d854"/>`).join('')}</g>`;
   }
   function showMap(){
     VIEW = showMap;
@@ -435,9 +436,9 @@
     set(topbar(t('mapTitle')) + `<div class="spage">
       <div class="sday"><span>${esc(L.day ? T(L.day.label) : '')}</span>${esc(fmtDate(L.today))}</div>
       <div class="smap"><svg viewBox="0 0 400 500" role="img" aria-label="${esc(t('mapTitle'))}">
-        <defs><pattern id="svPave" width="32" height="16" patternUnits="userSpaceOnUse"><rect width="32" height="16" fill="#d9895a"/><rect x="1" y="1" width="14" height="6" fill="#df9466"/><rect x="17" y="9" width="14" height="6" fill="#d27f52"/><path d="M0 0H32M0 8H32M0 16H32M16 0V8M8 8V16M24 8V16" stroke="#2a1812" stroke-width="1.3"/></pattern>
-        <pattern id="svLane" width="20" height="10" patternUnits="userSpaceOnUse"><rect width="20" height="10" fill="#f2c79c"/><path d="M0 0H20M0 5H20M5 0V5M15 5V10" stroke="#3a2418" stroke-width="1"/></pattern>
-        <pattern id="svWater" width="40" height="12" patternUnits="userSpaceOnUse"><rect width="40" height="12" fill="#4f9ee0"/><path d="M4 4 q5 -3 10 0 M24 9 q5 -3 10 0" stroke="#bfe4ff" stroke-width="1.6" fill="none" stroke-linecap="round"/></pattern></defs>
+        <defs><filter id="svOl" x="-15%" y="-15%" width="130%" height="130%" color-interpolation-filters="sRGB"><feMorphology in="SourceAlpha" operator="dilate" radius="2.2" result="d"/><feFlood flood-color="#1d1414"/><feComposite in2="d" operator="in" result="o"/><feMerge><feMergeNode in="o"/><feMergeNode in="SourceGraphic"/></feMerge></filter><pattern id="svPave" width="32" height="16" patternUnits="userSpaceOnUse"><rect width="32" height="16" fill="#c8501c"/><rect x="1" y="1" width="14" height="6" fill="#dc6a32"/><rect x="17" y="9" width="14" height="6" fill="#b04014"/><path d="M0 0H32M0 8H32M0 16H32M16 0V8M8 8V16M24 8V16" stroke="#3a0c04" stroke-width="1.2"/></pattern>
+        <pattern id="svLane" width="20" height="10" patternUnits="userSpaceOnUse"><rect width="20" height="10" fill="#f8b878"/><path d="M0 0H20M0 5H20M5 0V5M15 5V10" stroke="#a84820" stroke-width="1"/></pattern>
+        <pattern id="svWater" width="40" height="12" patternUnits="userSpaceOnUse"><rect width="40" height="12" fill="#3cbcfc"/><path d="M4 4 q5 -3 10 0 M24 9 q5 -3 10 0" stroke="#e0f8fc" stroke-width="1.6" fill="none" stroke-linecap="round"/></pattern></defs>
         <rect width="400" height="500" fill="url(#svPave)"/>
         ${mapCanals()}
         <path d="${roads(facs)}" stroke="#1d1414" stroke-width="30" fill="none" stroke-linecap="round"/>
@@ -571,46 +572,51 @@
       <text x="60" y="254" text-anchor="middle" font-size="11" font-weight="800" fill="#7a4a20" letter-spacing="2">BRICK VILLAGE</text>
     </svg>`;
   }
-  function sceneArt(bg){
+  // curtain：'closed'（カーテンが閉じている）／'opening'（いま開く）／'open'（開いている）
+  function sceneArt(bg, curtain){
     if(window.IWScenes && window.IWScenes.has(bg)) return window.IWScenes.art(bg);
     if(!/^bedroom/.test(bg)) return '';
-    const win = bg === 'bedroom_window', mark = bg === 'bedroom_bookmark';
+    curtain = curtain || (bg === 'bedroom' ? 'closed' : 'open');
+    const win = bg === 'bedroom_window' && curtain !== 'closed', mark = bg === 'bedroom_bookmark';
     const stars = [[148,128],[176,170],[222,118],[258,160],[196,222],[240,250],[160,262],[268,214]].map(([x, y], i) => `<circle class="star ns" style="--d:${(i*0.37).toFixed(2)}s" cx="${x}" cy="${y}" r="${i%3 ? 1.8 : 2.6}" fill="#fff8d0"/>`).join('');
     const books = Array.from({length:18}, (_, i) => { const row = Math.floor(i/6), x = 18 + (i%6)*13, h = 54 + ((i*7)%4)*6, c = ['#e2687e','#5a6ab8','#ffd000','#4f9a4a','#d9534a','#8a5ab8'][(i+row)%6];
       return `<rect x="${x}" y="${240 + row*92 + (72 - h)}" width="11" height="${h}" rx="2" fill="${c}"/>`; }).join('');
     // 窓の外のエスパーとミミ（住人のイラストをそのまま使い、窓わくの内側だけに見せる）
-    const friends = win ? `<g clip-path="url(#svWin)"><image class="wave l" href="${charImg('esper')}" x="118" y="148" width="104" height="142" preserveAspectRatio="xMidYMax meet"/>
+    const friends = win ? `<g clip-path="url(#svWin)" class="${curtain === 'opening' ? 'friendsIn' : ''}"><image class="wave l" href="${charImg('esper')}" x="118" y="148" width="104" height="142" preserveAspectRatio="xMidYMax meet"/>
       <image class="wave r" href="${charImg('mimi')}" x="196" y="156" width="86" height="134" preserveAspectRatio="xMidYMax meet"/></g>` : '';
-    const curtainL = win ? 'M100 70 Q112 200 92 352 L76 352 L76 70 Z' : 'M100 70 Q150 200 132 352 L76 352 L76 70 Z';
-    const curtainR = win ? 'M300 70 Q288 200 308 352 L324 352 L324 70 Z' : 'M300 70 Q250 200 268 352 L324 352 L324 70 Z';
+    // カーテン：開いた形を描き、閉じているときは横に広げる（ひだの線は太さを変えない）
+    const folds = side => [0.3, 0.55, 0.8].map(k => { const x = side < 0 ? 76 + 26 * k : 324 - 26 * k; return `<path d="M${x} 74 Q${x + side * 3} 210 ${x - side * 2} 350" fill="none" stroke="#b8405a" stroke-width="1.6" vector-effect="non-scaling-stroke"/>`; }).join('');
+    const cState = curtain === 'closed' ? 'closed' : curtain === 'opening' ? 'opening' : '';
+    const curtainSvg = `<g class="curtain l ${cState}"><path d="M100 70 Q112 200 92 352 L76 352 L76 70 Z" fill="#e2687e" vector-effect="non-scaling-stroke"/>${folds(-1)}</g>
+      <g class="curtain r ${cState}"><path d="M300 70 Q288 200 308 352 L324 352 L324 70 Z" fill="#e2687e" vector-effect="non-scaling-stroke"/>${folds(1)}</g>`;
     return `<svg class="sbgart" viewBox="0 0 400 800" preserveAspectRatio="xMidYMin slice" aria-hidden="true">
-      <defs><linearGradient id="svWall" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3a2f5e"/><stop offset=".55" stop-color="#5a4472"/><stop offset="1" stop-color="#6e4f6a"/></linearGradient>
+      <defs><filter id="brOl" x="-15%" y="-15%" width="130%" height="130%" color-interpolation-filters="sRGB"><feMorphology in="SourceAlpha" operator="dilate" radius="2" result="d"/><feFlood flood-color="#1d1414"/><feComposite in2="d" operator="in" result="o"/><feMerge><feMergeNode in="o"/><feMergeNode in="SourceGraphic"/></feMerge></filter><linearGradient id="svWall" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3a2f5e"/><stop offset=".55" stop-color="#5a4472"/><stop offset="1" stop-color="#6e4f6a"/></linearGradient>
         <linearGradient id="svSky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#14184a"/><stop offset="1" stop-color="#3a3f8a"/></linearGradient>
         <radialGradient id="svLamp" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="rgba(255,214,120,.55)"/><stop offset="1" stop-color="rgba(255,214,120,0)"/></radialGradient>
         <clipPath id="svWin"><rect x="112" y="96" width="176" height="196"/></clipPath>
         <pattern id="svPaper" width="40" height="40" patternUnits="userSpaceOnUse"><circle class="ns" cx="10" cy="10" r="2" fill="rgba(255,255,255,.07)"/><circle class="ns" cx="30" cy="30" r="2" fill="rgba(255,255,255,.07)"/></pattern></defs>
       <rect class="ns" width="400" height="800" fill="url(#svWall)"/><rect class="ns" width="400" height="800" fill="url(#svPaper)"/>
       <rect y="560" width="400" height="240" fill="#7a4a2a"/>${[580,610,640,670,700,730].map((y, i) => `<path d="M0 ${y} H400${[0,1,2,3].map(k => ` M${(k*110 + (i%2)*55) % 400} ${y} V${y+30}`).join('')}" fill="none" stroke="#1d1414" stroke-width="2"/>`).join('')}
-      <rect x="104" y="88" width="192" height="212" rx="8" fill="#8a5a32"/>
+      <g filter="url(#brOl)"><rect x="104" y="88" width="192" height="212" rx="8" fill="#8a5a32"/></g>
       <rect class="ns" x="112" y="96" width="176" height="196" fill="url(#svSky)"/>
       <circle cx="252" cy="134" r="18" fill="#fff4c0"/><circle class="ns" cx="260" cy="128" r="16" fill="url(#svSky)"/>
       ${stars}
       <path d="M112 270 Q160 252 200 266 Q240 280 288 262 V292 H112 Z" fill="#c87850" opacity=".85"/>
       ${friends}
       <path d="M200 96 V292 M112 194 H288" fill="none" stroke="#1d1414" stroke-width="10"/><path d="M200 96 V292 M112 194 H288" fill="none" stroke="#8a5a32" stroke-width="6"/>
-      <rect x="96" y="292" width="208" height="14" rx="4" fill="#a8743c"/>
-      <rect x="70" y="60" width="260" height="10" rx="5" fill="#a8743c"/>
-      <path d="${curtainL}" fill="#e2687e" opacity=".92"/><path d="${curtainR}" fill="#e2687e" opacity=".92"/>
-      <rect x="8" y="200" width="96" height="340" rx="4" fill="#8a5a32"/><rect x="14" y="206" width="84" height="328" fill="#6a3e22"/>
+      <g filter="url(#brOl)"><rect x="96" y="292" width="208" height="14" rx="4" fill="#a8743c"/><rect x="70" y="60" width="260" height="10" rx="5" fill="#a8743c"/></g>
+      <g filter="url(#brOl)">${curtainSvg}</g>
+      <g filter="url(#brOl)"><rect x="8" y="200" width="96" height="340" rx="4" fill="#8a5a32"/><rect x="14" y="206" width="84" height="328" fill="#6a3e22"/>
       ${[0,1,2].map(r => `<rect x="14" y="${310 + r*92}" width="84" height="6" fill="#8a5a32"/>`).join('')}
-      ${books}
+      ${books}</g>
       <ellipse class="ns" cx="350" cy="350" rx="90" ry="80" fill="url(#svLamp)"/>
-      <rect x="236" y="392" width="164" height="14" rx="3" fill="#a8743c"/><rect x="246" y="406" width="10" height="160" fill="#8a5a32"/><rect x="384" y="406" width="10" height="160" fill="#8a5a32"/>
+      <g filter="url(#brOl)"><rect x="236" y="392" width="164" height="14" rx="3" fill="#a8743c"/><rect x="246" y="406" width="10" height="160" fill="#8a5a32"/><rect x="384" y="406" width="10" height="160" fill="#8a5a32"/>
       <path d="M350 392 V350" fill="none" stroke="#1d1414" stroke-width="4"/><path d="M326 352 L374 352 L362 318 L338 318 Z" fill="#ffd96a"/><ellipse cx="350" cy="392" rx="16" ry="4" fill="#5a3a1a"/>
-      <rect x="262" y="374" width="58" height="18" rx="3" fill="#3f6fb0"/><rect x="266" y="370" width="50" height="6" fill="#f6ecd8"/>
+      <rect x="262" y="374" width="58" height="18" rx="3" fill="#3f6fb0"/><rect x="266" y="370" width="50" height="6" fill="#f6ecd8"/></g>
       ${mark ? `<g class="deskmark" transform="translate(286 300) rotate(-12)">${bookmarkSVG(40).replace('<svg ', '<svg x="0" y="0" height="100" ')}</g>` : ''}
     </svg>`;
   }
+  window.IWStoryArt = (bg, c) => sceneArt(bg, c);   // 確認用
   function face(k){ return `<span class="sface"><img src="${charImg(k)}" alt=""></span>`; }
   function render(){
     const sc = scene(), pages = P.pages, pg = pages[P.line] || {who:'', text:''};
@@ -632,7 +638,15 @@
       <small>${esc(t('arNote'))}</small><button class="sbtn link" data-act="next">${esc(t('backToMap'))}</button></div>`;
     else foot = `<button class="sbtn main snextbtn" data-act="next">${esc(t(last && !sc.next ? (finale ? 'backToMap' : 'close') : 'next'))} <span aria-hidden="true">▶</span></button>`;
     const dots = pages.length > 1 ? `<span class="sdots" aria-label="${P.line + 1} / ${pages.length}">${pages.map((_, i) => `<i class="${i === P.line ? 'on' : ''}"></i>`).join('')}</span>` : '<span></span>';
-    set(`<div class="sscene bg-${esc(scBg)}" ${bg}>${sceneArt(scBg)}
+    let curtain = '';
+    if(scBg === 'bedroom_window'){
+      // 1行目（こつん）はカーテンが閉じている。2行目でカーテンが開いて2人が見える
+      if(pg.src === 0) curtain = 'closed';
+      else if(!P.curtainDone){ curtain = 'opening'; P.curtainDone = true; }
+      else curtain = 'open';
+      if(pg.src === 0 && !P.knocked){ P.knocked = true; setTimeout(() => SFX.play('knock'), 450); }
+    }
+    set(`<div class="sscene bg-${esc(scBg)}" ${bg}>${sceneArt(scBg, curtain)}
       <div class="sstop"><button class="sbtn ghost" data-act="leave">‹ ${esc(t('toMap'))}</button><span class="sbarr">${langBtn()}${soundBtn()}</span></div>
       ${fac && !inRoom ? `<span class="sfac">${esc(T(fac.name))}</span>` : ''}
       ${who && scBg !== 'bedroom_window' ? `<img class="sactor" src="${charImg(who)}" alt="" aria-hidden="true">` : ''}

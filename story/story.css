@@ -267,7 +267,7 @@ html[data-lang="kana"] .srbody dl{font-size:12px}
 
 /* ---------- エンディング：子ども部屋（絵の背景） ---------- */
 .bg-bedroom,.bg-bedroom_window,.bg-bedroom_bookmark{background:#3a2f5e}
-.sbgart{position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}
+.sbgart{position:absolute;inset:0;width:100%;height:100%;z-index:1;pointer-events:none}
 .sscene > .sstop,.sscene > .sbook,.sscene > .sactor,.sscene > .sfac{z-index:2}
 .sbgart .star{animation:stwinkle 2.4s ease-in-out infinite;animation-delay:var(--d)}
 @keyframes stwinkle{0%,100%{opacity:1}50%{opacity:.25}}
@@ -290,9 +290,10 @@ html[data-lang=en] .sfinale.last span{letter-spacing:.08em;padding:18px 22px}
 .sending.spark{background:transparent;pointer-events:none}
 
 /* ---------- 黒い縁取り（レトロな絵本の線）：建物・レンガ・部屋の家具 ---------- */
-.smap .bld :is(rect,path,circle,ellipse,polygon):not(.ns):not([fill=none]){stroke:#1d1414;stroke-width:2;stroke-linejoin:round}
+.smap .bld :is(rect,path,circle,ellipse,polygon):not(.ns):not([fill=none]){stroke:#1d1414;stroke-width:1.3;stroke-linejoin:round}
 .smap .bld .sblades path{stroke-width:1.6}
-.sbgart :is(rect,path,circle,ellipse):not(.ns):not([fill=none]){stroke:#1d1414;stroke-width:2;stroke-linejoin:round}
+.sbgart :is(rect,path,circle,ellipse):not(.ns):not([fill=none]){stroke:#1d1414;stroke-width:1.3;stroke-linejoin:round}
+/* 線の強弱：外側のシルエットは太く（SVGの filter で縁取り）、中の線は細く。大きな面・地面は細い線だけ */
 .smark :is(rect,path,circle,ellipse):not(.ns):not([fill=none]){stroke:#1d1414;stroke-width:2;stroke-linejoin:round}
 
 /* ---------- 場所の背景イラストの動き ---------- */
@@ -304,3 +305,13 @@ html[data-lang=en] .sfinale.last span{letter-spacing:.08em;padding:18px 22px}
 .sbgart .water{animation:swater 1.2s ease-in-out infinite alternate}
 @keyframes swater{from{opacity:.6}to{opacity:1}}
 @media (prefers-reduced-motion:reduce){.sbgart *{animation:none!important}}
+
+/* エンディングの窓：カーテン（閉じる→こつん→開く） */
+.sbgart .curtain{transform-box:fill-box;transition:none}
+.sbgart .curtain.l{transform-origin:0% 50%}
+.sbgart .curtain.r{transform-origin:100% 50%}
+.sbgart .curtain.closed{transform:scaleX(4.3)}
+.sbgart .curtain.opening{animation:scurtain 1.4s cubic-bezier(.5,0,.3,1) .15s both}
+@keyframes scurtain{from{transform:scaleX(4.3)}to{transform:scaleX(1)}}
+.sbgart .friendsIn{animation:sfriends .9s ease-out .9s both}
+@keyframes sfriends{from{opacity:0}to{opacity:1}}

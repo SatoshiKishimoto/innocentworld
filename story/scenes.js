@@ -8,12 +8,12 @@
   const r1 = n => Math.round(n * 10) / 10;
 
   /* ---------- 部品 ---------- */
-  function cloud(x, y, s){ return `<g transform="translate(${x},${y}) scale(${s})"><path d="M0 20 Q-4 4 14 4 Q18 -10 36 -4 Q50 -14 62 0 Q80 0 76 20 Z" fill="#fff"/></g>`; }
+  function cloud(x, y, s){ return `<g ${F} transform="translate(${x},${y}) scale(${s})"><path d="M0 20 Q-4 4 14 4 Q18 -10 36 -4 Q50 -14 62 0 Q80 0 76 20 Z" fill="#fff"/></g>`; }
   function house(x, y, w, h, roof, wall, opt){
     opt = opt || {};
     const rh = h * 0.7, door = opt.door !== false;
-    return `<g transform="translate(${x},${y})">
-      <rect x="0" y="0" width="${w}" height="${h}" fill="${wall}"/>
+    return `<g ${F} transform="translate(${x},${y})">
+      <rect x="0" y="0" width="${w}" height="${h}" fill="${wall}"/><rect class="ns" x="${w*0.72}" y="0" width="${w*0.28}" height="${h}" fill="rgba(60,20,40,.12)"/>
       <path d="M${-w*0.12} 2 L${w/2} ${-rh} L${w*1.12} 2 Z" fill="${roof}"/>
       ${opt.chimney ? `<rect x="${w*0.68}" y="${-rh*0.9}" width="${w*0.13}" height="${rh*0.6}" fill="#b5654a"/>` : ''}
       <rect x="${w*0.14}" y="${h*0.18}" width="${w*0.24}" height="${h*0.26}" fill="#ffe08a"/><path d="M${w*0.26} ${h*0.18} V${h*0.44} M${w*0.14} ${h*0.31} H${w*0.38}" fill="none" stroke="${K}" stroke-width="1.2"/>
@@ -22,8 +22,8 @@
     </g>`;
   }
   function tree(x, y, s, c){
-    c = c || '#3f9a48';
-    return `<g transform="translate(${x},${y}) scale(${s})"><rect x="-6" y="0" width="12" height="34" fill="#7a4a20"/>
+    c = c || '#00a844';
+    return `<g ${F} transform="translate(${x},${y}) scale(${s})"><rect x="-6" y="0" width="12" height="34" fill="#7a4a20"/>
       <circle cx="-16" cy="-6" r="20" fill="${c}"/><circle cx="16" cy="-6" r="20" fill="${c}"/><circle cx="0" cy="-24" r="24" fill="${c}"/>
       <circle class="ns" cx="-8" cy="-30" r="8" fill="rgba(255,255,255,.18)"/></g>`;
   }
@@ -46,23 +46,25 @@
   // レンガの壁（黒い目地）
   function brickPattern(id, base, light, dark){
     return `<pattern id="${id}" width="40" height="20" patternUnits="userSpaceOnUse"><rect class="ns" width="40" height="20" fill="${base}"/><rect class="ns" x="2" y="2" width="16" height="7" fill="${light}"/><rect class="ns" x="22" y="12" width="16" height="7" fill="${dark}"/>
-      <path class="ns" d="M0 0H40M0 10H40M0 20H40M20 0V10M10 10V20M30 10V20" fill="none" stroke="${K}" stroke-width="1.6"/></pattern>`;
+      <path class="ns" d="M0 0H40M0 10H40M0 20H40M20 0V10M10 10V20M30 10V20" fill="none" stroke="#3a0c04" stroke-width="1.4"/></pattern>`;
   }
   const sky = (id, a, b) => `<linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient>`;
-  const wrap = (defs, body) => `<svg class="sbgart" viewBox="0 0 400 800" preserveAspectRatio="xMidYMin slice" aria-hidden="true"><defs>${defs}</defs>${body}</svg>`;
+  const OL = '<filter id="scOl" x="-15%" y="-15%" width="130%" height="130%" color-interpolation-filters="sRGB"><feMorphology in="SourceAlpha" operator="dilate" radius="2.1" result="d"/><feFlood flood-color="#1d1414"/><feComposite in2="d" operator="in" result="o"/><feMerge><feMergeNode in="o"/><feMergeNode in="SourceGraphic"/></feMerge></filter>';
+  const F = 'filter="url(#scOl)"';   // 外側を太い黒線で縁取る（中の線は細く）
+  const wrap = (defs, body) => `<svg class="sbgart" viewBox="0 0 400 800" preserveAspectRatio="xMidYMin slice" aria-hidden="true"><defs>${OL}${defs}</defs>${body}</svg>`;
 
   /* ---------- 場所 ---------- */
   const ART = {
     // 物語の入口：大きな絵本の門と、その先に広がる村
     meadow(){
-      return wrap(sky('scSkyM', '#7fc6ff', '#dff3ff') + brickPattern('scBrM', '#e08a5a', '#e99a68', '#d4784a'),
+      return wrap(sky('scSkyM', '#5cbcfc', '#a8e0fc') + brickPattern('scBrM', '#c8501c', '#dc6a32', '#b04014'),
         `<rect class="ns" width="400" height="800" fill="url(#scSkyM)"/>
         ${cloud(30, 70, 1)}${cloud(280, 110, 0.8)}${cloud(170, 40, 0.6)}
-        <path d="M-10 330 Q100 270 210 310 Q310 280 410 320 V800 H-10 Z" fill="#9fdc78"/>
+        <path d="M-10 330 Q100 270 210 310 Q310 280 410 320 V800 H-10 Z" fill="#80e070"/>
         ${house(40, 262, 44, 36, '#e2687e', '#fff1d6', {chimney:true})}${house(110, 270, 40, 30, '#5a6ab8', '#f6ecd8')}${house(250, 266, 46, 36, '#ffb020', '#fff7ea', {chimney:true})}${house(318, 274, 40, 30, '#4f9a4a', '#fff1d6')}
-        <path d="M-10 400 Q120 350 220 390 Q320 360 410 395 V800 H-10 Z" fill="#7cc860"/>
+        <path d="M-10 400 Q120 350 220 390 Q320 360 410 395 V800 H-10 Z" fill="#58d854"/>
         <path d="M150 800 L185 420 H215 L250 800 Z" fill="url(#scBrM)"/><path d="M150 800 L185 420 H215 L250 800" fill="none" stroke="${K}" stroke-width="2.5"/>
-        <g transform="translate(200,250)">
+        <g ${F} transform="translate(200,250)">
           <path d="M-150 150 V-60 Q-150 -90 -120 -90 H-6 V150 Z" fill="#3f6fb0"/><path d="M150 150 V-60 Q150 -90 120 -90 H6 V150 Z" fill="#e2687e"/>
           <path d="M-138 150 V-56 Q-138 -78 -116 -78 H-14 V150 Z" fill="#fff7ea"/><path d="M138 150 V-56 Q138 -78 116 -78 H14 V150 Z" fill="#fff7ea"/>
           ${[-60,-40,-20,0,20,40,60,80,100,120].map(y => `<path d="M-128 ${y} H-24 M24 ${y} H128" fill="none" stroke="#d8c3a8" stroke-width="2"/>`).join('')}
@@ -74,22 +76,22 @@
     },
     // 村の井戸：村はずれの石の井戸。水面に文字のような光
     well(){
-      return wrap(sky('scSkyW', '#8ec9f0', '#e8f5ff') + brickPattern('scBrW', '#d98a5a', '#e39a6a', '#cc7a4c'),
+      return wrap(sky('scSkyW', '#5cbcfc', '#a8e0fc') + brickPattern('scBrW', '#c8501c', '#dc6a32', '#b04014'),
         `<rect class="ns" width="400" height="800" fill="url(#scSkyW)"/>
         ${cloud(250, 60, 0.9)}${cloud(40, 110, 0.7)}
         ${house(10, 230, 50, 40, '#d9534a', '#fff1d6', {chimney:true, flowers:true})}${house(80, 240, 42, 32, '#5a6ab8', '#f3e2c0')}${house(300, 232, 52, 40, '#4f9a4a', '#fff7ea', {flowers:true})}
-        ${tree(150, 250, 0.8)}${tree(260, 248, 0.7, '#4fae58')}
-        <rect x="-10" y="270" width="420" height="530" fill="#8fd06a"/>
+        ${tree(150, 250, 0.8)}${tree(260, 248, 0.7, '#20b84c')}
+        <rect x="-10" y="270" width="420" height="530" fill="#58d854"/>
         <path d="M-10 270 H410" fill="none" stroke="${K}" stroke-width="2"/>
         <path d="M60 800 Q120 560 200 500 Q236 478 268 474" fill="none" stroke="${K}" stroke-width="44" stroke-linecap="round"/>
         <path d="M60 800 Q120 560 200 500 Q236 478 268 474" fill="none" stroke="url(#scBrW)" stroke-width="40" stroke-linecap="round"/>
         <ellipse class="ns" cx="300" cy="482" rx="84" ry="16" fill="rgba(40,60,20,.28)"/>
-        <g transform="translate(300,382)">
+        <g ${F} transform="translate(300,382)">
           <path d="M-70 -40 L0 -96 L70 -40 Z" fill="#a0603a"/><path d="M-62 -42 L0 -88 L62 -42 Z" fill="#c8794a"/>
           <rect x="-56" y="-44" width="9" height="104" fill="#7a5230"/><rect x="47" y="-44" width="9" height="104" fill="#7a5230"/>
           <rect x="-50" y="-30" width="100" height="6" fill="#7a5230"/><path d="M0 -24 V6" fill="none" stroke="${K}" stroke-width="2"/>
           <path d="M-9 6 H9 L7 22 H-7 Z" fill="#a0703a"/>
-          <ellipse cx="0" cy="44" rx="64" ry="16" fill="#5aa8e8"/>
+          <ellipse cx="0" cy="44" rx="64" ry="16" fill="#3cbcfc"/>
           <path d="M-64 44 V92 Q0 112 64 92 V44 Q0 62 -64 44 Z" fill="#b8b2a6"/>
           ${[[-48,58],[-22,64],[6,66],[34,62],[56,54],[-56,78],[-30,86],[-2,90],[26,88],[52,80]].map(([x, y]) => `<rect x="${x-11}" y="${y-6}" width="22" height="12" rx="3" fill="#cfc8bb"/>`).join('')}
           <path class="ns" d="M-30 40 h10 M-12 46 h14 M10 40 h8 M24 46 h12" stroke="#fff6c8" stroke-width="2.5" stroke-linecap="round"/>
@@ -103,11 +105,11 @@
       const bread = (x, y, s, k) => k === 0 ? `<ellipse cx="${x}" cy="${y}" rx="${14*s}" ry="${9*s}" fill="#d9944a"/><path d="M${x-7*s} ${y-3*s} q4 -3 8 0 M${x-1*s} ${y-4*s} q4 -3 8 0" fill="none" stroke="${K}" stroke-width="1.2"/>`
         : k === 1 ? `<path d="M${x-16*s} ${y+4*s} Q${x} ${y-14*s} ${x+16*s} ${y+4*s} Q${x} ${y+2*s} ${x-16*s} ${y+4*s} Z" fill="#e8a65a"/>`
         : `<rect x="${x-20*s}" y="${y-5*s}" width="${40*s}" height="${10*s}" rx="${5*s}" fill="#c9843e"/>`;
-      return wrap(brickPattern('scBrB', '#c8704a', '#d27f56', '#b9643f') + sky('scWallB', '#f8e2c4', '#f1cfa4'),
+      return wrap(brickPattern('scBrB', '#b8481c', '#cc5e2c', '#a03c12') + sky('scWallB', '#f8e2c4', '#f1cfa4'),
         `<rect class="ns" width="400" height="800" fill="url(#scWallB)"/>
         ${[0,1,2,3,4,5,6,7,8,9].map(i => `<path class="ns" d="M${i*44} 0 V560" stroke="#e9c49a" stroke-width="2"/>`).join('')}
         <path d="M-10 80 H410" fill="none" stroke="${K}" stroke-width="2"/><rect x="-10" y="60" width="420" height="20" fill="#a8743c"/>
-        <g transform="translate(110,300)">
+        <g ${F} transform="translate(110,300)">
           <path d="M-100 160 V-10 Q-100 -130 0 -130 Q100 -130 100 -10 V160 Z" fill="url(#scBrB)"/>
           <path d="M-100 160 V-10 Q-100 -130 0 -130 Q100 -130 100 -10 V160 Z" fill="none" stroke="${K}" stroke-width="3"/>
           <path d="M-52 120 V30 Q-52 -24 0 -24 Q52 -24 52 30 V120 Z" fill="#2a1a14"/>
@@ -115,12 +117,12 @@
           <rect x="-60" y="112" width="120" height="12" fill="#7a4a20"/>
           ${bread(-20, 106, 0.8, 0)}${bread(18, 106, 0.8, 0)}
         </g>
-        <g transform="translate(250,110)">
+        <g ${F} transform="translate(250,110)">
           <rect x="0" y="0" width="140" height="300" fill="#a8743c"/><rect x="8" y="8" width="124" height="284" fill="#7a4a2a"/>
           ${[80, 160, 240].map(y => `<rect x="8" y="${y}" width="124" height="8" fill="#a8743c"/>`).join('')}
           ${bread(36, 68, 1, 0)}${bread(96, 68, 1, 1)}${bread(70, 150, 1.2, 2)}${bread(36, 230, 1, 1)}${bread(98, 230, 1, 0)}${bread(40, 282, 0.9, 2)}${bread(100, 282, 0.9, 0)}
         </g>
-        <g transform="translate(200,160)"><rect x="-38" y="-40" width="76" height="56" rx="6" fill="#2f4a3a"/><text x="0" y="-16" text-anchor="middle" font-size="12" font-weight="800" fill="#fff8e0">BREAD</text><text x="0" y="4" text-anchor="middle" font-size="10" font-weight="700" fill="#ffd96a">★ NIKO ★</text></g>
+        <g ${F} transform="translate(200,160)"><rect x="-38" y="-40" width="76" height="56" rx="6" fill="#2f4a3a"/><text x="0" y="-16" text-anchor="middle" font-size="12" font-weight="800" fill="#fff8e0">BREAD</text><text x="0" y="4" text-anchor="middle" font-size="10" font-weight="700" fill="#ffd96a">★ NIKO ★</text></g>
         <path d="M200 0 V60" fill="none" stroke="${K}" stroke-width="2"/><path d="M180 60 H220 L212 80 H188 Z" fill="#ffd96a"/>
         <rect x="-10" y="452" width="420" height="40" fill="#c8915e"/><rect x="-10" y="492" width="420" height="320" fill="#a0683a"/>
         ${[0,1,2,3,4].map(i => `<path d="M${i*90+20} 492 V800" fill="none" stroke="${K}" stroke-width="2"/>`).join('')}
@@ -129,14 +131,14 @@
     },
     // モックとハルの森：木もれ日の道、小川、古い木の橋、向こう岸の花
     forest(){
-      return wrap(sky('scSkyF', '#bfe6a0', '#e8f8d0'),
+      return wrap(sky('scSkyF', '#7ad468', '#b8f0a0'),
         `<rect class="ns" width="400" height="800" fill="url(#scSkyF)"/>
-        ${[[30,1.5,'#2f7a38'],[120,1.3,'#3f8a48'],[290,1.4,'#2f7a38'],[380,1.6,'#3f8a48'],[200,1.1,'#4f9a4a']].map(([x, s, c]) => [x, 254 - 34 * s, s, c]).map(([x, y, s, c]) => tree(x, y, s, c)).join('')}
+        ${[[30,1.5,'#008830'],[120,1.3,'#00a844'],[290,1.4,'#008830'],[380,1.6,'#00a844'],[200,1.1,'#20b84c']].map(([x, s, c]) => [x, 254 - 34 * s, s, c]).map(([x, y, s, c]) => tree(x, y, s, c)).join('')}
         ${[60,150,240,330].map((x, i) => `<path class="ns beam" style="--d:${i*0.7}s" d="M${x} 0 L${x+40} 0 L${x+90} 470 L${x+30} 470 Z" fill="rgba(255,250,200,.28)"/>`).join('')}
-        <rect x="-10" y="252" width="420" height="548" fill="#7cc860"/>${[20,70,130,250,330,385].map((x, i) => `<ellipse cx="${x}" cy="256" rx="${26 + (i%3)*6}" ry="12" fill="#4f9a4a"/>`).join('')}<path class="ns" d="M-10 252 H410" fill="none" stroke="${K}" stroke-width="2"/>
-        <path d="M-10 380 Q120 350 200 372 Q290 396 410 360 V420 Q290 452 200 430 Q110 410 -10 440 Z" fill="#5aa8e8"/>
+        <rect x="-10" y="252" width="420" height="548" fill="#58d854"/>${[20,70,130,250,330,385].map((x, i) => `<ellipse cx="${x}" cy="256" rx="${26 + (i%3)*6}" ry="12" fill="#00a844"/>`).join('')}<path class="ns" d="M-10 252 H410" fill="none" stroke="${K}" stroke-width="2"/>
+        <path d="M-10 380 Q120 350 200 372 Q290 396 410 360 V420 Q290 452 200 430 Q110 410 -10 440 Z" fill="#3cbcfc"/>
         ${[[40,404],[150,392],[250,410],[340,392]].map(([x, y]) => `<path class="ns" d="M${x} ${y} q10 -5 20 0" fill="none" stroke="#dff3ff" stroke-width="2.5" stroke-linecap="round"/>`).join('')}
-        <g transform="translate(200,402)">
+        <g ${F} transform="translate(200,402)">
           <path d="M-120 -22 Q0 -60 120 -22 L120 -10 Q0 -48 -120 -10 Z" fill="#a8743c"/>
           ${[-100,-70,-40,-10,20,50,80,110].map(x => `<path d="M${x} ${r1(-16 - (1 - (x/120)**2) * 30)} V${r1(-4 - (1 - (x/120)**2) * 30)}" fill="none" stroke="${K}" stroke-width="1.5"/>`).join('')}
           <path d="M-120 -22 Q0 -60 120 -22" fill="none" stroke="${K}" stroke-width="2.5"/>
@@ -152,14 +154,14 @@
         `<rect class="ns" width="400" height="800" fill="url(#scBrC)"/>
         <rect x="-10" y="40" width="420" height="16" fill="#7a4a2a"/><rect x="-10" y="430" width="420" height="16" fill="#7a4a2a"/>
         <rect x="40" y="40" width="16" height="400" fill="#7a4a2a"/><rect x="344" y="40" width="16" height="400" fill="#7a4a2a"/>
-        <g transform="translate(200,200)">
+        <g ${F} transform="translate(200,200)">
           <circle cx="0" cy="0" r="120" fill="#c89a3a"/><circle cx="0" cy="0" r="106" fill="#fffbe8"/>
           ${Array.from({length:12}, (_, i) => { const a = i / 12 * Math.PI * 2 - Math.PI / 2; return `<text x="${r1(Math.cos(a)*86)}" y="${r1(Math.sin(a)*86 + 6)}" text-anchor="middle" font-size="16" font-weight="900" fill="${K}">${['XII','I','II','III','IIII','V','VI','VII','VIII','IX','X','XI'][i]}</text>`; }).join('')}
           <path d="M0 0 L-4 -70 L0 -78 L4 -70 Z" fill="${K}"/><path d="M0 0 L46 30 L52 36 L42 34 Z" fill="${K}"/><circle cx="0" cy="0" r="7" fill="#c89a3a"/>
         </g>
-        <g class="spin1">${gear(70, 120, 34, 10, '#c8a050')}</g><g class="spin2">${gear(338, 100, 26, 8, '#a8a8b8')}</g><g class="spin1">${gear(350, 330, 40, 12, '#c8a050')}</g><g class="spin2">${gear(54, 340, 28, 9, '#a8a8b8')}</g>
-        <g transform="translate(200,30)"><path d="M-26 0 Q-26 -30 0 -32 Q26 -30 26 0 L32 10 H-32 Z" fill="#e0b040"/><circle cx="0" cy="16" r="6" fill="#a87a2a"/></g>
-        <g transform="translate(300,446)">${[0,1,2,3,4,5,6].map(i => `<rect x="${i*14}" y="${-i*12}" width="80" height="12" fill="#8a5a32"/>`).join('')}</g>
+        <g ${F} class="spin1">${gear(70, 120, 34, 10, '#c8a050')}</g><g ${F} class="spin2">${gear(338, 100, 26, 8, '#a8a8b8')}</g><g ${F} class="spin1">${gear(350, 330, 40, 12, '#c8a050')}</g><g ${F} class="spin2">${gear(54, 340, 28, 9, '#a8a8b8')}</g>
+        <g ${F} transform="translate(200,30)"><path d="M-26 0 Q-26 -30 0 -32 Q26 -30 26 0 L32 10 H-32 Z" fill="#e0b040"/><circle cx="0" cy="16" r="6" fill="#a87a2a"/></g>
+        <g ${F} transform="translate(300,446)">${[0,1,2,3,4,5,6].map(i => `<rect x="${i*14}" y="${-i*12}" width="80" height="12" fill="#8a5a32"/>`).join('')}</g>
         <rect x="-10" y="446" width="420" height="360" fill="#6a4a32"/>${[0,1,2,3,4,5].map(i => `<path d="M-10 ${470 + i*30} H410" fill="none" stroke="${K}" stroke-width="2"/>`).join('')}`);
     },
     // リリィとヌールの図書館：高い本棚、アーチの窓、書見台の古い絵本
@@ -174,29 +176,29 @@
         <path d="M140 300 V120 Q140 60 200 60 Q260 60 260 120 V300 Z" fill="none" stroke="${K}" stroke-width="3"/>
         <path class="ns" d="M140 300 L60 470 H340 L260 300 Z" fill="rgba(255,248,210,.35)"/>
         <rect x="130" y="300" width="140" height="10" fill="#a8743c"/>
-        <g transform="translate(200,400)"><path d="M-12 0 L12 0 L18 70 H-18 Z" fill="#8a5a32"/><path d="M-46 0 L46 0 L36 -18 L-36 -18 Z" fill="#a8743c"/>
+        <g ${F} transform="translate(200,400)"><path d="M-12 0 L12 0 L18 70 H-18 Z" fill="#8a5a32"/><path d="M-46 0 L46 0 L36 -18 L-36 -18 Z" fill="#a8743c"/>
           <path d="M-40 -18 Q-20 -30 0 -20 Q20 -30 40 -18 L40 -14 Q20 -26 0 -16 Q-20 -26 -40 -14 Z" fill="#fff7ea"/><path d="M0 -20 V-16" fill="none" stroke="${K}" stroke-width="1.5"/></g>
-        <g transform="translate(118,250) rotate(8)"><rect x="-4" y="0" width="6" height="220" fill="#a8743c"/><rect x="26" y="0" width="6" height="220" fill="#a8743c"/>${[20,50,80,110,140,170,200].map(y => `<rect x="-2" y="${y}" width="32" height="5" fill="#a8743c"/>`).join('')}</g>
+        <g ${F} transform="translate(118,250) rotate(8)"><rect x="-4" y="0" width="6" height="220" fill="#a8743c"/><rect x="26" y="0" width="6" height="220" fill="#a8743c"/>${[20,50,80,110,140,170,200].map(y => `<rect x="-2" y="${y}" width="32" height="5" fill="#a8743c"/>`).join('')}</g>
         <rect x="-10" y="460" width="420" height="340" fill="#8a5a3a"/>${[0,1,2,3,4,5].map(i => `<path d="M-10 ${485 + i*30} H410" fill="none" stroke="${K}" stroke-width="2"/>`).join('')}
-        <g transform="translate(330,470)"><rect x="-8" y="-24" width="16" height="24" fill="#fff7ea"/><path class="ns flame" d="M0 -40 Q-6 -30 0 -24 Q6 -30 0 -40 Z" fill="#ffb020"/></g>`);
+        <g ${F} transform="translate(330,470)"><rect x="-8" y="-24" width="16" height="24" fill="#fff7ea"/><path class="ns flame" d="M0 -40 Q-6 -30 0 -24 Q6 -30 0 -40 Z" fill="#ffb020"/></g>`);
     },
     // 中央広場：噴水、旗のガーランド、まわりの家、奥に時計台と絵本の門
     plaza(){
       const flags = Array.from({length:13}, (_, i) => { const x = i * 34 - 6, y = 120 + Math.sin(i / 12 * Math.PI) * 26; return `<path d="M${r1(x)} ${r1(y)} l12 0 l-6 14 Z" fill="${['#e8101e','#ffd000','#1e5aff','#10c050','#ff6a8a'][i % 5]}"/>`; }).join('');
-      return wrap(sky('scSkyP', '#7fc6ff', '#e6f6ff') + brickPattern('scBrP', '#e08a5a', '#e99a68', '#d4784a'),
+      return wrap(sky('scSkyP', '#5cbcfc', '#a8e0fc') + brickPattern('scBrP', '#c8501c', '#dc6a32', '#b04014'),
         `<rect class="ns" width="400" height="800" fill="url(#scSkyP)"/>
         ${cloud(40, 40, 0.8)}${cloud(300, 30, 0.7)}
-        <g transform="translate(200,150)"><rect x="-22" y="-70" width="44" height="182" fill="#f3e2c0"/><path d="M-9 112 V84 Q0 74 9 84 V112 Z" fill="#8a5a32"/><rect x="-7" y="10" width="14" height="18" fill="#ffe08a"/><rect x="-30" y="108" width="60" height="6" fill="#b8b2a6"/><path d="M-30 -66 L0 -110 L30 -66 Z" fill="#5a6ab8"/>
+        <g ${F} transform="translate(200,150)"><rect x="-22" y="-70" width="44" height="182" fill="#f3e2c0"/><path d="M-9 112 V84 Q0 74 9 84 V112 Z" fill="#8a5a32"/><rect x="-7" y="10" width="14" height="18" fill="#ffe08a"/><rect x="-30" y="108" width="60" height="6" fill="#b8b2a6"/><path d="M-30 -66 L0 -110 L30 -66 Z" fill="#5a6ab8"/>
           <circle cx="0" cy="-40" r="15" fill="#fffdf0"/><path d="M0 -40 V-50 M0 -40 L7 -36" fill="none" stroke="${K}" stroke-width="2"/></g>
         ${house(-20, 190, 70, 70, '#e2687e', '#fff1d6', {chimney:true, flowers:true})}${house(60, 210, 54, 52, '#ffb020', '#f6ecd8')}${house(280, 206, 56, 56, '#4f9a4a', '#fff7ea', {flowers:true})}${house(342, 186, 70, 74, '#3f6fb0', '#fff1d6', {chimney:true})}
         <path d="M-10 120 Q200 170 410 120" fill="none" stroke="${K}" stroke-width="1.5"/>${flags}
         <rect x="-10" y="262" width="420" height="540" fill="url(#scBrP)"/><path d="M-10 262 H410" fill="none" stroke="${K}" stroke-width="2"/>
-        <g transform="translate(200,330)">
-          <ellipse cx="0" cy="40" rx="120" ry="30" fill="#b8b2a6"/><ellipse cx="0" cy="34" rx="104" ry="22" fill="#5aa8e8"/>
+        <g ${F} transform="translate(200,330)">
+          <ellipse cx="0" cy="40" rx="120" ry="30" fill="#b8b2a6"/><ellipse cx="0" cy="34" rx="104" ry="22" fill="#3cbcfc"/>
           <rect x="-10" y="-30" width="20" height="64" fill="#cfc8bb"/><ellipse cx="0" cy="-30" rx="34" ry="9" fill="#cfc8bb"/>
           <path class="ns water" d="M0 -40 Q-30 -70 -50 20 M0 -40 Q30 -70 50 20 M0 -40 Q-10 -80 -22 10 M0 -40 Q10 -80 22 10" fill="none" stroke="#bfe4ff" stroke-width="4" stroke-linecap="round"/>
         </g>
-        ${[[40,300],[360,300]].map(([x, y]) => `<g transform="translate(${x},${y})"><rect x="-3" y="-60" width="6" height="70" fill="#3a3a4a"/><circle cx="0" cy="-64" r="10" fill="#ffe08a"/></g>`).join('')}
+        ${[[40,300],[360,300]].map(([x, y]) => `<g ${F} transform="translate(${x},${y})"><rect x="-3" y="-60" width="6" height="70" fill="#3a3a4a"/><circle cx="0" cy="-64" r="10" fill="#ffe08a"/></g>`).join('')}
         ${[[60,420,'#ff6a8a'],[80,430,'#ffd000'],[320,424,'#8a5ab8'],[344,432,'#ff6a8a']].map(([x, y, c]) => flower(x, y, c)).join('')}`);
     }
   };
