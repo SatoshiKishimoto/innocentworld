@@ -366,14 +366,14 @@
       <path d="M0 -18 L0 -2" stroke="#5a3a1a" stroke-width="1.5"/><path d="M-5 -2 h10 l-1.5 8 h-7 z" fill="#a0703a"/>
       <ellipse cx="0" cy="8" rx="28" ry="7" fill="#5aa8e8" stroke="#6a6a72" stroke-width="2"/>
       <path d="M-28 8 V24 Q0 34 28 24 V8 Q0 18 -28 8 Z" fill="${w}" stroke="#6a6a72" stroke-width="1.5"/>
-      ${[[-20,14],[-6,17],[8,17],[22,14],[-14,24],[0,27],[14,24]].map(([x, y]) => `<rect x="${x-6}" y="${y-3}" width="12" height="6" rx="2" fill="rgba(0,0,0,.08)" stroke="rgba(90,90,100,.45)" stroke-width="1"/>`).join('')}
-      <circle cx="-10" cy="7" r="1.6" fill="#fff"/><circle cx="6" cy="9" r="1.2" fill="#fff"/></g>`;
+      ${[[-20,14],[-6,17],[8,17],[22,14],[-14,24],[0,27],[14,24]].map(([x, y]) => `<rect x="${x-6}" y="${y-3}" width="12" height="6" rx="2" fill="rgba(0,0,0,.08)" stroke="#1d1414" stroke-width="1"/>`).join('')}
+      <circle class="ns" cx="-10" cy="7" r="1.6" fill="#fff"/><circle class="ns" cx="6" cy="9" r="1.2" fill="#fff"/></g>`;
     if(f.type === 'tower') return `<g class="bld"><rect x="-16" y="-34" width="32" height="62" rx="2" fill="${w}" stroke="rgba(0,0,0,.25)" stroke-width="1.5"/>
       <path d="M-22 -32 L0 -58 L22 -32 Z" fill="${r}" stroke="rgba(0,0,0,.25)" stroke-width="1.5"/><circle cx="0" cy="-16" r="11" fill="#fffdf0" stroke="#c89a3a" stroke-width="2.5"/>
       <path d="M0 -16 V-24 M0 -16 L6 -13" stroke="#3a2a1a" stroke-width="2" stroke-linecap="round"/><rect x="-6" y="10" width="12" height="18" rx="6" fill="${r}"/>
       <rect x="-5" y="-4" width="10" height="8" fill="#ffd96a" stroke="#fff" stroke-width="1.5"/></g>`;
     if(f.type === 'forest') return `<g class="bld"><rect x="-3" y="10" width="6" height="16" fill="#7a4a20"/><rect x="-25" y="14" width="5" height="12" fill="#7a4a20"/><rect x="20" y="14" width="5" height="12" fill="#7a4a20"/>
-      <circle cx="-22" cy="4" r="14" fill="${r}"/><circle cx="22" cy="4" r="14" fill="${r}"/><circle cx="0" cy="-8" r="20" fill="${r}"/><circle cx="-6" cy="-14" r="7" fill="rgba(255,255,255,.18)"/>
+      <circle cx="-22" cy="4" r="14" fill="${r}"/><circle cx="22" cy="4" r="14" fill="${r}"/><circle cx="0" cy="-8" r="20" fill="${r}"/><circle class="ns" cx="-6" cy="-14" r="7" fill="rgba(255,255,255,.18)"/>
       <path d="M-30 24 Q0 16 30 24" stroke="${w}" stroke-width="4" fill="none" stroke-linecap="round"/>
       <circle cx="10" cy="-2" r="2.5" fill="#ff6a8a"/><circle cx="-14" cy="6" r="2.5" fill="#ffd000"/></g>`;
     if(f.type === 'plaza') return `<g class="bld"><ellipse cx="0" cy="14" rx="40" ry="16" fill="#f3dcc0" stroke="#c89a6a" stroke-width="2"/><circle cx="0" cy="8" r="10" fill="#7ad8ff" stroke="#fff" stroke-width="3"/>
@@ -398,21 +398,21 @@
   }
   // 地図の飾り：レンガの石だたみの村に、水路と橋、施設ごとの小さな芝生、丸い生け垣
   function mapCanals(){
-    const edge = 'stroke="#9a5a36" stroke-width="5" fill="none"';
+    const edge = 'stroke="#1d1414" stroke-width="5" fill="none"';
     return `<path d="M-10 22 H410" stroke="url(#svWater)" stroke-width="22"/><path d="M-10 10 H410 M-10 34 H410" ${edge}/>
       <path d="M-10 372 Q80 420 150 510" stroke="url(#svWater)" stroke-width="24" fill="none"/>
       <path d="M-10 359 Q88 408 162 510 M-10 385 Q72 432 138 510" ${edge}/>`;
   }
   function mapBridges(){
-    return `<g transform="translate(200,22)"><rect x="-22" y="-16" width="44" height="32" rx="3" fill="#c8915e" stroke="#7a4a20" stroke-width="2"/><path d="M-22 -10H22M-22 -3H22M-22 4H22M-22 11H22" stroke="#9a6a3a" stroke-width="1.2"/></g>`;
+    return `<g transform="translate(200,22)"><rect x="-22" y="-16" width="44" height="32" rx="3" fill="#c8915e" stroke="#1d1414" stroke-width="2.5"/><path d="M-22 -10H22M-22 -3H22M-22 4H22M-22 11H22" stroke="#1d1414" stroke-width="1.4"/></g>`;
   }
   function lawn(x, y){
-    const dots = Array.from({length: 11}, (_, i) => { const a = Math.PI * (0.08 + 0.84 * i / 10); return `<circle cx="${(Math.cos(a) * 50).toFixed(1)}" cy="${(14 + Math.sin(a) * 22).toFixed(1)}" r="5" fill="#2f8a3e"/>`; }).join('');
-    return `<g transform="translate(${x},${y})"><ellipse cx="0" cy="14" rx="54" ry="26" fill="#7cc860" stroke="#5aa848" stroke-width="2"/>${dots}</g>`;
+    const dots = Array.from({length: 11}, (_, i) => { const a = Math.PI * (0.08 + 0.84 * i / 10); return `<circle cx="${(Math.cos(a) * 50).toFixed(1)}" cy="${(14 + Math.sin(a) * 22).toFixed(1)}" r="5" fill="#2f8a3e" stroke="#1d1414" stroke-width="1.2"/>`; }).join('');
+    return `<g transform="translate(${x},${y})"><ellipse cx="0" cy="14" rx="54" ry="26" fill="#7cc860" stroke="#1d1414" stroke-width="2.2"/>${dots}</g>`;
   }
   function hedge(x, y){
     const c = [[-12,-8],[0,-8],[12,-8],[-12,4],[0,4],[12,4]];
-    return `<g transform="translate(${x},${y})"><rect x="-22" y="-17" width="44" height="32" rx="8" fill="#2f7a38"/>${c.map(([a, b]) => `<circle cx="${a}" cy="${b}" r="7" fill="#3f9a48"/><circle cx="${a - 2}" cy="${b - 2}" r="2.5" fill="#6cc070"/>`).join('')}</g>`;
+    return `<g transform="translate(${x},${y})"><rect x="-22" y="-17" width="44" height="32" rx="8" fill="#2f7a38" stroke="#1d1414" stroke-width="2.2"/>${c.map(([a, b]) => `<circle cx="${a}" cy="${b}" r="7" fill="#3f9a48" stroke="#1d1414" stroke-width="1.3"/><circle cx="${a - 2}" cy="${b - 2}" r="2.5" fill="#6cc070"/>`).join('')}</g>`;
   }
   function showMap(){
     VIEW = showMap;
@@ -435,12 +435,12 @@
     set(topbar(t('mapTitle')) + `<div class="spage">
       <div class="sday"><span>${esc(L.day ? T(L.day.label) : '')}</span>${esc(fmtDate(L.today))}</div>
       <div class="smap"><svg viewBox="0 0 400 500" role="img" aria-label="${esc(t('mapTitle'))}">
-        <defs><pattern id="svPave" width="32" height="16" patternUnits="userSpaceOnUse"><rect width="32" height="16" fill="#d9895a"/><rect x="1" y="1" width="14" height="6" fill="#df9466"/><rect x="17" y="9" width="14" height="6" fill="#d27f52"/><path d="M0 0H32M0 8H32M0 16H32M16 0V8M8 8V16M24 8V16" stroke="#b56a40" stroke-width="1.2"/></pattern>
-        <pattern id="svLane" width="20" height="10" patternUnits="userSpaceOnUse"><rect width="20" height="10" fill="#f2c79c"/><path d="M0 0H20M0 5H20M5 0V5M15 5V10" stroke="#d9a070" stroke-width="1"/></pattern>
+        <defs><pattern id="svPave" width="32" height="16" patternUnits="userSpaceOnUse"><rect width="32" height="16" fill="#d9895a"/><rect x="1" y="1" width="14" height="6" fill="#df9466"/><rect x="17" y="9" width="14" height="6" fill="#d27f52"/><path d="M0 0H32M0 8H32M0 16H32M16 0V8M8 8V16M24 8V16" stroke="#2a1812" stroke-width="1.3"/></pattern>
+        <pattern id="svLane" width="20" height="10" patternUnits="userSpaceOnUse"><rect width="20" height="10" fill="#f2c79c"/><path d="M0 0H20M0 5H20M5 0V5M15 5V10" stroke="#3a2418" stroke-width="1"/></pattern>
         <pattern id="svWater" width="40" height="12" patternUnits="userSpaceOnUse"><rect width="40" height="12" fill="#4f9ee0"/><path d="M4 4 q5 -3 10 0 M24 9 q5 -3 10 0" stroke="#bfe4ff" stroke-width="1.6" fill="none" stroke-linecap="round"/></pattern></defs>
         <rect width="400" height="500" fill="url(#svPave)"/>
         ${mapCanals()}
-        <path d="${roads(facs)}" stroke="#b56a40" stroke-width="30" fill="none" stroke-linecap="round"/>
+        <path d="${roads(facs)}" stroke="#1d1414" stroke-width="30" fill="none" stroke-linecap="round"/>
         <path d="${roads(facs)}" stroke="url(#svLane)" stroke-width="24" fill="none" stroke-linecap="round"/>
         ${mapBridges()}
         ${facs.filter(f => f.status !== 'hidden' && f.type !== 'plaza').map(f => lawn(Math.max(8, Math.min(92, f.x)) * 4, Math.max(8, Math.min(90, f.y)) * 5)).join('')}
@@ -557,16 +557,16 @@
       <rect x="4" y="26" width="112" height="242" rx="12" fill="#f4e6c8" stroke="#a8743c" stroke-width="4"/>
       <circle cx="60" cy="40" r="5" fill="#fff" stroke="#a8743c" stroke-width="2"/>
       <g clip-path="url(#svMk)">
-        <rect x="12" y="34" width="96" height="226" fill="url(#svMkSky)"/>
+        <rect class="ns" x="12" y="34" width="96" height="226" fill="url(#svMkSky)"/>
         <circle cx="86" cy="70" r="12" fill="#fff6c8"/>
         <rect x="20" y="70" width="18" height="70" fill="#f3e2c0" stroke="#7a6a8a" stroke-width="1.5"/><path d="M16 72 L29 52 L42 72 Z" fill="#5a6ab8"/><circle cx="29" cy="88" r="6" fill="#fffdf0" stroke="#c89a3a" stroke-width="1.5"/>
         <path d="M12 150 Q60 130 108 150 V260 H12 Z" fill="#e8a070"/>
-        ${[160,176,192,208,224,240].map((y, i) => `<path d="M12 ${y} H108" stroke="#c87850" stroke-width="1"/>${[0,1,2,3,4,5].map(k => `<path d="M${12 + k*18 + (i%2)*9} ${y} V${y+16}" stroke="#c87850" stroke-width="1"/>`).join('')}`).join('')}
+        ${[160,176,192,208,224,240].map((y, i) => `<path d="M12 ${y} H108" fill="none" stroke="#2a1812" stroke-width="1.2"/>${[0,1,2,3,4,5].map(k => `<path d="M${12 + k*18 + (i%2)*9} ${y} V${y+16}" fill="none" stroke="#2a1812" stroke-width="1.2"/>`).join('')}`).join('')}
         <ellipse cx="60" cy="170" rx="30" ry="9" fill="#cfe9f7" stroke="#8a8f9c" stroke-width="2"/>
-        <path d="M60 168 V140" stroke="#8a8f9c" stroke-width="3"/><path d="M60 140 q-12 4 -16 18 M60 140 q12 4 16 18" stroke="#7ad8ff" stroke-width="2.5" fill="none"/>
-        <path d="M84 150 V110" stroke="#7a4a20" stroke-width="2"/><path d="M84 110 L102 116 L84 122 Z" fill="#e2687e"/>
+        <path d="M60 168 V140" fill="none" stroke="#1d1414" stroke-width="3"/><path d="M60 140 q-12 4 -16 18 M60 140 q12 4 16 18" stroke="#7ad8ff" stroke-width="2.5" fill="none"/>
+        <path d="M84 150 V110" fill="none" stroke="#1d1414" stroke-width="2"/><path d="M84 110 L102 116 L84 122 Z" fill="#e2687e"/>
         ${[[24,120,'#ffd000'],[42,112,'#e8101e'],[78,104,'#10c050'],[98,96,'#1e5aff']].map(([x, y, c]) => `<circle cx="${x}" cy="${y}" r="3" fill="${c}"/>`).join('')}
-        <path d="M14 104 Q60 92 106 84" stroke="#a8743c" stroke-width="1" fill="none"/>
+        <path d="M14 104 Q60 92 106 84" stroke="#1d1414" stroke-width="1" fill="none"/>
       </g>
       <text x="60" y="254" text-anchor="middle" font-size="11" font-weight="800" fill="#7a4a20" letter-spacing="2">BRICK VILLAGE</text>
     </svg>`;
@@ -574,7 +574,7 @@
   function sceneArt(bg){
     if(!/^bedroom/.test(bg)) return '';
     const win = bg === 'bedroom_window', mark = bg === 'bedroom_bookmark';
-    const stars = [[148,128],[176,170],[222,118],[258,160],[196,222],[240,250],[160,262],[268,214]].map(([x, y], i) => `<circle class="star" style="--d:${(i*0.37).toFixed(2)}s" cx="${x}" cy="${y}" r="${i%3 ? 1.8 : 2.6}" fill="#fff8d0"/>`).join('');
+    const stars = [[148,128],[176,170],[222,118],[258,160],[196,222],[240,250],[160,262],[268,214]].map(([x, y], i) => `<circle class="star ns" style="--d:${(i*0.37).toFixed(2)}s" cx="${x}" cy="${y}" r="${i%3 ? 1.8 : 2.6}" fill="#fff8d0"/>`).join('');
     const books = Array.from({length:18}, (_, i) => { const row = Math.floor(i/6), x = 18 + (i%6)*13, h = 54 + ((i*7)%4)*6, c = ['#e2687e','#5a6ab8','#ffd000','#4f9a4a','#d9534a','#8a5ab8'][(i+row)%6];
       return `<rect x="${x}" y="${240 + row*92 + (72 - h)}" width="11" height="${h}" rx="2" fill="${c}"/>`; }).join('');
     // 窓の外のエスパーとミミ（住人のイラストをそのまま使い、窓わくの内側だけに見せる）
@@ -587,25 +587,25 @@
         <linearGradient id="svSky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#14184a"/><stop offset="1" stop-color="#3a3f8a"/></linearGradient>
         <radialGradient id="svLamp" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="rgba(255,214,120,.55)"/><stop offset="1" stop-color="rgba(255,214,120,0)"/></radialGradient>
         <clipPath id="svWin"><rect x="112" y="96" width="176" height="196"/></clipPath>
-        <pattern id="svPaper" width="40" height="40" patternUnits="userSpaceOnUse"><circle cx="10" cy="10" r="2" fill="rgba(255,255,255,.07)"/><circle cx="30" cy="30" r="2" fill="rgba(255,255,255,.07)"/></pattern></defs>
-      <rect width="400" height="800" fill="url(#svWall)"/><rect width="400" height="800" fill="url(#svPaper)"/>
-      <rect y="560" width="400" height="240" fill="#7a4a2a"/>${[580,610,640,670,700,730].map(y => `<path d="M0 ${y} H400" stroke="#6a3e22" stroke-width="2"/>`).join('')}
+        <pattern id="svPaper" width="40" height="40" patternUnits="userSpaceOnUse"><circle class="ns" cx="10" cy="10" r="2" fill="rgba(255,255,255,.07)"/><circle class="ns" cx="30" cy="30" r="2" fill="rgba(255,255,255,.07)"/></pattern></defs>
+      <rect class="ns" width="400" height="800" fill="url(#svWall)"/><rect class="ns" width="400" height="800" fill="url(#svPaper)"/>
+      <rect y="560" width="400" height="240" fill="#7a4a2a"/>${[580,610,640,670,700,730].map((y, i) => `<path d="M0 ${y} H400${[0,1,2,3].map(k => ` M${(k*110 + (i%2)*55) % 400} ${y} V${y+30}`).join('')}" fill="none" stroke="#1d1414" stroke-width="2"/>`).join('')}
       <rect x="104" y="88" width="192" height="212" rx="8" fill="#8a5a32"/>
-      <rect x="112" y="96" width="176" height="196" fill="url(#svSky)"/>
-      <circle cx="252" cy="134" r="18" fill="#fff4c0"/><circle cx="260" cy="128" r="16" fill="url(#svSky)"/>
+      <rect class="ns" x="112" y="96" width="176" height="196" fill="url(#svSky)"/>
+      <circle cx="252" cy="134" r="18" fill="#fff4c0"/><circle class="ns" cx="260" cy="128" r="16" fill="url(#svSky)"/>
       ${stars}
       <path d="M112 270 Q160 252 200 266 Q240 280 288 262 V292 H112 Z" fill="#c87850" opacity=".85"/>
       ${friends}
-      <path d="M200 96 V292 M112 194 H288" stroke="#8a5a32" stroke-width="7"/>
+      <path d="M200 96 V292 M112 194 H288" fill="none" stroke="#1d1414" stroke-width="10"/><path d="M200 96 V292 M112 194 H288" fill="none" stroke="#8a5a32" stroke-width="6"/>
       <rect x="96" y="292" width="208" height="14" rx="4" fill="#a8743c"/>
       <rect x="70" y="60" width="260" height="10" rx="5" fill="#a8743c"/>
       <path d="${curtainL}" fill="#e2687e" opacity=".92"/><path d="${curtainR}" fill="#e2687e" opacity=".92"/>
       <rect x="8" y="200" width="96" height="340" rx="4" fill="#8a5a32"/><rect x="14" y="206" width="84" height="328" fill="#6a3e22"/>
       ${[0,1,2].map(r => `<rect x="14" y="${310 + r*92}" width="84" height="6" fill="#8a5a32"/>`).join('')}
       ${books}
-      <ellipse cx="350" cy="350" rx="90" ry="80" fill="url(#svLamp)"/>
+      <ellipse class="ns" cx="350" cy="350" rx="90" ry="80" fill="url(#svLamp)"/>
       <rect x="236" y="392" width="164" height="14" rx="3" fill="#a8743c"/><rect x="246" y="406" width="10" height="160" fill="#8a5a32"/><rect x="384" y="406" width="10" height="160" fill="#8a5a32"/>
-      <path d="M350 392 V350" stroke="#5a3a1a" stroke-width="4"/><path d="M326 352 L374 352 L362 318 L338 318 Z" fill="#ffd96a"/><ellipse cx="350" cy="392" rx="16" ry="4" fill="#5a3a1a"/>
+      <path d="M350 392 V350" fill="none" stroke="#1d1414" stroke-width="4"/><path d="M326 352 L374 352 L362 318 L338 318 Z" fill="#ffd96a"/><ellipse cx="350" cy="392" rx="16" ry="4" fill="#5a3a1a"/>
       <rect x="262" y="374" width="58" height="18" rx="3" fill="#3f6fb0"/><rect x="266" y="370" width="50" height="6" fill="#f6ecd8"/>
       ${mark ? `<g class="deskmark" transform="translate(286 300) rotate(-12)">${bookmarkSVG(40).replace('<svg ', '<svg x="0" y="0" height="100" ')}</g>` : ''}
     </svg>`;

@@ -113,7 +113,7 @@ button,input{font:inherit;color:inherit}
 .bg-library{background:repeating-linear-gradient(0deg,#6a3a18 0 10px,transparent 10px 90px),repeating-linear-gradient(90deg,#e8101e 0 14px,#1e5aff 14px 26px,#ffd000 26px 36px,#10a040 36px 50px,#8a4ad8 50px 62px),#3a2a5a}
 .bg-library::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(30,20,60,.35),rgba(30,20,60,.6))}
 .bg-windmill{background:radial-gradient(ellipse at 70% 120%,#7cc860 0 45%,transparent 45.5%),linear-gradient(180deg,#7fc4ff,#d8f0ff)}
-.bg-plaza{background:radial-gradient(circle at 50% 30%,rgba(255,240,180,.95) 0 10%,transparent 40%),repeating-linear-gradient(45deg,#e8a070 0 20px,#d88c5c 20px 22px),#e8a070}
+.bg-plaza{background:radial-gradient(circle at 50% 30%,rgba(255,240,180,.95) 0 10%,transparent 40%),url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='24'%3E%3Crect width='48' height='24' fill='%23e08a5a'/%3E%3Crect x='2' y='2' width='20' height='8' fill='%23e99a68'/%3E%3Crect x='26' y='14' width='20' height='8' fill='%23d4784a'/%3E%3Cpath d='M0 0H48M0 12H48M0 24H48M24 0V12M12 12V24M36 12V24' stroke='%231d1414' stroke-width='2'/%3E%3C/svg%3E") 0 0/48px 24px,#e08a5a}
 .bg-night{background:radial-gradient(ellipse at 50% 120%,#7a4a96 0%,#2c3180 48%,#11143a 100%)}
 
 /* ダイアログ */
@@ -288,3 +288,9 @@ html[data-lang=en] .sfinale.last span{letter-spacing:.08em;padding:18px 22px}
 @keyframes sfin{from{opacity:0;transform:translateY(12px);filter:blur(4px)}to{opacity:1;transform:none;filter:none}}
 .sbook.quiet .stext{display:none}
 .sending.spark{background:transparent;pointer-events:none}
+
+/* ---------- 黒い縁取り（レトロな絵本の線）：建物・レンガ・部屋の家具 ---------- */
+.smap .bld :is(rect,path,circle,ellipse,polygon):not(.ns):not([fill=none]){stroke:#1d1414;stroke-width:2;stroke-linejoin:round}
+.smap .bld .sblades path{stroke-width:1.6}
+.sbgart :is(rect,path,circle,ellipse):not(.ns):not([fill=none]){stroke:#1d1414;stroke-width:2;stroke-linejoin:round}
+.smark :is(rect,path,circle,ellipse):not(.ns):not([fill=none]){stroke:#1d1414;stroke-width:2;stroke-linejoin:round}
