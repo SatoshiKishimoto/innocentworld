@@ -8,7 +8,7 @@
   const r1 = n => Math.round(n * 10) / 10;
 
   /* ---------- 部品 ---------- */
-  function cloud(x, y, s){ return `<g ${F} transform="translate(${x},${y}) scale(${s})"><path d="M0 20 Q-4 4 14 4 Q18 -10 36 -4 Q50 -14 62 0 Q80 0 76 20 Z" fill="#fff"/></g>`; }
+  function cloud(x, y, s){ return `<g ${F} transform="translate(${x},${y}) scale(${s})"><path d="M8 22 Q-6 21 -1 10 Q3 1 14 4 Q19 -10 35 -5 Q48 -15 61 -3 Q77 -5 78 9 Q87 20 73 24 Q65 31 53 26 Q41 33 29 27 Q18 32 8 22 Z" fill="#fff"/></g>`; }
   function house(x, y, w, h, roof, wall, opt){
     opt = opt || {};
     const rh = h * 0.7, door = opt.door !== false;
@@ -138,12 +138,15 @@
         <rect x="-10" y="252" width="420" height="548" fill="#58d854"/>${[20,70,130,250,330,385].map((x, i) => `<ellipse cx="${x}" cy="256" rx="${26 + (i%3)*6}" ry="12" fill="#00a844"/>`).join('')}<path class="ns" d="M-10 252 H410" fill="none" stroke="${K}" stroke-width="2"/>
         <path d="M-10 380 Q120 350 200 372 Q290 396 410 360 V420 Q290 452 200 430 Q110 410 -10 440 Z" fill="#3cbcfc"/>
         ${[[40,404],[150,392],[250,410],[340,392]].map(([x, y]) => `<path class="ns" d="M${x} ${y} q10 -5 20 0" fill="none" stroke="#dff3ff" stroke-width="2.5" stroke-linecap="round"/>`).join('')}
-        <g ${F} transform="translate(200,402)">
-          <path d="M-120 -22 Q0 -60 120 -22 L120 -10 Q0 -48 -120 -10 Z" fill="#a8743c"/>
-          ${[-100,-70,-40,-10,20,50,80,110].map(x => `<path d="M${x} ${r1(-16 - (1 - (x/120)**2) * 30)} V${r1(-4 - (1 - (x/120)**2) * 30)}" fill="none" stroke="${K}" stroke-width="1.5"/>`).join('')}
-          <path d="M-120 -22 Q0 -60 120 -22" fill="none" stroke="${K}" stroke-width="2.5"/>
-          <path d="M-110 -22 V-62 M110 -22 V-62 M-110 -62 Q0 -96 110 -62" fill="none" stroke="#7a4a20" stroke-width="5"/>
-          <path d="M-110 -22 V-62 M110 -22 V-62" fill="none" stroke="${K}" stroke-width="1.5"/>
+        <path d="M184 252 L216 252 L230 352 L170 352 Z" fill="#e8c890"/><path d="M146 456 L254 456 L300 560 L100 560 Z" fill="#e8c890"/>
+        <path d="M184 252 L170 352 M216 252 L230 352 M146 456 L100 560 M254 456 L300 560" fill="none" stroke="${K}" stroke-width="1.5"/>
+        <ellipse class="ns" cx="200" cy="420" rx="56" ry="8" fill="rgba(0,40,90,.25)"/>
+        <g ${F}>
+          <path d="M170 350 L230 350 L252 458 L148 458 Z" fill="#b8844c"/>
+          ${[0,1,2,3,4,5,6,7,8,9].map(i => { const t = i / 9, y = 350 + t * 108, hw = 30 + t * 22; return `<path d="M${r1(200 - hw)} ${r1(y)} H${r1(200 + hw)}" fill="none" stroke="${K}" stroke-width="1.2"/>`; }).join('')}
+          ${[-1, 1].map(sd => { const pts = [0, 0.25, 0.5, 0.75, 1].map(t => [200 + sd * (30 + t * 22), 350 + t * 108, 12 + t * 12]);
+            return pts.map(([x, y, h]) => `<rect x="${r1(x - 2.5)}" y="${r1(y - h)}" width="5" height="${r1(h)}" fill="#8a5a2a"/>`).join('') +
+              `<path d="M${pts.map(([x, y, h]) => `${r1(x)} ${r1(y - h)}`).join(' L')}" fill="none" stroke="#8a5a2a" stroke-width="5" stroke-linecap="round"/>`; }).join('')}
         </g>
         ${[[300,350,'#ff6a8a'],[330,356,'#ffd000'],[360,348,'#ffffff'],[270,354,'#8a5ab8'],[60,470,'#ff6a8a'],[90,480,'#ffd000'],[340,480,'#ffffff']].map(([x, y, c]) => flower(x, y, c)).join('')}
         ${[[30,340],[380,332]].map(([x, y]) => `<g transform="translate(${x},${y})"><rect x="-10" y="-6" width="20" height="10" rx="5" fill="#c84a3a"/><path d="M-8 4 V12 M8 4 V12" fill="none" stroke="${K}" stroke-width="2"/><circle class="ns" cx="-4" cy="-2" r="1.6" fill="#fff"/><circle class="ns" cx="4" cy="-3" r="1.6" fill="#fff"/></g>`).join('')}`);
@@ -196,7 +199,15 @@
         <g ${F} transform="translate(200,330)">
           <ellipse cx="0" cy="40" rx="120" ry="30" fill="#b8b2a6"/><ellipse cx="0" cy="34" rx="104" ry="22" fill="#3cbcfc"/>
           <rect x="-10" y="-30" width="20" height="64" fill="#cfc8bb"/><ellipse cx="0" cy="-30" rx="34" ry="9" fill="#cfc8bb"/>
-          <path class="ns water" d="M0 -40 Q-30 -70 -50 20 M0 -40 Q30 -70 50 20 M0 -40 Q-10 -80 -22 10 M0 -40 Q10 -80 22 10" fill="none" stroke="#bfe4ff" stroke-width="4" stroke-linecap="round"/>
+        </g>
+        <g class="fount" transform="translate(200,330)">
+          ${[0, 1, 2].map(i => `<ellipse class="ns ripple" style="--d:${i * 0.8}s" cx="0" cy="34" rx="30" ry="7" fill="none" stroke="#e8f8ff" stroke-width="2"/>`).join('')}
+          <path class="ns plume" d="M0 -32 V-98" stroke="#9ad8fc" stroke-width="9" stroke-linecap="round"/><path class="ns plume" d="M0 -32 V-98" stroke="#ffffff" stroke-width="4" stroke-linecap="round"/>
+          ${[-1, 1].map(sd => [[64, 30], [44, 18], [86, 34]].map(([w, h], k) => { const d = `M0 -96 Q${sd * w * 0.55} ${-124 + k * 6} ${sd * w} ${h}`;
+            return `<path class="ns jet" style="--d:${(k * 0.17).toFixed(2)}s" d="${d}" fill="none" stroke="#9ad8fc" stroke-width="5" stroke-linecap="round"/><path class="ns jet" style="--d:${(k * 0.17).toFixed(2)}s" d="${d}" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round"/>`; }).join('')).join('')}
+          ${[-1, 1].map(sd => `<path class="ns jet small" d="M${sd * 30} -30 Q${sd * 50} -44 ${sd * 62} 28" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round"/>`).join('')}
+          ${[[-86,34],[-64,30],[-44,18],[44,18],[64,30],[86,34],[-62,28],[62,28]].map(([x, y], i) => `<circle class="ns splash" style="--d:${(i * 0.13).toFixed(2)}s" cx="${x}" cy="${y}" r="3" fill="#ffffff"/>`).join('')}
+          ${[[-14,-112],[10,-118],[-4,-126],[18,-104],[-22,-100]].map(([x, y], i) => `<circle class="ns spray" style="--d:${(i * 0.21).toFixed(2)}s" cx="${x}" cy="${y}" r="2.4" fill="#ffffff"/>`).join('')}
         </g>
         ${[[40,300],[360,300]].map(([x, y]) => `<g ${F} transform="translate(${x},${y})"><rect x="-3" y="-60" width="6" height="70" fill="#3a3a4a"/><circle cx="0" cy="-64" r="10" fill="#ffe08a"/></g>`).join('')}
         ${[[60,420,'#ff6a8a'],[80,430,'#ffd000'],[320,424,'#8a5ab8'],[344,432,'#ff6a8a']].map(([x, y, c]) => flower(x, y, c)).join('')}`);
