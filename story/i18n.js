@@ -65,6 +65,8 @@ window.STORY_I18N = {
     legendLocked: {ja: 'ことばが必要', kana: 'ことばが ひつよう', en: 'Secret word needed'},
     legendOpen:   {ja: '読める', kana: 'よめる', en: 'Ready to read'},
     legendDone:   {ja: '読み終えた', kana: 'よみおわった', en: 'Finished'},
+    itemDetail:   {ja: 'くわしく見る', kana: 'くわしく みる', en: 'see details'},
+    itemGot:      {ja: '{0}に手に入れた', kana: '{0}に てに いれた', en: 'Found on {0}'},
     items:        {ja: 'もちもの', kana: 'もちもの', en: 'Your items'},
     noItems:      {ja: 'まだ何も持っていません。', kana: 'まだ なにも もっていないよ。', en: 'You have no items yet.'},
     mapNote:      {ja: '建物をタップして、施設に掲示されたひみつのことばを入力すると、その施設の物語がひらきます。<br>一度ひらいた施設は、今日のあいだはそのまま読めます。', kana: 'たてものを タップして、かんばんの ひみつの ことばを いれると、ものがたりが ひらくよ。<br>いちど ひらいたら、きょうは そのまま よめるよ。', en: 'Tap a building and enter the secret word posted there to open its story.<br>Once opened, you can read it again freely today.'},

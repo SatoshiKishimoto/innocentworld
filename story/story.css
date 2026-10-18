@@ -77,7 +77,9 @@ button,input{font:inherit;color:inherit}
 .sblades{transform-origin:0 -18px;animation:sspin 9s linear infinite}
 @keyframes sspin{to{transform:rotate(360deg)}}
 .sitems{margin:0;padding:0;list-style:none;display:flex;flex-wrap:wrap;gap:8px}
-.sitems li{display:flex;align-items:center;gap:6px;background:#fff7ea;border:1px solid #f0dcc0;border-radius:999px;padding:6px 12px 6px 8px;font-size:13px;font-weight:700}
+.sitems li{display:flex}
+.sitems li button{appearance:none;display:flex;align-items:center;gap:6px;background:#fff7ea;border:1px solid #f0dcc0;border-radius:999px;padding:6px 12px 6px 8px;font:inherit;font-size:13px;font-weight:700;color:inherit;cursor:pointer}
+.sitems li button:active,.sritems button:active{transform:scale(.96)}
 .sitems li span{font-size:18px}
 .slegend{display:flex;justify-content:center;gap:14px;font-size:11.5px;color:var(--muted);font-weight:700}
 .slegend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:4px;vertical-align:-1px}
@@ -149,7 +151,7 @@ button,input{font:inherit;color:inherit}
 .srpts li{flex:1;background:#fff;border:1px solid #f0dcc0;border-radius:12px;padding:8px;text-align:center;display:flex;flex-direction:column;gap:2px;font-size:11px;font-weight:700;color:var(--muted)}
 .srpts b{font-size:20px;color:var(--navy)}
 .sritems{display:flex;flex-wrap:wrap;gap:6px}
-.sritems span{background:#fff;border:1px solid #f0dcc0;border-radius:999px;padding:5px 10px;font-size:12px;font-weight:700}
+.sritems button{appearance:none;background:#fff;border:1px solid #f0dcc0;border-radius:999px;padding:5px 10px;font:inherit;font-size:12px;font-weight:700;color:inherit;cursor:pointer}
 .srcode{background:#1f2f8f;color:#fff;border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:6px;text-align:center}
 .srcode small{font-size:11px;line-height:1.6;opacity:.9}
 .srcode b{font-size:22px;letter-spacing:.1em}
@@ -326,3 +328,13 @@ html[data-lang=en] .sfinale.last span{letter-spacing:.08em;padding:18px 22px}
 @keyframes sglint{0%{opacity:0;transform:translateY(-6px)}40%{opacity:.95}100%{opacity:0;transform:translateY(8px)}}
 .sbgart .fount .foam{animation:sfoam .6s ease-in-out infinite alternate}
 @keyframes sfoam{from{opacity:.55;transform:translateY(1px)}to{opacity:1;transform:translateY(-1px)}}
+
+/* もちものの詳しい説明 */
+.sitemview{position:fixed;inset:0;z-index:80;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(18,22,60,.6);animation:sfade .25s ease-out}
+.sivcard{width:min(340px,100%);background:#fffdf6;border:3px solid #1d1414;border-radius:24px;box-shadow:0 18px 40px rgba(0,0,0,.35);padding:26px 22px 20px;text-align:center;animation:sivpop .35s ease-out both}
+@keyframes sivpop{from{opacity:0;transform:translateY(16px) scale(.94)}to{opacity:1;transform:none}}
+.sivicon{font-size:72px;line-height:1.1;filter:drop-shadow(0 6px 10px rgba(0,0,0,.18))}
+.sivart{display:flex;justify-content:center}
+.sivname{display:block;margin:12px 0 6px;font-size:20px;color:var(--navy)}
+.sivdesc{margin:0 0 10px;font-size:15px;line-height:1.7;color:#3a3040;text-align:left}
+.sivwhen{margin:0 0 16px;font-size:12px;color:#8a7a6a}

@@ -174,6 +174,21 @@
   })();
   if(window.IWBGM) window.IWBGM.setOn(SFX.on);
   function soundBtn(){ return `<button class="sbtn ghost ssound" data-act="sound" aria-pressed="${SFX.on}" aria-label="${esc(t(SFX.on ? 'soundOn' : 'soundOff'))}">${SFX.on ? '🔊' : '🔇'}</button>`; }
+  // もちものの詳しい説明（もちものの一覧や住民票でアイテムをタップしたとき）
+  function itemDetail(id){
+    const it = defs().items[id]; if(!it) return;
+    const got = L.state.items[id], when = typeof got === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(got) ? fmtDate(got) : '';
+    const old = $('svItem'); if(old) old.remove();
+    const c = document.createElement('div'); c.id = 'svItem'; c.className = 'sitemview'; c.setAttribute('role', 'dialog'); c.setAttribute('aria-modal', 'true'); c.setAttribute('aria-label', T(it.name));
+    const art = id === 'old_bookmark' ? `<div class="sivart">${bookmarkSVG(110)}</div>` : `<div class="sivicon" aria-hidden="true">${esc(it.icon || '★')}</div>`;
+    c.innerHTML = `<div class="sivcard">${art}<b class="sivname">${esc(T(it.name))}</b>
+      ${T(it.desc) ? `<p class="sivdesc">${esc(fill(T(it.desc)))}</p>` : ''}
+      ${when ? `<p class="sivwhen">${esc(t('itemGot', when))}</p>` : ''}
+      <button type="button" class="sbtn main" data-act="itemclose">${esc(t('close'))}</button></div>`;
+    c.addEventListener('click', e => { if(e.target === c) c.remove(); });
+    document.body.appendChild(c); SFX.play('page');
+    setTimeout(() => { const b = c.querySelector('[data-act=itemclose]'); if(b) b.focus(); }, 50);
+  }
   // アイテムをもらったとき：大きく見せる
   function itemPop(ids){
     if(!ids || !ids.length) return;
@@ -457,7 +472,7 @@
         ${pins}
       </svg></div>
       <div class="slegend"><span><i style="background:#5a6390"></i>${esc(t('legendLocked'))}</span><span><i style="background:#e23d72"></i>${esc(t('legendOpen'))}</span><span><i style="background:#10a040"></i>${esc(t('legendDone'))}</span></div>
-      <div class="scard"><b class="sh">${esc(t('items'))}</b>${its.length ? `<ul class="sitems">${its.map(k => `<li title="${esc(T(defs().items[k].desc))}"><span>${esc(defs().items[k].icon || '★')}</span>${esc(T(defs().items[k].name))}</li>`).join('')}</ul>` : `<p class="snote" style="text-align:left">${esc(t('noItems'))}</p>`}</div>
+      <div class="scard"><b class="sh">${esc(t('items'))}</b>${its.length ? `<ul class="sitems">${its.map(k => `<li><button type="button" data-act="item" data-id="${esc(k)}" aria-label="${esc(T(defs().items[k].name))}（${esc(t('itemDetail'))}）"><span>${esc(defs().items[k].icon || '★')}</span>${esc(T(defs().items[k].name))}</button></li>`).join('')}</ul>` : `<p class="snote" style="text-align:left">${esc(t('noItems'))}</p>`}</div>
       <p class="snote">${t('mapNote')}</p></div>`);
   }
 
@@ -758,7 +773,7 @@
       </div>
       <div class="srstamps">${stamps}</div>
       ${pts ? `<ul class="srpts">${pts}</ul>` : ''}
-      ${its.length ? `<div class="sritems">${its.map(k => `<span>${esc((defs().items[k].icon || '★') + ' ' + T(defs().items[k].name))}</span>`).join('')}</div>` : ''}
+      ${its.length ? `<div class="sritems">${its.map(k => `<button type="button" data-act="item" data-id="${esc(k)}">${esc((defs().items[k].icon || '★') + ' ' + T(defs().items[k].name))}</button>`).join('')}</div>` : ''}
       ${L.recovery ? `<div class="srcode"><small>${t('codeLabel')}</small><b class="mono">${esc(L.recovery)}</b></div>`
         : `<button class="sbtn sub" data-act="newcode">${esc(t('newCode'))}</button>`}
       ${opt.first ? `<p class="srwelcome">${esc(t('regDone'))}</p>` : ''}
@@ -780,6 +795,8 @@
     if(a === 'restore') return showRestore();
     if(a === 'retry') return start();
     if(a === 'card') return showCard();
+    if(a === 'item') return itemDetail(b.dataset.id);
+    if(a === 'itemclose'){ const v = $('svItem'); if(v) v.remove(); return; }
     if(a === 'close') return closeModal();
     if(a === 'closego'){ closeModal(); return start(); }
     if(a === 'fac') return openFac(b.dataset.id);
