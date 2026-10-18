@@ -167,6 +167,24 @@
       correct(){ [72, 76, 79, 84].forEach((n, i) => bell(N(n), i*0.09, 0.9, 0.11)); },
       wrong(){ tone(N(57), 0, 0.18, 'triangle', 0.08); tone(N(53), 0.16, 0.28, 'triangle', 0.08); },
       // 時計台の鐘：金属の鐘らしい、整数倍でない倍音を重ねて長く響かせる
+      // ワープ：音が「ヒュイーーン」と上がっていき、風のような音とキラキラが重なって、最後に「シャーン」
+      warp(){
+        const c = ac(); if(!c) return; const t0 = c.currentTime + 0.02, D = 2.0;
+        const out = c.createGain(); out.gain.setValueAtTime(0.0001, t0); out.gain.exponentialRampToValueAtTime(0.22, t0 + 0.25); out.gain.setValueAtTime(0.22, t0 + D - 0.3); out.gain.exponentialRampToValueAtTime(0.0001, t0 + D + 0.4); out.connect(c.destination);
+        [[1, 'sawtooth', 0], [1.5, 'triangle', 6], [2.01, 'sine', -5]].forEach(([m, type, det]) => {
+          const o = c.createOscillator(), lf = c.createOscillator(), lg = c.createGain(), f = c.createBiquadFilter(), g = c.createGain();
+          o.type = type; o.detune.value = det; o.frequency.setValueAtTime(140 * m, t0); o.frequency.exponentialRampToValueAtTime(1900 * m, t0 + D);
+          lf.frequency.setValueAtTime(5, t0); lf.frequency.linearRampToValueAtTime(18, t0 + D); lg.gain.value = 18 * m; lf.connect(lg); lg.connect(o.frequency);
+          f.type = 'lowpass'; f.frequency.setValueAtTime(600, t0); f.frequency.exponentialRampToValueAtTime(6000, t0 + D); g.gain.value = type === 'sawtooth' ? 0.35 : 0.5;
+          o.connect(f); f.connect(g); g.connect(out); o.start(t0); lf.start(t0); o.stop(t0 + D + 0.5); lf.stop(t0 + D + 0.5);
+        });
+        const len = Math.floor(c.sampleRate * (D + 0.4)), nb = c.createBuffer(1, len, c.sampleRate), nd = nb.getChannelData(0);
+        for(let i = 0; i < len; i++) nd[i] = Math.random() * 2 - 1;
+        const n = c.createBufferSource(), bp = c.createBiquadFilter(), ng = c.createGain(); n.buffer = nb; bp.type = 'bandpass'; bp.Q.value = 1.4;
+        bp.frequency.setValueAtTime(300, t0); bp.frequency.exponentialRampToValueAtTime(5000, t0 + D); ng.gain.value = 0.5; n.connect(bp); bp.connect(ng); ng.connect(out); n.start(t0); n.stop(t0 + D + 0.4);
+        [84, 88, 91, 96, 100, 103, 108].forEach((k, i) => bell(N(k), 0.9 + i * 0.13, 0.5, 0.045));
+        [96, 100, 103, 108].forEach(k => bell(N(k), D + 0.05, 1.6, 0.05));
+      },
       // 時計台の鐘：録音した本物の教会の鐘（story/sfx/）。1回だけ／3回つく
       bell(){ sample('bell1'); },
       chime(){ sample('bell3'); },
@@ -745,7 +763,7 @@
   function lightTransition(mid){
     const c = document.createElement('div'); c.className = 'slightout'; c.setAttribute('aria-hidden', 'true');
     c.innerHTML = '<div class="slightcore"></div>' + Array.from({length:26}, () => `<i style="--x:${(Math.random()*100).toFixed(1)}%;--y:${(Math.random()*100).toFixed(1)}%;--d:${(Math.random()*1.2).toFixed(2)}s;--s:${(6 + Math.random()*12).toFixed(0)}px"></i>`).join('');
-    document.body.appendChild(c); SFX.play('item');
+    document.body.appendChild(c); SFX.play('warp');
     setTimeout(() => { mid(); c.classList.add('clear'); }, 2300);       // まっ白のあいだに部屋へ切りかえる
     setTimeout(() => c.remove(), 2300 + 1600);
   }
