@@ -79,11 +79,12 @@
         ${cloud(250, 60, 0.9)}${cloud(40, 110, 0.7)}
         ${house(10, 230, 50, 40, '#d9534a', '#fff1d6', {chimney:true, flowers:true})}${house(80, 240, 42, 32, '#5a6ab8', '#f3e2c0')}${house(300, 232, 52, 40, '#4f9a4a', '#fff7ea', {flowers:true})}
         ${tree(150, 250, 0.8)}${tree(260, 248, 0.7, '#4fae58')}
-        <rect x="-10" y="290" width="420" height="510" fill="#8fd06a"/>
-        <path d="M-10 290 H410" fill="none" stroke="${K}" stroke-width="2"/>
-        <path d="M60 800 Q120 520 210 420 Q240 390 280 380" fill="none" stroke="${K}" stroke-width="44" stroke-linecap="round"/>
-        <path d="M60 800 Q120 520 210 420 Q240 390 280 380" fill="none" stroke="url(#scBrW)" stroke-width="40" stroke-linecap="round"/>
-        <g transform="translate(300,330)">
+        <rect x="-10" y="270" width="420" height="530" fill="#8fd06a"/>
+        <path d="M-10 270 H410" fill="none" stroke="${K}" stroke-width="2"/>
+        <path d="M60 800 Q120 560 200 500 Q236 478 268 474" fill="none" stroke="${K}" stroke-width="44" stroke-linecap="round"/>
+        <path d="M60 800 Q120 560 200 500 Q236 478 268 474" fill="none" stroke="url(#scBrW)" stroke-width="40" stroke-linecap="round"/>
+        <ellipse class="ns" cx="300" cy="482" rx="84" ry="16" fill="rgba(40,60,20,.28)"/>
+        <g transform="translate(300,382)">
           <path d="M-70 -40 L0 -96 L70 -40 Z" fill="#a0603a"/><path d="M-62 -42 L0 -88 L62 -42 Z" fill="#c8794a"/>
           <rect x="-56" y="-44" width="9" height="104" fill="#7a5230"/><rect x="47" y="-44" width="9" height="104" fill="#7a5230"/>
           <rect x="-50" y="-30" width="100" height="6" fill="#7a5230"/><path d="M0 -24 V6" fill="none" stroke="${K}" stroke-width="2"/>
@@ -95,7 +96,7 @@
           ${[[-20,8],[18,-2],[0,-14],[30,14]].map(([x, y], i) => `<circle class="ns sparkle" style="--d:${i*0.5}s" cx="${x}" cy="${y}" r="3" fill="#fff6c8"/>`).join('')}
         </g>
         <rect x="20" y="380" width="70" height="40" rx="6" fill="#a0603a"/>${[30,46,62,78].map((x, i) => flower(x, 378, ['#ff6a8a','#ffd000','#8a5ab8','#ff8a1a'][i])).join('')}
-        ${[[340,450,'#ff6a8a'],[370,470,'#ffd000'],[20,470,'#8a5ab8']].map(([x, y, c]) => flower(x, y, c)).join('')}`);
+        ${[[352,506,'#ff6a8a'],[378,514,'#ffd000'],[20,470,'#8a5ab8']].map(([x, y, c]) => flower(x, y, c)).join('')}`);
     },
     // ニコのパン屋さん：レンガのかまど、パンの棚、カウンター
     bakery(){
@@ -130,9 +131,9 @@
     forest(){
       return wrap(sky('scSkyF', '#bfe6a0', '#e8f8d0'),
         `<rect class="ns" width="400" height="800" fill="url(#scSkyF)"/>
-        ${[[30,200,1.5,'#2f7a38'],[120,180,1.3,'#3f8a48'],[290,190,1.4,'#2f7a38'],[380,210,1.6,'#3f8a48'],[200,170,1.1,'#4f9a4a']].map(([x, y, s, c]) => tree(x, y, s, c)).join('')}
+        ${[[30,1.5,'#2f7a38'],[120,1.3,'#3f8a48'],[290,1.4,'#2f7a38'],[380,1.6,'#3f8a48'],[200,1.1,'#4f9a4a']].map(([x, s, c]) => [x, 254 - 34 * s, s, c]).map(([x, y, s, c]) => tree(x, y, s, c)).join('')}
         ${[60,150,240,330].map((x, i) => `<path class="ns beam" style="--d:${i*0.7}s" d="M${x} 0 L${x+40} 0 L${x+90} 470 L${x+30} 470 Z" fill="rgba(255,250,200,.28)"/>`).join('')}
-        <rect x="-10" y="300" width="420" height="500" fill="#7cc860"/><path d="M-10 300 H410" fill="none" stroke="${K}" stroke-width="2"/>
+        <rect x="-10" y="252" width="420" height="548" fill="#7cc860"/>${[20,70,130,250,330,385].map((x, i) => `<ellipse cx="${x}" cy="256" rx="${26 + (i%3)*6}" ry="12" fill="#4f9a4a"/>`).join('')}<path class="ns" d="M-10 252 H410" fill="none" stroke="${K}" stroke-width="2"/>
         <path d="M-10 380 Q120 350 200 372 Q290 396 410 360 V420 Q290 452 200 430 Q110 410 -10 440 Z" fill="#5aa8e8"/>
         ${[[40,404],[150,392],[250,410],[340,392]].map(([x, y]) => `<path class="ns" d="M${x} ${y} q10 -5 20 0" fill="none" stroke="#dff3ff" stroke-width="2.5" stroke-linecap="round"/>`).join('')}
         <g transform="translate(200,402)">
@@ -185,7 +186,7 @@
       return wrap(sky('scSkyP', '#7fc6ff', '#e6f6ff') + brickPattern('scBrP', '#e08a5a', '#e99a68', '#d4784a'),
         `<rect class="ns" width="400" height="800" fill="url(#scSkyP)"/>
         ${cloud(40, 40, 0.8)}${cloud(300, 30, 0.7)}
-        <g transform="translate(200,150)"><rect x="-22" y="-70" width="44" height="150" fill="#f3e2c0"/><path d="M-30 -66 L0 -110 L30 -66 Z" fill="#5a6ab8"/>
+        <g transform="translate(200,150)"><rect x="-22" y="-70" width="44" height="182" fill="#f3e2c0"/><path d="M-9 112 V84 Q0 74 9 84 V112 Z" fill="#8a5a32"/><rect x="-7" y="10" width="14" height="18" fill="#ffe08a"/><rect x="-30" y="108" width="60" height="6" fill="#b8b2a6"/><path d="M-30 -66 L0 -110 L30 -66 Z" fill="#5a6ab8"/>
           <circle cx="0" cy="-40" r="15" fill="#fffdf0"/><path d="M0 -40 V-50 M0 -40 L7 -36" fill="none" stroke="${K}" stroke-width="2"/></g>
         ${house(-20, 190, 70, 70, '#e2687e', '#fff1d6', {chimney:true, flowers:true})}${house(60, 210, 54, 52, '#ffb020', '#f6ecd8')}${house(280, 206, 56, 56, '#4f9a4a', '#fff7ea', {flowers:true})}${house(342, 186, 70, 74, '#3f6fb0', '#fff1d6', {chimney:true})}
         <path d="M-10 120 Q200 170 410 120" fill="none" stroke="${K}" stroke-width="1.5"/>${flags}
