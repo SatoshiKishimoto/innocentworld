@@ -623,8 +623,8 @@
     const books = Array.from({length:18}, (_, i) => { const row = Math.floor(i/6), x = 18 + (i%6)*13, h = 54 + ((i*7)%4)*6, c = ['#e2687e','#5a6ab8','#ffd000','#4f9a4a','#d9534a','#8a5ab8'][(i+row)%6];
       return `<rect x="${x}" y="${240 + row*92 + (72 - h)}" width="11" height="${h}" rx="2" fill="${c}"/>`; }).join('');
     // 窓の外のエスパーとミミ（住人のイラストをそのまま使い、窓わくの内側だけに見せる）
-    const friends = win ? `<g clip-path="url(#svWin)" class="${curtain === 'opening' ? 'friendsIn' : ''}"><image class="wave l" href="${charImg('esper')}" x="118" y="148" width="104" height="142" preserveAspectRatio="xMidYMax meet"/>
-      <image class="wave r" href="${charImg('mimi')}" x="196" y="156" width="86" height="134" preserveAspectRatio="xMidYMax meet"/></g>` : '';
+    const friends = win ? `<g clip-path="url(#svWin)" class="${curtain === 'opening' ? 'friendsIn' : ''}"><image class="wave l" href="${charImg('esper')}" x="110" y="198" width="100" height="150" preserveAspectRatio="xMidYMax meet"/>
+      <image class="wave r" href="${charImg('mimi')}" x="208" y="196" width="84" height="150" preserveAspectRatio="xMidYMax meet"/></g>` : '';
     // カーテン：開いた形を描き、閉じているときは横に広げる（ひだの線は太さを変えない）
     const folds = side => [0.3, 0.55, 0.8].map(k => { const x = side < 0 ? 76 + 26 * k : 324 - 26 * k; return `<path d="M${x} 74 Q${x + side * 3} 210 ${x - side * 2} 350" fill="none" stroke="#b8405a" stroke-width="1.6" vector-effect="non-scaling-stroke"/>`; }).join('');
     const cState = curtain === 'closed' ? 'closed' : curtain === 'opening' ? 'opening' : '';
