@@ -129,7 +129,7 @@
     const B = window.IWBGM; if(!B) return;
     let song = 'gate';
     if(P && P.b){ const f = P.b.facility, sc = P.b.scenes && P.b.scenes[P.id], fac = (L.map || []).find(x => x.id === f);
-      song = f === 'intro' ? 'gate' : B.songs.includes(f) ? f : (sc && BG_SONG[sc.bg]) || (fac && BG_SONG[fac.type]) || 'map'; }
+      song = sc && /^(bedroom|night)/.test(sc.bg) ? 'night' : f === 'intro' ? 'gate' : B.songs.includes(f) ? f : (sc && BG_SONG[sc.bg]) || (fac && BG_SONG[fac.type]) || 'map'; }
     else if(VIEW === showMap) song = 'map';
     else if(VIEW === showClosed) song = 'night';
     B.play(song);
@@ -547,6 +547,69 @@
     if(c.doneCount && Object.keys(st.done).filter(k => k.indexOf(ev + ':') === 0).length < c.doneCount) return false;
     return true;
   }
+  /* ---------- 物語の背景イラスト（絵で描く背景）：子ども部屋（bedroom）、窓の外に住人（bedroom_window）、机の上のしおり（bedroom_bookmark） ---------- */
+  function bookmarkSVG(w){
+    // 古いしおり：中央広場（噴水・旗・レンガの道・時計台）の絵。房（ふさ）つき
+    return `<svg class="smark" viewBox="0 0 120 300" width="${w}" aria-hidden="true">
+      <defs><clipPath id="svMk"><rect x="12" y="34" width="96" height="226" rx="8"/></clipPath>
+        <linearGradient id="svMkSky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffd9a8"/><stop offset="1" stop-color="#fff3df"/></linearGradient></defs>
+      <path d="M60 4 C 50 20 46 26 60 34 C 74 26 70 20 60 4 Z" fill="none" stroke="#c0392b" stroke-width="3"/>
+      <rect x="4" y="26" width="112" height="242" rx="12" fill="#f4e6c8" stroke="#a8743c" stroke-width="4"/>
+      <circle cx="60" cy="40" r="5" fill="#fff" stroke="#a8743c" stroke-width="2"/>
+      <g clip-path="url(#svMk)">
+        <rect x="12" y="34" width="96" height="226" fill="url(#svMkSky)"/>
+        <circle cx="86" cy="70" r="12" fill="#fff6c8"/>
+        <rect x="20" y="70" width="18" height="70" fill="#f3e2c0" stroke="#7a6a8a" stroke-width="1.5"/><path d="M16 72 L29 52 L42 72 Z" fill="#5a6ab8"/><circle cx="29" cy="88" r="6" fill="#fffdf0" stroke="#c89a3a" stroke-width="1.5"/>
+        <path d="M12 150 Q60 130 108 150 V260 H12 Z" fill="#e8a070"/>
+        ${[160,176,192,208,224,240].map((y, i) => `<path d="M12 ${y} H108" stroke="#c87850" stroke-width="1"/>${[0,1,2,3,4,5].map(k => `<path d="M${12 + k*18 + (i%2)*9} ${y} V${y+16}" stroke="#c87850" stroke-width="1"/>`).join('')}`).join('')}
+        <ellipse cx="60" cy="170" rx="30" ry="9" fill="#cfe9f7" stroke="#8a8f9c" stroke-width="2"/>
+        <path d="M60 168 V140" stroke="#8a8f9c" stroke-width="3"/><path d="M60 140 q-12 4 -16 18 M60 140 q12 4 16 18" stroke="#7ad8ff" stroke-width="2.5" fill="none"/>
+        <path d="M84 150 V110" stroke="#7a4a20" stroke-width="2"/><path d="M84 110 L102 116 L84 122 Z" fill="#e2687e"/>
+        ${[[24,120,'#ffd000'],[42,112,'#e8101e'],[78,104,'#10c050'],[98,96,'#1e5aff']].map(([x, y, c]) => `<circle cx="${x}" cy="${y}" r="3" fill="${c}"/>`).join('')}
+        <path d="M14 104 Q60 92 106 84" stroke="#a8743c" stroke-width="1" fill="none"/>
+      </g>
+      <text x="60" y="254" text-anchor="middle" font-size="11" font-weight="800" fill="#7a4a20" letter-spacing="2">BRICK VILLAGE</text>
+    </svg>`;
+  }
+  function sceneArt(bg){
+    if(!/^bedroom/.test(bg)) return '';
+    const win = bg === 'bedroom_window', mark = bg === 'bedroom_bookmark';
+    const stars = [[148,128],[176,170],[222,118],[258,160],[196,222],[240,250],[160,262],[268,214]].map(([x, y], i) => `<circle class="star" style="--d:${(i*0.37).toFixed(2)}s" cx="${x}" cy="${y}" r="${i%3 ? 1.8 : 2.6}" fill="#fff8d0"/>`).join('');
+    const books = Array.from({length:18}, (_, i) => { const row = Math.floor(i/6), x = 18 + (i%6)*13, h = 54 + ((i*7)%4)*6, c = ['#e2687e','#5a6ab8','#ffd000','#4f9a4a','#d9534a','#8a5ab8'][(i+row)%6];
+      return `<rect x="${x}" y="${240 + row*92 + (72 - h)}" width="11" height="${h}" rx="2" fill="${c}"/>`; }).join('');
+    // 窓の外のエスパーとミミ（住人のイラストをそのまま使い、窓わくの内側だけに見せる）
+    const friends = win ? `<g clip-path="url(#svWin)"><image class="wave l" href="${charImg('esper')}" x="118" y="148" width="104" height="142" preserveAspectRatio="xMidYMax meet"/>
+      <image class="wave r" href="${charImg('mimi')}" x="196" y="156" width="86" height="134" preserveAspectRatio="xMidYMax meet"/></g>` : '';
+    const curtainL = win ? 'M100 70 Q112 200 92 352 L76 352 L76 70 Z' : 'M100 70 Q150 200 132 352 L76 352 L76 70 Z';
+    const curtainR = win ? 'M300 70 Q288 200 308 352 L324 352 L324 70 Z' : 'M300 70 Q250 200 268 352 L324 352 L324 70 Z';
+    return `<svg class="sbgart" viewBox="0 0 400 800" preserveAspectRatio="xMidYMin slice" aria-hidden="true">
+      <defs><linearGradient id="svWall" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3a2f5e"/><stop offset=".55" stop-color="#5a4472"/><stop offset="1" stop-color="#6e4f6a"/></linearGradient>
+        <linearGradient id="svSky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#14184a"/><stop offset="1" stop-color="#3a3f8a"/></linearGradient>
+        <radialGradient id="svLamp" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="rgba(255,214,120,.55)"/><stop offset="1" stop-color="rgba(255,214,120,0)"/></radialGradient>
+        <clipPath id="svWin"><rect x="112" y="96" width="176" height="196"/></clipPath>
+        <pattern id="svPaper" width="40" height="40" patternUnits="userSpaceOnUse"><circle cx="10" cy="10" r="2" fill="rgba(255,255,255,.07)"/><circle cx="30" cy="30" r="2" fill="rgba(255,255,255,.07)"/></pattern></defs>
+      <rect width="400" height="800" fill="url(#svWall)"/><rect width="400" height="800" fill="url(#svPaper)"/>
+      <rect y="560" width="400" height="240" fill="#7a4a2a"/>${[580,610,640,670,700,730].map(y => `<path d="M0 ${y} H400" stroke="#6a3e22" stroke-width="2"/>`).join('')}
+      <rect x="104" y="88" width="192" height="212" rx="8" fill="#8a5a32"/>
+      <rect x="112" y="96" width="176" height="196" fill="url(#svSky)"/>
+      <circle cx="252" cy="134" r="18" fill="#fff4c0"/><circle cx="260" cy="128" r="16" fill="url(#svSky)"/>
+      ${stars}
+      <path d="M112 270 Q160 252 200 266 Q240 280 288 262 V292 H112 Z" fill="#c87850" opacity=".85"/>
+      ${friends}
+      <path d="M200 96 V292 M112 194 H288" stroke="#8a5a32" stroke-width="7"/>
+      <rect x="96" y="292" width="208" height="14" rx="4" fill="#a8743c"/>
+      <rect x="70" y="60" width="260" height="10" rx="5" fill="#a8743c"/>
+      <path d="${curtainL}" fill="#e2687e" opacity=".92"/><path d="${curtainR}" fill="#e2687e" opacity=".92"/>
+      <rect x="8" y="200" width="96" height="340" rx="4" fill="#8a5a32"/><rect x="14" y="206" width="84" height="328" fill="#6a3e22"/>
+      ${[0,1,2].map(r => `<rect x="14" y="${310 + r*92}" width="84" height="6" fill="#8a5a32"/>`).join('')}
+      ${books}
+      <ellipse cx="350" cy="350" rx="90" ry="80" fill="url(#svLamp)"/>
+      <rect x="236" y="392" width="164" height="14" rx="3" fill="#a8743c"/><rect x="246" y="406" width="10" height="160" fill="#8a5a32"/><rect x="384" y="406" width="10" height="160" fill="#8a5a32"/>
+      <path d="M350 392 V350" stroke="#5a3a1a" stroke-width="4"/><path d="M326 352 L374 352 L362 318 L338 318 Z" fill="#ffd96a"/><ellipse cx="350" cy="392" rx="16" ry="4" fill="#5a3a1a"/>
+      <rect x="262" y="374" width="58" height="18" rx="3" fill="#3f6fb0"/><rect x="266" y="370" width="50" height="6" fill="#f6ecd8"/>
+      ${mark ? `<g class="deskmark" transform="translate(286 300) rotate(-12)">${bookmarkSVG(40).replace('<svg ', '<svg x="0" y="0" height="100" ')}</g>` : ''}
+    </svg>`;
+  }
   function face(k){ return `<span class="sface"><img src="${charImg(k)}" alt=""></span>`; }
   function render(){
     const sc = scene(), pages = P.pages, pg = pages[P.line] || {who:'', text:''};
@@ -556,29 +619,38 @@
     const bg = /^#[0-9a-f]{3,8}$/i.test(sc.bg) ? `style="background:${sc.bg}"` : '';
     const got = last && P.got.length ? `<div class="sgot">${P.got.map(i => { const it = defs().items[i]; return `<span>${it ? esc((it.icon || '★') + ' ' + T(it.name)) : esc(i)} ${esc(t('gotItem'))}</span>`; }).join('')}</div>` : '';
     const ending = last && sc.ar;
+    // 物語のしめくくり（「記録する」に day1_complete など _complete で終わる記録がある、最後の場面）
+    const finale = !sc.next && !(sc.choices || []).length && (sc.flag || []).some(f => /_complete$/.test(f));
+    const srcLine = sc.lines[pg.src] || [], jaText = srcLine[1] && typeof srcLine[1] === 'object' ? (srcLine[1].ja || '') : String(srcLine[1] || pg.text);
+    const titleCard = finale && !who && Array.from(jaText).length <= 22 && P.line >= pages.length - 2;   // 長さは日本語の文で判断（言語で変わらない）
+    const cardHtml = () => { const tx = pg.text, m = Array.from(tx).length > 12 && tx.match(/^(.+?[、,])\s*(.+)$/); return m ? esc(m[1]) + '<br>' + esc(m[2]) : esc(tx); };
+    const scBg = /^[a-z_]+$/.test(sc.bg) ? sc.bg : 'meadow', inRoom = /^bedroom/.test(scBg);
     let foot;
     if(choices.length) foot = `<div class="schoices" role="group" aria-label="${esc(t('whatDo'))}"><p class="sask">${esc(t('whatDo'))}</p>${choices.map(c => `<button class="sbtn choice" data-act="choose" data-i="${sc.choices.indexOf(c)}">${esc(fill(T(c.text)))}</button>`).join('')}</div>`;
     else if(ending) foot = `<div class="sar"><a class="sbtn main pink" href="${esc(arLink(sc.ar))}" target="_blank" rel="noopener" data-act="ar">${esc(fill(T(sc.arLabel) || t('arDefault')))}</a>
       <small>${esc(t('arNote'))}</small><button class="sbtn link" data-act="next">${esc(t('backToMap'))}</button></div>`;
-    else foot = `<button class="sbtn main snextbtn" data-act="next">${esc(t(last && !sc.next ? 'close' : 'next'))} <span aria-hidden="true">▶</span></button>`;
+    else foot = `<button class="sbtn main snextbtn" data-act="next">${esc(t(last && !sc.next ? (finale ? 'backToMap' : 'close') : 'next'))} <span aria-hidden="true">▶</span></button>`;
     const dots = pages.length > 1 ? `<span class="sdots" aria-label="${P.line + 1} / ${pages.length}">${pages.map((_, i) => `<i class="${i === P.line ? 'on' : ''}"></i>`).join('')}</span>` : '<span></span>';
-    set(`<div class="sscene bg-${esc(/^[a-z]+$/.test(sc.bg) ? sc.bg : 'meadow')}" ${bg}>
+    set(`<div class="sscene bg-${esc(scBg)}" ${bg}>${sceneArt(scBg)}
       <div class="sstop"><button class="sbtn ghost" data-act="leave">‹ ${esc(t('toMap'))}</button><span class="sbarr">${langBtn()}${soundBtn()}</span></div>
-      ${fac ? `<span class="sfac">${esc(T(fac.name))}</span>` : ''}
-      ${who ? `<img class="sactor" src="${charImg(who)}" alt="" aria-hidden="true">` : ''}
-      <article class="sbook ${who ? '' : 'narr'}" aria-live="polite">
+      ${fac && !inRoom ? `<span class="sfac">${esc(T(fac.name))}</span>` : ''}
+      ${who && scBg !== 'bedroom_window' ? `<img class="sactor" src="${charImg(who)}" alt="" aria-hidden="true">` : ''}
+      ${scBg === 'bedroom_bookmark' && !titleCard ? `<div class="sprop">${bookmarkSVG(150)}</div>` : ''}
+      ${titleCard ? `<div class="sfinale${P.line === pages.length - 1 ? ' last' : ''}"><span>${cardHtml()}</span></div>` : ''}
+      <article class="sbook ${who ? '' : 'narr'}${titleCard ? ' quiet' : ''}" aria-live="polite">
         ${who ? `<header class="sspeaker">${face(who)}<b>${esc(cname(who))}</b></header>` : ''}
-        <p class="stext">${esc(pg.text)}</p>${got}
+        <p class="stext">${titleCard ? '' : esc(pg.text)}</p>${got}
         <div class="snav">${P.line > 0 ? `<button class="sbtn link sprev" data-act="prev">◀ ${esc(t('prev'))}</button>` : '<span></span>'}${dots}</div>
         ${foot}
       </article></div>`);
     SFX.voice(pg.voice);
     if(last && P.got.length && !P.gotShown){ P.gotShown = true; setTimeout(() => itemPop(P.got), 250); }
     if(ending && !P.endShown){ P.endShown = true; endingFx(); }
+    if(finale && last && !P.endShown){ P.endShown = true; endingFx(true); }
   }
-  function endingFx(){
-    const c = document.createElement('div'); c.className = 'sending'; c.setAttribute('role', 'status');
-    c.innerHTML = `<div class="sendcard"><span>✦</span><b>${esc(t('theEnd'))}</b><em>${lang() === 'en' ? '' : 'THE END'}</em></div>` + Array.from({length:30}, () => `<i style="--x:${(Math.random()*100).toFixed(1)}%;--y:${(Math.random()*70).toFixed(1)}%;--d:${(Math.random()*1.4).toFixed(2)}s;--s:${(6 + Math.random()*10).toFixed(0)}px"></i>`).join('');
+  function endingFx(sparkOnly){
+    const c = document.createElement('div'); c.className = 'sending' + (sparkOnly ? ' spark' : ''); c.setAttribute('role', 'status');
+    c.innerHTML = (sparkOnly ? '' : `<div class="sendcard"><span>✦</span><b>${esc(t('theEnd'))}</b><em>${lang() === 'en' ? '' : 'THE END'}</em></div>`) + Array.from({length:30}, () => `<i style="--x:${(Math.random()*100).toFixed(1)}%;--y:${(Math.random()*70).toFixed(1)}%;--d:${(Math.random()*1.4).toFixed(2)}s;--s:${(6 + Math.random()*10).toFixed(0)}px"></i>`).join('');
     c.addEventListener('click', () => c.remove());
     document.body.appendChild(c); SFX.play('ending');
     setTimeout(() => c.remove(), 3600);

@@ -264,3 +264,27 @@ html[data-lang="kana"] .srbody dl{font-size:12px}
 .srmore[open] summary::after{content:' ▴'}
 .srmore p{font-size:12px;color:#7a6a5a;line-height:1.6;margin:8px 0 12px;text-align:left}
 .sbtn.danger{background:#fff;color:#c0392b;border:2px solid #c0392b;box-shadow:none;width:auto;padding:10px 18px;font-size:13px}
+
+/* ---------- エンディング：子ども部屋（絵の背景） ---------- */
+.bg-bedroom,.bg-bedroom_window,.bg-bedroom_bookmark{background:#3a2f5e}
+.sbgart{position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}
+.sscene > .sstop,.sscene > .sbook,.sscene > .sactor,.sscene > .sfac{z-index:2}
+.sbgart .star{animation:stwinkle 2.4s ease-in-out infinite;animation-delay:var(--d)}
+@keyframes stwinkle{0%,100%{opacity:1}50%{opacity:.25}}
+.sbgart .wave{transform-box:fill-box;transform-origin:50% 100%;animation:swave 1.6s ease-in-out infinite}
+.sbgart .wave.r{animation-delay:.5s}
+@keyframes swave{0%,100%{transform:rotate(-4deg)}50%{transform:rotate(4deg)}}
+.sbgart .deskmark{filter:drop-shadow(0 0 6px rgba(255,230,150,.9))}
+.sprop{position:absolute;left:50%;top:calc(96px + env(safe-area-inset-top,0px));transform:translateX(-50%);z-index:2;animation:sprop 1.2s ease-out both}
+.sprop .smark{display:block;filter:drop-shadow(0 0 18px rgba(255,226,140,.85)) drop-shadow(0 8px 14px rgba(0,0,0,.35));animation:sglow 3s ease-in-out infinite}
+@keyframes sprop{from{opacity:0;transform:translate(-50%,20px) scale(.9)}to{opacity:1;transform:translate(-50%,0) scale(1)}}
+@keyframes sglow{0%,100%{transform:rotate(-3deg)}50%{transform:rotate(3deg)}}
+@media (max-height:700px){.sprop .smark{width:110px}}
+/* しめくくりの言葉：「ここは、やさしさでできた世界。」→「おしまい。」 */
+.sfinale{position:absolute;left:0;right:0;top:20%;z-index:2;display:flex;justify-content:center;padding:0 14px;text-align:center}
+.sfinale span{display:inline-block;max-width:100%;padding:18px 18px;border-radius:22px;background:rgba(20,18,60,.55);box-shadow:0 0 40px rgba(255,214,120,.35);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);font-size:clamp(19px,5.6vw,30px);font-weight:900;color:#fff8e0;letter-spacing:.04em;line-height:1.5;text-shadow:0 0 18px rgba(255,214,120,.9),0 2px 0 rgba(0,0,0,.25);animation:sfin 1.6s ease-out both}
+.sfinale.last span{font-size:clamp(34px,11vw,52px);letter-spacing:.3em;padding:18px 18px 18px calc(18px + .3em)}
+html[data-lang=en] .sfinale.last span{letter-spacing:.08em;padding:18px 22px}
+@keyframes sfin{from{opacity:0;transform:translateY(12px);filter:blur(4px)}to{opacity:1;transform:none;filter:none}}
+.sbook.quiet .stext{display:none}
+.sending.spark{background:transparent;pointer-events:none}
