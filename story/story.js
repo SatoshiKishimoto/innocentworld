@@ -588,10 +588,22 @@
       if(!L.state.done[dk]) L.state.done[dk] = L.today;
       push({type:'done', facility:b.facility, route:b.route});
     }
+    // 待たせずに、すぐ地図へ戻る（読み終えた印は手元で先につける）
+    if(b && L.map){ const m = L.map.find(x => x.id === b.facility); if(m && m.status !== 'hidden') m.status = 'done'; }
     save();
-    // 記録を送り、地図を最新にする（広場がひらく など）
-    try{ const j = await api('boot', {}, {quiet:true}); if(j.ok) takeBoot(j); }catch(e){}
     route();
+    // 記録の送信と地図の更新（広場がひらく など）は、うしろで行う
+    try{
+      const j = await api('boot', {}, {quiet:true});
+      if(j.ok){
+        const before = JSON.stringify(L.map), wasMap = VIEW === showMap;
+        const closed = (L.map || []).filter(x => x.status === 'blocked' || x.status === 'hidden').map(x => x.id);
+        takeBoot(j);
+        const opened = (L.map || []).some(x => closed.includes(x.id) && x.status !== 'blocked' && x.status !== 'hidden');
+        if(wasMap && VIEW === showMap && !document.querySelector('.smodal:not([hidden]), .sitempop') && JSON.stringify(L.map) !== before){ const y = window.scrollY; showMap(); window.scrollTo(0, y); }
+        if(opened && VIEW === showMap){ SFX.play('correct'); toast(t('newPlace')); }
+      }
+    }catch(e){}
   }
 
   /* ---------- 住民票 ---------- */

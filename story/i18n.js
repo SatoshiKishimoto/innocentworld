@@ -22,6 +22,7 @@ window.STORY_I18N = {
     soundOn:      {ja: '効果音 オン', kana: 'おと オン', en: 'Sound on'},
     soundOff:     {ja: '効果音 オフ', kana: 'おと オフ', en: 'Sound off'},
     loading:      {ja: '通信しています…', kana: 'つうしんちゅう…', en: 'Connecting…'},
+    newPlace:     {ja: '新しい場所に入れるようになったよ！', kana: 'あたらしい ばしょに はいれるように なったよ！', en: 'A new place is now open!'},
     close:        {ja: 'とじる', kana: 'とじる', en: 'Close'},
     tapClose:     {ja: 'タップでとじる', kana: 'タップで とじる', en: 'Tap to close'},
     // はじまり
