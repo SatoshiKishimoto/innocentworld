@@ -122,7 +122,18 @@
     if(L.rid) u.hash = 'login=' + encodeURIComponent(btoa(unescape(encodeURIComponent(JSON.stringify({rid:L.rid, token:L.token, recovery:L.recovery})))));
     return `<div class="embedbar"><span>${esc(t('embedLead'))}</span><a href="${esc(u.href)}" target="_blank" rel="noopener">${esc(t('embedOpen'))}</a></div>`;
   }
-  function set(html){ app.innerHTML = html; window.scrollTo(0, 0); }
+  function set(html){ app.innerHTML = html; window.scrollTo(0, 0); try{ music(); }catch(e){} }
+  // 場所ごとのBGM（テーマパークのエリア音楽のように切りかわる）。物語の中は施設ごと、なければ背景で決める
+  const BG_SONG = {meadow:'gate', well:'well', bakery:'bakery', flower:'bakery', forest:'forest', windmill:'forest', clock:'clock', library:'library', plaza:'plaza', night:'night'};
+  function music(){
+    const B = window.IWBGM; if(!B) return;
+    let song = 'gate';
+    if(P && P.b){ const f = P.b.facility, sc = P.b.scenes && P.b.scenes[P.id], fac = (L.map || []).find(x => x.id === f);
+      song = f === 'intro' ? 'gate' : B.songs.includes(f) ? f : (sc && BG_SONG[sc.bg]) || (fac && BG_SONG[fac.type]) || 'map'; }
+    else if(VIEW === showMap) song = 'map';
+    else if(VIEW === showClosed) song = 'night';
+    B.play(song);
+  }
   function toast(msg){ let t = $('svToast'); if(!t){ t = document.createElement('div'); t.id = 'svToast'; t.className = 'stoast'; t.setAttribute('role', 'status'); document.body.appendChild(t); }
     t.textContent = msg; t.hidden = false; clearTimeout(toast._t); toast._t = setTimeout(() => t.hidden = true, 3800); }
   function modal(html, again){ MODAL = again || null; let m = $('svModal'); if(!m){ m = document.createElement('div'); m.id = 'svModal'; m.className = 'smodal'; document.body.appendChild(m); } m.innerHTML = html; m.hidden = false; }
@@ -154,12 +165,13 @@
     };
     return {
       get on(){ return on; },
-      set(v){ on = v; try{ localStorage.setItem('iw_story_sound', v ? 'on' : 'off'); }catch(e){} if(!v) this.stopVoice(); else ac(); },
+      set(v){ on = v; try{ localStorage.setItem('iw_story_sound', v ? 'on' : 'off'); }catch(e){} if(window.IWBGM) window.IWBGM.setOn(v); if(!v) this.stopVoice(); else ac(); },
       play(name){ if(!on || !play[name]) return; try{ play[name](); }catch(e){} },
       voice(url){ this.stopVoice(); if(!on || !url) return; try{ voiceEl = new Audio(url); voiceEl.play().catch(() => {}); }catch(e){} },
       stopVoice(){ if(voiceEl){ try{ voiceEl.pause(); }catch(e){} voiceEl = null; } }
     };
   })();
+  if(window.IWBGM) window.IWBGM.setOn(SFX.on);
   function soundBtn(){ return `<button class="sbtn ghost ssound" data-act="sound" aria-pressed="${SFX.on}" aria-label="${esc(t(SFX.on ? 'soundOn' : 'soundOff'))}">${SFX.on ? '🔊' : '🔇'}</button>`; }
   // アイテムをもらったとき：大きく見せる
   function itemPop(ids){
