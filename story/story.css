@@ -349,3 +349,9 @@ html[data-lang=en] .sfinale.last span{letter-spacing:.08em;padding:18px 22px}
 @keyframes slightgrow{0%{transform:scale(.2);opacity:.6}100%{transform:scale(60);opacity:1}}
 @keyframes slightstar{0%{opacity:0;transform:scale(.3)}40%{opacity:1}100%{opacity:0;transform:scale(1.6) rotate(45deg)}}
 @keyframes slightoutfade{from{opacity:1}to{opacity:0}}
+
+/* エスパーとミミが星にもどっていく */
+.sbgart .friendsOut{animation:sfriendsout 3.2s ease-in .4s forwards}
+@keyframes sfriendsout{0%{opacity:1;filter:brightness(1)}35%{opacity:1;filter:brightness(1.6) drop-shadow(0 0 8px #fff6c8)}100%{opacity:0;filter:brightness(2.4) blur(3px)}}
+.sbgart .tostar{opacity:0;transform-box:fill-box;transform-origin:50% 50%;animation:stostar 3s ease-out var(--d) forwards}
+@keyframes stostar{0%{opacity:0;transform:translate(0,0) scale(.4)}25%{opacity:1}100%{opacity:0;transform:translate(var(--dx),-150px) scale(1.1) rotate(90deg)}}

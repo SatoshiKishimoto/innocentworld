@@ -623,7 +623,10 @@
     const books = Array.from({length:18}, (_, i) => { const row = Math.floor(i/6), x = 18 + (i%6)*13, h = 54 + ((i*7)%4)*6, c = ['#e2687e','#5a6ab8','#ffd000','#4f9a4a','#d9534a','#8a5ab8'][(i+row)%6];
       return `<rect x="${x}" y="${240 + row*92 + (72 - h)}" width="11" height="${h}" rx="2" fill="${c}"/>`; }).join('');
     // 窓の外のエスパーとミミ（住人のイラストをそのまま使い、窓わくの内側だけに見せる）
-    const friends = win ? `<g clip-path="url(#svWin)" class="${curtain === 'opening' ? 'friendsIn' : ''}"><image class="wave l" href="${charImg('esper')}" x="110" y="198" width="100" height="150" preserveAspectRatio="xMidYMax meet"/>
+    // 2人が星にもどっていく：体がきらきら光りながら薄れ、小さな星になって夜空へのぼっていく
+    const toStars = curtain === 'leaving' ? `<g clip-path="url(#svWin)">${Array.from({length:22}, (_, i) => { const x = 128 + ((i * 37) % 150), y = 230 + ((i * 53) % 70), d = (1.0 + (i % 7) * 0.2).toFixed(2), dx = ((i % 5) - 2) * 6;
+      return `<path class="ns tostar" style="--d:${d}s;--dx:${dx}px" d="M${x} ${y - 7} L${x + 2.2} ${y - 2.2} L${x + 7} ${y} L${x + 2.2} ${y + 2.2} L${x} ${y + 7} L${x - 2.2} ${y + 2.2} L${x - 7} ${y} L${x - 2.2} ${y - 2.2} Z" fill="#fff6c8"/>`; }).join('')}</g>` : '';
+    const friends = win ? `<g clip-path="url(#svWin)" class="${curtain === 'opening' ? 'friendsIn' : curtain === 'leaving' ? 'friendsOut' : ''}"><image class="wave l" href="${charImg('esper')}" x="110" y="198" width="100" height="150" preserveAspectRatio="xMidYMax meet"/>
       <image class="wave r" href="${charImg('mimi')}" x="208" y="196" width="84" height="150" preserveAspectRatio="xMidYMax meet"/></g>` : '';
     // カーテン：開いた形を描き、閉じているときは横に広げる（ひだの線は太さを変えない）
     const folds = side => [0.3, 0.55, 0.8].map(k => { const x = side < 0 ? 76 + 26 * k : 324 - 26 * k; return `<path d="M${x} 74 Q${x + side * 3} 210 ${x - side * 2} 350" fill="none" stroke="#b8405a" stroke-width="1.6" vector-effect="non-scaling-stroke"/>`; }).join('');
@@ -643,7 +646,7 @@
       <circle cx="252" cy="134" r="18" fill="#fff4c0"/><circle class="ns" cx="260" cy="128" r="16" fill="url(#svSky)"/>
       ${stars}
       <path d="M112 270 Q160 252 200 266 Q240 280 288 262 V292 H112 Z" fill="#c87850" opacity=".85"/>
-      ${friends}
+      ${friends}${toStars}
       <path d="M200 96 V292 M112 194 H288" fill="none" stroke="#1d1414" stroke-width="10"/><path d="M200 96 V292 M112 194 H288" fill="none" stroke="#8a5a32" stroke-width="6"/>
       <g filter="url(#brOl)"><rect x="96" y="292" width="208" height="14" rx="4" fill="#a8743c"/><rect x="70" y="60" width="260" height="10" rx="5" fill="#a8743c"/></g>
       <g filter="url(#brOl)">${curtainSvg}</g>
@@ -684,7 +687,7 @@
       // 1行目（こつん）はカーテンが閉じている。2行目でカーテンが開いて2人が見える
       if(pg.src === 0) curtain = 'closed';
       else if(!P.curtainDone){ curtain = 'opening'; P.curtainDone = true; }
-      else curtain = 'open';
+      else curtain = pg.src === sc.lines.length - 1 ? 'leaving' : 'open';   // 最後の行（星明かりの中へ消えていく）
       if(pg.src === 0 && !P.knocked){ P.knocked = true; setTimeout(() => SFX.play('knock'), 450); }
     }
     set(`<div class="sscene bg-${esc(scBg)}" ${bg}>${sceneArt(scBg, curtain)}
