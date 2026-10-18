@@ -120,6 +120,7 @@ window.STORY_I18N = {
     auth:           {ja: '住民票が確認できませんでした。', kana: 'じゅうみんひょうが たしかめられなかったよ。', en: 'We could not verify your Resident Card.'},
     busy:           {ja: '混み合っています。少し待ってからもう一度お試しください。', kana: 'こんでいるよ。すこし まってから もういちど ためしてね。', en: 'It is busy right now. Please wait a moment and try again.'},
     not_found:      {ja: 'その復元コードは見つかりませんでした。', kana: 'その ふくげんコードは みつからなかったよ。', en: 'That recovery code was not found.'},
+    resident_no:    {ja: 'それは「住民番号」（RV-で始まる番号）です。復元コードは、住民票のいちばん下にある「XXXX-XXXX-XXXX」の12文字です。', kana: 'それは「じゅうみんばんごう」（RV-で はじまる ばんごう）だよ。ふくげんコードは、じゅうみんひょうの いちばん したに ある「XXXX-XXXX-XXXX」の 12もじ だよ。', en: 'That is your Resident No. (starting with RV-). The recovery code is the 12-character "XXXX-XXXX-XXXX" code at the bottom of your Resident Card.'},
     bad_code:       {ja: '復元コードは12文字です（ハイフンはなくても大丈夫）。', kana: 'ふくげんコードは 12もじ だよ（「-」は なくても だいじょうぶ）。', en: 'The recovery code has 12 characters (hyphens are optional).'},
     required:       {ja: '必須の項目を入力してください。', kana: 'ひつような ところを いれてね。', en: 'Please fill in the required fields.'},
     server:         {ja: 'サーバーでエラーが起きました。少し待ってからもう一度お試しください。', kana: 'エラーが おきたよ。すこし まってから もういちど ためしてね。', en: 'A server error occurred. Please wait a moment and try again.'},

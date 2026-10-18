@@ -92,6 +92,11 @@ function nowStr(){ return Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd HH:mm
 function dt(v){ return v instanceof Date ? Utilities.formatDate(v, TZ, 'yyyy-MM-dd HH:mm:ss') : str(v); }
 function ymd(v){
   if(v instanceof Date) return Utilities.formatDate(v, TZ, 'yyyy-MM-dd');
+  // 日付が数字（例：46327）で入ってしまったセルも読めるようにする（スプレッドシートの日付シリアル値）
+  if(typeof v === 'number' || /^\d{5}$/.test(String(v).trim())){
+    var n = Number(v);
+    if(n > 30000 && n < 80000) return Utilities.formatDate(new Date(Date.UTC(1899, 11, 30) + n * 86400000), 'UTC', 'yyyy-MM-dd');
+  }
   var s = String(v || '').trim().replace(/\//g, '-');
   var m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
   return m ? m[1] + '-' + ('0' + m[2]).slice(-2) + '-' + ('0' + m[3]).slice(-2) : '';

@@ -303,6 +303,7 @@
     $('svRes').addEventListener('submit', async e => {
       e.preventDefault();
       try{
+        if(/^\s*RV[-\s]?\d{4}/i.test(e.target.c.value)){ shake(e.target); return toast(errText({error:'resident_no'})); }
         const j = await api('restore', {code:e.target.c.value});
         if(!j.ok){ shake(e.target); return toast(errText(j)); }
         Object.assign(L, fresh(), {defs:L.defs, rid:j.rid, token:j.token, recovery:'', resident:j.resident, state:Object.assign(emptyState(), j.state)}); save();
@@ -373,7 +374,7 @@
   function roads(facs){
     const P = f => [Math.max(8, Math.min(92, f.x)) * 4, Math.max(8, Math.min(90, f.y)) * 5 + 26];
     const hub = facs.find(f => f.type === 'plaza'), c = hub ? P(hub) : [200, 260];
-    let d = `M${c[0]} ${c[1]} L${c[0]} 500 `;
+    let d = `M${c[0]} 0 L${c[0]} 500 `;   // 北の橋から南の入口まで、広場を通る大通り
     facs.filter(f => f !== hub && f.status !== 'hidden').forEach(f => { const p = P(f), mx = (c[0] + p[0]) / 2, my = (c[1] + p[1]) / 2 + 24; d += `M${c[0]} ${c[1]} Q${mx} ${my} ${p[0]} ${p[1]} `; });
     return d;
   }
@@ -382,6 +383,24 @@
     const nm = T(f.name), est = Array.from(nm).reduce((a, c) => a + (/[\u3000-\u9fff\uff00-\uffef]/.test(c) ? 12.5 : 7), 0);
     const w = Math.max(80, Math.min(136, est + 20)), fit = est + 20 > 136 ? `textLength="${w - 14}" lengthAdjust="spacingAndGlyphs"` : '';
     return `<g transform="translate(0,46)"><rect class="pinlabel" x="${-w/2}" y="-12" width="${w}" height="24" rx="12" fill="#fff" stroke="${esc(stroke)}" stroke-width="2"/><text y="5" text-anchor="middle" font-size="12.5" font-weight="800" fill="#1f2f8f" ${fit}>${esc(nm)}</text></g>`;
+  }
+  // 地図の飾り：レンガの石だたみの村に、水路と橋、施設ごとの小さな芝生、丸い生け垣
+  function mapCanals(){
+    const edge = 'stroke="#9a5a36" stroke-width="5" fill="none"';
+    return `<path d="M-10 22 H410" stroke="url(#svWater)" stroke-width="22"/><path d="M-10 10 H410 M-10 34 H410" ${edge}/>
+      <path d="M-10 372 Q80 420 150 510" stroke="url(#svWater)" stroke-width="24" fill="none"/>
+      <path d="M-10 359 Q88 408 162 510 M-10 385 Q72 432 138 510" ${edge}/>`;
+  }
+  function mapBridges(){
+    return `<g transform="translate(200,22)"><rect x="-22" y="-16" width="44" height="32" rx="3" fill="#c8915e" stroke="#7a4a20" stroke-width="2"/><path d="M-22 -10H22M-22 -3H22M-22 4H22M-22 11H22" stroke="#9a6a3a" stroke-width="1.2"/></g>`;
+  }
+  function lawn(x, y){
+    const dots = Array.from({length: 11}, (_, i) => { const a = Math.PI * (0.08 + 0.84 * i / 10); return `<circle cx="${(Math.cos(a) * 50).toFixed(1)}" cy="${(14 + Math.sin(a) * 22).toFixed(1)}" r="5" fill="#2f8a3e"/>`; }).join('');
+    return `<g transform="translate(${x},${y})"><ellipse cx="0" cy="14" rx="54" ry="26" fill="#7cc860" stroke="#5aa848" stroke-width="2"/>${dots}</g>`;
+  }
+  function hedge(x, y){
+    const c = [[-12,-8],[0,-8],[12,-8],[-12,4],[0,4],[12,4]];
+    return `<g transform="translate(${x},${y})"><rect x="-22" y="-17" width="44" height="32" rx="8" fill="#2f7a38"/>${c.map(([a, b]) => `<circle cx="${a}" cy="${b}" r="7" fill="#3f9a48"/><circle cx="${a - 2}" cy="${b - 2}" r="2.5" fill="#6cc070"/>`).join('')}</g>`;
   }
   function showMap(){
     VIEW = showMap;
@@ -404,12 +423,16 @@
     set(topbar(t('mapTitle')) + `<div class="spage">
       <div class="sday"><span>${esc(L.day ? T(L.day.label) : '')}</span>${esc(fmtDate(L.today))}</div>
       <div class="smap"><svg viewBox="0 0 400 500" role="img" aria-label="${esc(t('mapTitle'))}">
-        <defs><pattern id="svBrick" width="24" height="12" patternUnits="userSpaceOnUse"><rect width="24" height="12" fill="#e8a070"/><path d="M0 0H24M0 6H24M0 12H24M6 0V6M18 6V12" stroke="#c87850" stroke-width="1"/></pattern>
-        <radialGradient id="svGrass" cx="50%" cy="45%" r="70%"><stop offset="0" stop-color="#b8ec8a"/><stop offset="1" stop-color="#7cc860"/></radialGradient></defs>
-        <rect width="400" height="500" fill="url(#svGrass)"/>
-        <path d="${roads(facs)}" stroke="url(#svBrick)" stroke-width="24" fill="none" stroke-linecap="round"/>
-        <path d="M20 480 Q70 440 120 480 M280 50 Q330 20 380 50" stroke="#5aa8e8" stroke-width="10" fill="none" stroke-linecap="round" opacity=".7"/>
-        ${[[30,90],[360,210],[40,250],[350,440],[150,470],[130,90],[262,470],[200,40],[30,420],[370,90]].filter(([x, y]) => facs.every(f => Math.hypot(Math.max(8, Math.min(92, f.x)) * 4 - x, Math.max(8, Math.min(90, f.y)) * 5 + 10 - y) > 62)).map(([x, y]) => `<g transform="translate(${x},${y})"><rect x="-3" y="4" width="6" height="12" fill="#7a4a20"/><circle r="14" fill="#3aa848"/><circle cx="-5" cy="-4" r="5" fill="#5ac868"/></g>`).join('')}
+        <defs><pattern id="svPave" width="32" height="16" patternUnits="userSpaceOnUse"><rect width="32" height="16" fill="#d9895a"/><rect x="1" y="1" width="14" height="6" fill="#df9466"/><rect x="17" y="9" width="14" height="6" fill="#d27f52"/><path d="M0 0H32M0 8H32M0 16H32M16 0V8M8 8V16M24 8V16" stroke="#b56a40" stroke-width="1.2"/></pattern>
+        <pattern id="svLane" width="20" height="10" patternUnits="userSpaceOnUse"><rect width="20" height="10" fill="#f2c79c"/><path d="M0 0H20M0 5H20M5 0V5M15 5V10" stroke="#d9a070" stroke-width="1"/></pattern>
+        <pattern id="svWater" width="40" height="12" patternUnits="userSpaceOnUse"><rect width="40" height="12" fill="#4f9ee0"/><path d="M4 4 q5 -3 10 0 M24 9 q5 -3 10 0" stroke="#bfe4ff" stroke-width="1.6" fill="none" stroke-linecap="round"/></pattern></defs>
+        <rect width="400" height="500" fill="url(#svPave)"/>
+        ${mapCanals()}
+        <path d="${roads(facs)}" stroke="#b56a40" stroke-width="30" fill="none" stroke-linecap="round"/>
+        <path d="${roads(facs)}" stroke="url(#svLane)" stroke-width="24" fill="none" stroke-linecap="round"/>
+        ${mapBridges()}
+        ${facs.filter(f => f.status !== 'hidden' && f.type !== 'plaza').map(f => lawn(Math.max(8, Math.min(92, f.x)) * 4, Math.max(8, Math.min(90, f.y)) * 5)).join('')}
+        ${[[36,190],[364,200],[150,150],[250,150],[364,420],[36,440],[290,470],[110,470]].filter(([x, y]) => facs.every(f => Math.hypot(Math.max(8, Math.min(92, f.x)) * 4 - x, Math.max(8, Math.min(90, f.y)) * 5 + 10 - y) > 66)).map(([x, y]) => hedge(x, y)).join('')}
         ${pins}
       </svg></div>
       <div class="slegend"><span><i style="background:#5a6390"></i>${esc(t('legendLocked'))}</span><span><i style="background:#e23d72"></i>${esc(t('legendOpen'))}</span><span><i style="background:#10a040"></i>${esc(t('legendDone'))}</span></div>
