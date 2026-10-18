@@ -71,16 +71,8 @@
   Object.keys(SONGS).forEach(k => { const s = SONGS[k]; s.chordList = s.chords.split(/\s+/).map(chord); s.m = melody(s.mel); s.barSteps = s.beats * 2; s.total = s.chordList.length * s.barSteps; });
 
   /* ---------- 音色 ---------- */
-  let ctx = null, master = null, noiseBuf = null, on = true;
-  function ac(){
-    if(!ctx){
-      const C = window.AudioContext || window.webkitAudioContext; if(!C) return null;
-      ctx = new C(); master = ctx.createGain(); master.gain.value = on ? 1 : 0;
-      const comp = ctx.createDynamicsCompressor(); master.connect(comp); comp.connect(ctx.destination);
-      noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 0.5, ctx.sampleRate); const d = noiseBuf.getChannelData(0); for(let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
-    }
-    return ctx;
-  }
+  // ctx は「曲を書き出すときの作業用」（OfflineAudioContext）。再生は <audio> で行う
+  let ctx = null, noiseBuf = null, on = true;
   function env(g, t, a, peak, dur, rel){
     g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + a);
     g.gain.setValueAtTime(peak, Math.max(t + a, t + dur - rel)); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
@@ -152,62 +144,72 @@
     if(D === 'birds' && inBar === 6 && bar % 4 === 1){ DRUM.bird(out, t, 0.02); DRUM.bird(out, t + sd * 0.6, 0.016); }
   }
 
-  /* ---------- 再生のしくみ（先読みして予約する） ---------- */
-  let cur = null, timer = 0;
-  function tick(){
-    if(!cur || !ctx) return;
-    const sd = 60 / cur.S.bpm / 2;
-    while(cur.next < ctx.currentTime + 0.15){
-      if(cur.next > ctx.currentTime - 0.05){ try{ step(cur.S, cur.out, cur.i, cur.next, sd); }catch(e){} }
-      cur.i++; cur.next += sd;
-    }
-  }
-  function play(name){
-    if(!SONGS[name]) return;
-    if(cur && cur.name === name) return;
-    if(!ac()) return;
-    if(cur){ const old = cur.out, t = ctx.currentTime; old.gain.cancelScheduledValues(t); old.gain.setValueAtTime(old.gain.value, t); old.gain.linearRampToValueAtTime(0, t + 0.6); setTimeout(() => { try{ old.disconnect(); }catch(e){} }, 900); }
-    const out = ctx.createGain(); out.gain.setValueAtTime(0, ctx.currentTime); out.gain.linearRampToValueAtTime(0.55, ctx.currentTime + 0.8); out.connect(master);
-    cur = {name, S:SONGS[name], out, i:0, next:ctx.currentTime + 0.12};
-    if(!timer) timer = setInterval(tick, 40);
-    if(ctx.state === 'suspended') ctx.resume().catch(() => {});
-  }
-  function setOn(v){
-    on = !!v;
-    if(ctx){ const t = ctx.currentTime; master.gain.cancelScheduledValues(t); master.gain.setValueAtTime(master.gain.value, t); master.gain.linearRampToValueAtTime(on ? 1 : 0, t + 0.3); if(on && ctx.state === 'suspended') ctx.resume().catch(() => {}); }
-  }
-  // iPhone：消音スイッチ（マナーモード）がオンでも、このページの音は鳴らす（🔊 ボタンで消せる）
-  function playbackSession(){
-    try{ if(navigator.audioSession) navigator.audioSession.type = 'playback'; }catch(e){}
-  }
-  // 古い iPhone 向け：無音の音声を1回流すと、消音スイッチの影響を受けない再生モードになる
-  let silentEl = null;
-  function silentWav(){
-    const n = 2205, b = new ArrayBuffer(44 + n * 2), v = new DataView(b), w = (o, s) => { for(let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+  /* ---------- 曲を1周ぶん書き出して、<audio> でくり返し再生する ----------
+     iPhone の Safari は、ページの中で合成した音（Web Audio）を消音スイッチで止めてしまうことがある。
+     <audio> の再生は音楽アプリと同じあつかいになるので、確実に鳴る */
+  const RATE = 22050, cache = {}, busy = {};
+  function wav(f32){
+    const n = f32.length, b = new ArrayBuffer(44 + n * 2), v = new DataView(b), w = (o, t) => { for(let i = 0; i < t.length; i++) v.setUint8(o + i, t.charCodeAt(i)); };
     w(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); w(8, 'WAVE'); w(12, 'fmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
-    v.setUint32(24, 22050, true); v.setUint32(28, 44100, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true); w(36, 'data'); v.setUint32(40, n * 2, true);
+    v.setUint32(24, RATE, true); v.setUint32(28, RATE * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true); w(36, 'data'); v.setUint32(40, n * 2, true);
+    for(let i = 0; i < n; i++) v.setInt16(44 + i * 2, Math.max(-1, Math.min(1, f32[i])) * 32767, true);
     return URL.createObjectURL(new Blob([b], {type:'audio/wav'}));
   }
-  // スマホは、画面にさわったときでないと音を出し始められない
-  let unlocked = false;
+  function render(name){
+    if(cache[name]) return Promise.resolve(cache[name]);
+    if(busy[name]) return busy[name];
+    const OC = window.OfflineAudioContext || window.webkitOfflineAudioContext; if(!OC) return Promise.reject(new Error('no audio'));
+    const S = SONGS[name], sd = 60 / S.bpm / 2, loopSec = S.total * sd, tail = 2;
+    const len = Math.ceil((loopSec + tail) * RATE);
+    const oc = new OC(1, len, RATE);
+    if(!noiseBuf){ noiseBuf = oc.createBuffer(1, RATE / 2, RATE); const d = noiseBuf.getChannelData(0); for(let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; }
+    const out = oc.createGain(); out.gain.value = 1; const comp = oc.createDynamicsCompressor(); out.connect(comp); comp.connect(oc.destination);
+    const keep = ctx; ctx = oc;
+    try{ for(let i = 0; i < S.total; i++) step(S, out, i, 0.02 + i * sd, sd); } finally { ctx = keep; }
+    const done = new Promise((res, rej) => {
+      oc.oncomplete = e => res(e.renderedBuffer);
+      const p = oc.startRendering(); if(p && p.then) p.then(res, rej);
+    }).then(buf => {
+      const src = buf.getChannelData(0), L = Math.floor(loopSec * RATE), f = new Float32Array(L);
+      for(let i = 0; i < L; i++) f[i] = src[i];
+      for(let i = L; i < src.length; i++) f[i - L] += src[i];          // 1周の終わりの余韻を、頭に重ねてつなぎ目をなくす
+      let peak = 0, sq = 0; for(let i = 0; i < L; i++){ peak = Math.max(peak, Math.abs(f[i])); sq += f[i] * f[i]; }
+      const rms = Math.sqrt(sq / L), g = peak > 0 ? Math.min(0.065 / (rms || 1), 0.6 / peak) : 1;   // 曲ごとの大きさをそろえる（効果音より小さめ）
+      for(let i = 0; i < L; i++) f[i] *= g;
+      return (cache[name] = wav(f));
+    });
+    busy[name] = done; done.catch(() => { delete busy[name]; });
+    return done;
+  }
+
+  const el = new Audio(); el.loop = true; el.preload = 'auto'; el.setAttribute('playsinline', ''); el.setAttribute('webkit-playsinline', '');
+  let want = null, curName = null, unlocked = false, silent = null;
+  function silentUrl(){ return silent || (silent = wav(new Float32Array(RATE / 10))); }
+  function start(){ if(on && unlocked && el.src && document.visibilityState !== 'hidden'){ const p = el.play(); if(p && p.catch) p.catch(() => {}); } }
+  function play(name){
+    if(!SONGS[name] || want === name) return;
+    want = name;
+    render(name).then(url => {
+      if(want !== name) return;
+      curName = name; el.src = url; el.currentTime = 0; start();
+      // 次によく使う曲を先に書き出しておく
+      setTimeout(() => { ['map', 'gate'].forEach(n => { if(n !== name) render(n).catch(() => {}); }); }, 1500);
+    }).catch(() => {});
+  }
+  function setOn(v){ on = !!v; if(on) start(); else el.pause(); }
+  // iPhone：消音スイッチ（マナーモード）がオンでも鳴らす（🔊 ボタンで消せる）
+  function playbackSession(){ try{ if(navigator.audioSession) navigator.audioSession.type = 'playback'; }catch(e){} }
+  // スマホは、画面にさわったときでないと音を出し始められない。最初のタップで <audio> を使えるようにする
   function unlock(){
     playbackSession();
-    if(!navigator.audioSession && !silentEl && /iP(hone|ad|od)|Macintosh/.test(navigator.userAgent) && 'ontouchend' in document){
-      try{ silentEl = new Audio(silentWav()); silentEl.setAttribute('playsinline', ''); silentEl.loop = true; silentEl.play().catch(() => { silentEl = null; }); }catch(e){}
-    }
-    const c = ac(); if(!c) return;
-    if(c.state !== 'running') c.resume().catch(() => {});
-    if(!unlocked){   // 無音を一瞬鳴らして、音の出口をひらく
-      try{ const s = c.createBufferSource(); s.buffer = c.createBuffer(1, 1, 22050); s.connect(c.destination); s.start(0); unlocked = true; }catch(e){}
-    }
+    if(unlocked) return;
+    unlocked = true;
+    if(!el.src) el.src = silentUrl();
+    const p = el.play(); if(p && p.catch) p.catch(() => { unlocked = false; });
+    if(curName && cache[curName] && el.src !== cache[curName]){ el.src = cache[curName]; start(); }
   }
-  ['touchend', 'click', 'keydown', 'pointerup'].forEach(e => document.addEventListener(e, unlock, {passive:true, capture:true}));
-  // 別のアプリに切りかえたら止め、もどったら再開（iPhone の「中断」からも戻す）
-  document.addEventListener('visibilitychange', () => {
-    if(!ctx) return;
-    if(document.visibilityState === 'hidden'){ ctx.suspend().catch(() => {}); if(silentEl) try{ silentEl.pause(); }catch(e){} }
-    else if(on){ ctx.resume().catch(() => {}); if(silentEl) silentEl.play().catch(() => {}); }
-  });
+  ['touchend', 'click', 'keydown'].forEach(e => document.addEventListener(e, unlock, {passive:true, capture:true}));
+  document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'hidden') el.pause(); else start(); });
   playbackSession();
-  window.IWBGM = {play, setOn, songs:Object.keys(SONGS), get current(){ return cur && cur.name; }};
+  window.IWBGM = {play, setOn, render, songs:Object.keys(SONGS), get current(){ return want; }, get playing(){ return !el.paused && !!el.src && el.src === cache[want]; }};
 })();
