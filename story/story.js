@@ -159,7 +159,7 @@
     function sUnlock(){ if(sUnlocked) return; sUnlocked = true; sEls(); Object.values(sEl).forEach(a => { a.muted = true; const p = a.play(); if(p && p.then) p.then(() => { a.pause(); a.currentTime = 0; a.muted = false; }).catch(() => { a.muted = false; }); else { a.pause(); a.muted = false; } }); }
     ['touchend', 'click', 'keydown'].forEach(e => document.addEventListener(e, sUnlock, {passive:true, capture:true}));
     function sample(k){ sEls(); const a = sEl[k]; if(!a) return; try{ a.pause(); a.currentTime = 0; a.muted = false; const p = a.play(); if(p && p.catch) p.catch(() => {}); }catch(e){} }
-    function stopSamples(){ Object.values(sEl).forEach(a => { try{ a.pause(); }catch(e){} }); }
+    function stopSamples(){ Object.values(sEl).forEach(a => { try{ a.pause(); a.currentTime = 0; }catch(e){} }); }
     const bell = (f, t, d, v) => { tone(f, t, d, 'sine', v); tone(f*2, t, d*0.6, 'sine', (v || 0.12)*0.35); tone(f*3.01, t, d*0.3, 'triangle', (v || 0.12)*0.12); };
     const N = n => 440 * Math.pow(2, (n - 69)/12);
     const play = {
@@ -735,7 +735,7 @@
     SFX.voice(pg.voice);
     // 「鐘」が「鳴る」ページで鐘の音（日本語の文で判断するので、どの言語でも鳴る）。同じページでは1回だけ
     const sfxKey = P.id + ':' + P.line;
-    if(P.sfxKey !== sfxKey){ P.sfxKey = sfxKey;
+    if(P.sfxKey !== sfxKey){ P.sfxKey = sfxKey; SFX.stopSamples();   // 次のページに移ったら、鳴っている鐘は止める
       if(/鐘/.test(jaText) && /鳴/.test(jaText)) SFX.play(/一度/.test(jaText) ? 'bell' : 'chime'); }
     if(last && P.got.length && !P.gotShown){ P.gotShown = true; setTimeout(() => itemPop(P.got), 250); }
     if(ending && !P.endShown){ P.endShown = true; endingFx(); }
