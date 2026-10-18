@@ -255,3 +255,12 @@ html[data-lang="kana"] .srbody dl{font-size:12px}
 .bg-forest{background:radial-gradient(circle at 12% 30%,#2f8a3a 0 12%,transparent 12.5%),radial-gradient(circle at 88% 26%,#2f8a3a 0 14%,transparent 14.5%),radial-gradient(circle at 70% 18%,rgba(255,250,200,.85) 0 4%,transparent 16%),
   linear-gradient(180deg,#7fc48a,#cfeec0 55%,#5aa84a 55.5%,#3f8a3a)}
 .bg-clock{background:radial-gradient(circle at 50% 30%,#fff7d8 0 13%,#c89a3a 13.5% 15%,transparent 15.5%),repeating-conic-gradient(from 0deg at 50% 30%,rgba(255,255,255,.12) 0 6deg,transparent 6deg 30deg),linear-gradient(180deg,#5a3a8a,#a87a5a 60%,#8a5a3a)}
+
+/* 住民票：削除は「そのほかの操作」の中へ。とじるボタンから大きく離す */
+.srmore{margin-top:56px;padding-top:14px;border-top:1px dashed #d8c3a8;text-align:center}
+.srmore summary{cursor:pointer;font-size:12.5px;font-weight:700;color:#8a7a6a;list-style:none;padding:6px}
+.srmore summary::-webkit-details-marker{display:none}
+.srmore summary::after{content:' ▾'}
+.srmore[open] summary::after{content:' ▴'}
+.srmore p{font-size:12px;color:#7a6a5a;line-height:1.6;margin:8px 0 12px;text-align:left}
+.sbtn.danger{background:#fff;color:#c0392b;border:2px solid #c0392b;box-shadow:none;width:auto;padding:10px 18px;font-size:13px}

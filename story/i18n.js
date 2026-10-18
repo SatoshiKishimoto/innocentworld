@@ -102,6 +102,8 @@ window.STORY_I18N = {
     newCodeDone:  {ja: '新しい復元コードを発行しました。前のコードは使えなくなりました。', kana: 'あたらしい ふくげんコードを つくったよ。まえの コードは つかえなく なったよ。', en: 'A new recovery code was issued. The old code no longer works.'},
     regDone:      {ja: 'ようこそ、レンガ村へ！ 住民登録が完了しました。', kana: 'ようこそ、レンガむらへ！ とうろくが おわったよ。', en: 'Welcome to Brick Village! Your registration is complete.'},
     goVillage:    {ja: '村へ行く', kana: 'むらへ いく', en: 'Go to the village'},
+    moreOps:      {ja: 'そのほかの操作', kana: 'そのほかの そうさ', en: 'More options'},
+    deleteNote:   {ja: '住民票を使わなくなったときだけ押してください。削除すると、もちものや物語の記録も消え、元に戻せません。', kana: 'じゅうみんひょうを もう つかわない ときだけ おしてね。けすと、もちものや ものがたりの きろくも きえて、もとに もどせないよ。', en: 'Only use this if you no longer want your Resident Card. Deleting it erases your items and story progress, and cannot be undone.'},
     deleteBtn:    {ja: '住民票を削除する', kana: 'じゅうみんひょうを けす', en: 'Delete my Resident Card'},
     deleteAsk:    {ja: '住民票と、これまでの記録をすべて削除します。元には戻せません。よろしいですか？', kana: 'じゅうみんひょうと きろくを ぜんぶ けすよ。もとには もどせないよ。いいかな？', en: 'This deletes your Resident Card and all records. This cannot be undone. Continue?'},
     deleted:      {ja: '住民票を削除しました。', kana: 'じゅうみんひょうを けしたよ。', en: 'Your Resident Card was deleted.'},

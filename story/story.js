@@ -634,7 +634,7 @@
         : `<button class="sbtn sub" data-act="newcode">${esc(t('newCode'))}</button>`}
       ${opt.first ? `<p class="srwelcome">${esc(t('regDone'))}</p>` : ''}
       <button class="sbtn main" data-act="${opt.first ? 'closego' : 'close'}">${esc(t(opt.first ? 'goVillage' : 'close'))}</button>
-      ${opt.first ? '' : `<button class="sbtn link" data-act="delete">${esc(t('deleteBtn'))}</button>`}
+      ${opt.first ? '' : `<details class="srmore"><summary>${esc(t('moreOps'))}</summary><p>${esc(t('deleteNote'))}</p><button class="sbtn danger" data-act="delete">${esc(t('deleteBtn'))}</button></details>`}
     </div>`, () => showCard(opt));
   }
 
