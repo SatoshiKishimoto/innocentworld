@@ -457,8 +457,8 @@
     });
   }
   async function fetchStory(f, word, form){
-    // 今日すでに受け取った物語は、通信しなくても読める
-    if(!word && L.stories[f.id]) return play(L.stories[f.id]);
+    // 今日すでにひらいた施設も、最新の物語をサーバーから受け取る（シートを直したら反映される）。
+    // 通信できないときだけ、手元の控えで読む
     try{
       const j = await api('facility', {facility:f.id, word});
       if(!j.ok){ if(form) shake(form); if(j.error === 'entrance_first'){ closeModal(); return start(); } return toast(errText(j)); }
@@ -468,7 +468,10 @@
       L.stories[f.id] = j.story; save();
       if(word){ celebrate(fill(T(j.message) || t('facOpened', T(f.name)))); setTimeout(() => play(j.story), 900); }
       else play(j.story);
-    }catch(err){ toast(errText(err)); }
+    }catch(err){
+      if(!word && L.stories[f.id]){ closeModal(); return play(L.stories[f.id]); }
+      toast(errText(err));
+    }
   }
 
   /* ---------- 物語（会話と選択肢） ---------- */
