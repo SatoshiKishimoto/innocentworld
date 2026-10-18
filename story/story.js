@@ -153,9 +153,11 @@
       g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(vol || 0.12, t0 + 0.012); g.gain.exponentialRampToValueAtTime(0.0001, t0 + d);
       o.connect(g); g.connect(c.destination); o.start(t0); o.stop(t0 + d + 0.05);
     }
+    // 大きな塔の鐘：ハム音（低い唸り）・基音・短三度・五度・オクターブなどの倍音を重ね、少しずらしてうなりを出す
     function bellStrike(f, t, v){
-      [[1, 1, 4.2], [2.0, 0.55, 3.2], [2.42, 0.35, 2.6], [3.0, 0.3, 2.0], [4.16, 0.18, 1.4], [5.43, 0.1, 1.0], [0.5, 0.25, 4.8]].forEach(([m, a, d]) => tone(f * m, t, d, 'sine', v * a));
-      tone(f * 6.8, t, 0.08, 'triangle', v * 0.15);   // 打った瞬間のカン、という音
+      [[0.5, 0.55, 7.5], [1, 1, 6.0], [1.003, 0.35, 6.0], [1.19, 0.42, 4.2], [1.5, 0.28, 3.4], [2.0, 0.42, 3.0], [2.006, 0.18, 3.0], [2.52, 0.16, 1.8], [2.67, 0.14, 1.6], [3.01, 0.1, 1.2], [4.07, 0.06, 0.7]]
+        .forEach(([m, a, d]) => tone(f * m, t, d, 'sine', v * a));
+      tone(f * 5.9, t, 0.05, 'triangle', v * 0.12); tone(f * 8.1, t, 0.03, 'triangle', v * 0.07);   // ハンマーが当たる「コーン」
     }
     const bell = (f, t, d, v) => { tone(f, t, d, 'sine', v); tone(f*2, t, d*0.6, 'sine', (v || 0.12)*0.35); tone(f*3.01, t, d*0.3, 'triangle', (v || 0.12)*0.12); };
     const N = n => 440 * Math.pow(2, (n - 69)/12);
@@ -164,9 +166,8 @@
       correct(){ [72, 76, 79, 84].forEach((n, i) => bell(N(n), i*0.09, 0.9, 0.11)); },
       wrong(){ tone(N(57), 0, 0.18, 'triangle', 0.08); tone(N(53), 0.16, 0.28, 'triangle', 0.08); },
       // 時計台の鐘：金属の鐘らしい、整数倍でない倍音を重ねて長く響かせる
-      bell(){ bellStrike(N(52), 0, 0.2); },
-      chime(){ [[64, 0], [60, 0.9], [62, 1.8], [55, 2.7], [55, 4.2], [62, 5.1], [64, 6.0], [60, 6.9]].forEach(([n, t]) => bellStrike(N(n), t, 0.12));
-        [8.4, 10.2].forEach(t => bellStrike(N(48), t, 0.16)); },
+      bell(){ bellStrike(N(45), 0, 0.22); },                                   // ゴーン（1回）
+      chime(){ [0, 2.6, 5.2, 7.8].forEach((t, i) => bellStrike(N(i % 2 ? 43 : 45), t, 0.17)); },   // ゴーン…ゴーン…と、ゆっくり4回つく
       knock(){ [0, 0.22].forEach(t => { tone(260, t, 0.09, 'triangle', 0.22); tone(520, t, 0.05, 'sine', 0.08); tone(1400, t, 0.02, 'square', 0.02); }); },
       item(){ [84, 88, 91, 96, 100].forEach((n, i) => bell(N(n), i*0.06, 0.6, 0.07)); },
       ending(){ [[60,64,67],[65,69,72],[67,71,74],[72,76,79,84]].forEach((ch, i) => ch.forEach(n => { tone(N(n), i*0.32, i === 3 ? 2.2 : 0.4, 'triangle', 0.06); tone(N(n+12), i*0.32, i === 3 ? 1.6 : 0.3, 'sine', 0.03); }));
