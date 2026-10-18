@@ -7,7 +7,7 @@
 <meta http-equiv="Expires" content="0">
 <script>
 /* 更新の確認：ホーム画面から開いたときに古いページが残っていたら、新しい版を読み込み直す */
-var BUILD = '20261019034217';
+var BUILD = '20261019035802';
 (function(){
   var pending = '';
   function busy(){ try{ return typeof running !== 'undefined' && running; }catch(e){ return false; } }
@@ -2691,6 +2691,120 @@ function createHalloween(){
   let broomA = 0, broomFast = 0;
   hit(broom, 0.6, 0, ()=>{ broomFast = 2.5; sfxChime(); });
 
+  // =========== 追加の仕掛け ===========
+  const extra = [];   // 毎フレームの動き
+  // ---------- 柱時計（タップ：針がぐるぐる回り、ボーン…と13回鳴る） ----------
+  const clk = new THREE.Group(); clk.position.copy(at(-125, R-0.4, 0)); face(clk); root.add(clk);
+  box(clk, 0x7a4220, [0.7, 2.3, 0.45], [0, 1.15, 0], 0x3a1a08, 0.25); box(clk, 0xc8962a, [0.8, 0.12, 0.5], [0, 2.32, 0], 0xc8962a, 0.3); box(clk, 0xc8962a, [0.8, 0.1, 0.5], [0, 0.05, 0], 0xc8962a, 0.3);
+  add(clk, CONEG, hMat(0x5a2e14, 0x2a1408, .2), [0.45, 0.35, 0.3], [0, 2.55, 0]);
+  glowSprite(clk, 'rgba(255,230,150,.5)', 0.9, [0, 1.85, 0.3]);
+  const dial = add(clk, new THREE.CircleGeometry(0.26, 32), new THREE.MeshStandardMaterial({color:0xf2e6c0, emissive:0xf2e6c0, emissiveIntensity:.7}), [1,1,1], [0, 1.85, 0.231]);
+  const handH = add(clk, BOXG, hMat(0x111111), [0.025, 0.15, 0.01], [0, 1.85, 0.24]); const handM = add(clk, BOXG, hMat(0x111111), [0.018, 0.22, 0.01], [0, 1.85, 0.245]);
+  [handH, handM].forEach(h=>{ h.geometry = h.geometry.clone(); h.geometry.translate(0, 0.5, 0); });
+  box(clk, 0x1a0a06, [0.42, 0.95, 0.02], [0, 0.95, 0.226], 0x3a2008, 0.3);
+  const pend = new THREE.Group(); pend.position.set(0, 1.35, 0.24); clk.add(pend);
+  add(pend, CYLG, hMat(0xc8962a, 0xc8962a, .3), [0.01, 0.6, 0.01], [0, -0.3, 0]); add(pend, CYLG, hMat(0xc8962a, 0xc8962a, .4), [0.1, 0.02, 0.1], [0, -0.62, 0], [Math.PI/2, 0, 0]);
+  let clkT = 0;
+  hit(clk, 0.7, 1.3, ()=>{ if(clkT > 0) return; clkT = 5.5; const a = au(); if(!a) return; for(let k=0;k<13;k++){ const n = a.currentTime + 0.3 + k*0.38; tone('sine', 196, n, 1.2, 0.14); tone('sine', 392*1.01, n, 0.8, 0.05); tone('triangle', 147, n, 1.4, 0.06); } });
+  extra.push((t, dt)=>{ const fast = clkT > 0; clkT = Math.max(0, clkT - dt);
+    handM.rotation.z -= dt*(fast ? 14 : 0.05); handH.rotation.z -= dt*(fast ? 3 : 0.004);
+    pend.rotation.z = Math.sin(t*(fast ? 9 : 2.6))*(fast ? 0.55 : 0.2); dial.scale.setScalar(fast ? 1 + Math.abs(Math.sin(t*12))*0.06 : 1); });
+
+  // ---------- 本棚（タップ：本が飛び出して部屋をぐるりと飛び、元に戻る） ----------
+  const shelf = new THREE.Group(); shelf.position.copy(at(125, R-0.35, 0)); face(shelf); root.add(shelf);
+  box(shelf, 0x150a05, [1.5, 2.2, 0.06], [0, 1.1, -0.18]); [-0.72, 0.72].forEach(x=>box(shelf, 0x3a2010, [0.07, 2.2, 0.42], [x, 1.1, 0])); box(shelf, 0x3a2010, [1.5, 0.07, 0.42], [0, 2.2, 0]); box(shelf, 0x3a2010, [1.5, 0.07, 0.42], [0, 0.03, 0]);
+  const BOOKC = [0x8a1a2a, 0x2a4a8a, 0x2a6a3a, 0x7a5a1a, 0x5a2a7a, 0x9a4a1a];
+  const flyBooks = [];
+  [0.35, 0.95, 1.55].forEach((y, r)=>{ box(shelf, 0x3a2010, [1.4, 0.05, 0.38], [0, y - 0.05, 0]);
+    for(let k=0;k<9;k++){ const h = 0.32 + ((k*7 + r*3) % 5)*0.03, b = add(shelf, BOXG, hMat(BOOKC[(k + r)%6]), [0.1, h, 0.28], [-0.56 + k*0.14, y + h/2 - 0.02, 0.02]);
+      if(k % 2 === 0) flyBooks.push({b, home:b.position.clone(), rot:b.rotation.clone(), ph:Math.random()*6}); } });
+  let booksT = 0;
+  hit(shelf, 0.9, 1.1, ()=>{ if(booksT > 0) return; booksT = 5; const a = au(); if(!a) return; const n = a.currentTime; for(let k=0;k<10;k++) tone('triangle', 300 + Math.random()*500, n + k*0.09, 0.12, 0.05, 900 + Math.random()*600); });
+  extra.push((t, dt)=>{ booksT = Math.max(0, booksT - dt); const k = 5 - booksT, o = booksT > 0 ? (k < 0.6 ? k/0.6 : booksT < 0.8 ? booksT/0.8 : 1) : 0;
+    flyBooks.forEach((f, i)=>{ const a = t*1.6 + i*0.7 + f.ph, r = 0.9 + (i%3)*0.35;
+      f.b.position.set(f.home.x*(1-o) + Math.cos(a)*r*o, f.home.y*(1-o) + (1.6 + Math.sin(a*2)*0.3)*o, f.home.z*(1-o) + (1.2 + Math.sin(a)*r)*o);
+      f.b.rotation.set(o*Math.sin(t*6 + i)*0.6, o*a, o*Math.sin(t*9 + i)*0.8); }); });
+
+  // ---------- 水晶玉（タップ：うずを巻いて光り、パチパチ稲妻） ----------
+  const orb = new THREE.Group(); orb.position.copy(at(75, 2.6, 0)); face(orb); root.add(orb);
+  add(orb, CYLG, hMat(0x2a1a3a), [0.28, 0.75, 0.28], [0, 0.375, 0]); add(orb, CYLG, hMat(0x5a3a7a), [0.38, 0.04, 0.38], [0, 0.77, 0]);
+  add(orb, CYLG, hMat(0xc8962a, 0xc8962a, .3), [0.14, 0.08, 0.14], [0, 0.82, 0]);
+  const orbM = new THREE.MeshStandardMaterial({color:0x8a6aff, emissive:0x5a3aff, emissiveIntensity:.5, transparent:true, opacity:.75, roughness:.1, metalness:.2});
+  const ball = add(orb, SPH, orbM, [0.22, 0.22, 0.22], [0, 1.08, 0]);
+  const orbGlow = glowSprite(orb, 'rgba(140,100,255,.6)', 1.0, [0, 1.08, 0]);
+  const orbLight = new THREE.PointLight(0x8a6aff, 0.5, 3, 2); orbLight.position.set(0, 1.1, 0.2); orb.add(orbLight);
+  let orbT = 0;
+  hit(orb, 0.4, 1.0, ()=>{ orbT = 3; const a = au(); if(!a) return; const n = a.currentTime; tone('sine', 300, n, 2.4, 0.12, 1200); tone('sine', 451, n, 2.4, 0.06, 1800); for(let k=0;k<8;k++) tone('sawtooth', 2000 + Math.random()*2000, n + 0.3 + k*0.2, 0.04, 0.03); });
+  extra.push((t, dt)=>{ orbT = Math.max(0, orbT - dt); const on = orbT > 0;
+    const h = (t*(on ? 0.6 : 0.08)) % 1; orbM.emissive.setHSL(0.7 + Math.sin(h*6.28)*0.12, 0.9, on ? 0.55 : 0.35); orbM.emissiveIntensity = on ? 1.2 + Math.sin(t*20)*0.4 : 0.5 + Math.sin(t*1.5)*0.1;
+    orbGlow.scale.setScalar(on ? 1.6 + Math.sin(t*12)*0.2 : 1.0); orbLight.intensity = on ? 1.6 : 0.5; ball.rotation.y += dt*(on ? 6 : 0.5);
+    if(on && Math.random() < dt*25){ wp.set((Math.random()-.5)*0.3, 1.08 + (Math.random()-.5)*0.3, (Math.random()-.5)*0.3); orb.localToWorld(wp); spawn(wp, (Math.random()-.5)*1.5, Math.random()*1.5, (Math.random()-.5)*1.5, 0.5, col(Math.random() < .5 ? 0xb0a0ff : 0xffffff), 0, 0); } });
+
+  // ---------- 薬びんの棚（タップ：びんがポコポコ泡立って色が変わる） ----------
+  const pot2 = new THREE.Group(); pot2.position.copy(at(-160, R-0.08, 1.5)); face(pot2); root.add(pot2);
+  box(pot2, 0x3a2010, [1.2, 0.05, 0.3], [0, 0, 0]); box(pot2, 0x3a2010, [1.2, 0.05, 0.3], [0, 0.55, 0]);
+  const PCOL = [0x40ff60, 0xff40a0, 0x40c0ff, 0xffd040, 0xb060ff, 0xff6020];
+  const bottles = [];
+  [[-0.45, 0, 0.16], [-0.18, 0, 0.22], [0.12, 0, 0.14], [0.4, 0, 0.19], [-0.32, 0.55, 0.17], [0.0, 0.55, 0.13], [0.3, 0.55, 0.2]].forEach(([x, y, h], i)=>{
+    const m = new THREE.MeshStandardMaterial({color:PCOL[i%6], emissive:PCOL[i%6], emissiveIntensity:.5, transparent:true, opacity:.85});
+    const b = add(pot2, i%2 ? SPH : CYLG, m, i%2 ? [0.09, 0.1, 0.09] : [0.07, h, 0.07], [x, y + (i%2 ? 0.11 : h/2 + 0.025), 0.03]);
+    add(pot2, CYLG, hMat(0x8a5a2a), [0.03, 0.05, 0.03], [x, y + (i%2 ? 0.23 : h + 0.05), 0.03]);
+    bottles.push({b, m, ci:i%6, x, y: y + (i%2 ? 0.25 : h + 0.08)}); });
+  let potT = 0;
+  hit(pot2, 0.7, 0.4, ()=>{ potT = 2.5; bottles.forEach(o=>{ o.ci = (o.ci + 1 + ((Math.random()*3)|0)) % 6; o.m.color.setHex(PCOL[o.ci]); o.m.emissive.setHex(PCOL[o.ci]); }); sfxBubble(); });
+  extra.push((t, dt)=>{ potT = Math.max(0, potT - dt);
+    bottles.forEach((o, i)=>{ o.m.emissiveIntensity = 0.45 + Math.sin(t*3 + i)*0.15 + (potT > 0 ? 0.6 : 0); o.b.rotation.z = potT > 0 ? Math.sin(t*25 + i)*0.12 : 0;
+      if(potT > 0 && Math.random() < dt*10){ wp.set(o.x, o.y, 0.05); pot2.localToWorld(wp); spawn(wp, (Math.random()-.5)*0.3, 0.8 + Math.random()*0.5, (Math.random()-.5)*0.3, 1.0, col(PCOL[o.ci]), 0.1, 0); } }); });
+
+  // ---------- 宝箱（タップ：ふたが開いて金貨とお菓子があふれ出す） ----------
+  const chest = new THREE.Group(); chest.position.copy(at(160, 2.7, 0)); face(chest); root.add(chest);
+  box(chest, 0x6a3a14, [0.8, 0.42, 0.5], [0, 0.21, 0]); [-0.3, 0.3].forEach(x=>box(chest, 0xc8962a, [0.06, 0.44, 0.52], [x, 0.21, 0]));
+  const chLid = new THREE.Group(); chLid.position.set(0, 0.42, -0.25); chest.add(chLid);
+  add(chLid, CYLG, hMat(0x7a4418), [0.25, 0.8, 0.25], [0, 0, 0.25], [0, 0, Math.PI/2]);
+  const lock = add(chest, BOXG, hMat(0xffd040, 0xffd040, .4), [0.1, 0.12, 0.04], [0, 0.36, 0.27]);
+  const chestGlow = glowSprite(chest, 'rgba(255,210,80,0)', 1.4, [0, 0.55, 0]);
+  let chestT = 0;
+  hit(chest, 0.5, 0.3, ()=>{ if(chestT > 0) return; chestT = 3.5; sfxCreak(); setTimeout(()=>{ if(!running) return; candyBurst(chest, V(0, 0.5, 0));
+    burstAt(chest, V(0, 0.5, 0), [col(0xffd040), col(0xffffff), col(0xffa020)], 60, 3); const a = au(); if(a){ const n = a.currentTime; [1047,1319,1568,2093,2637].forEach((f,i)=>tone('sine', f, n + i*0.07, 0.5, 0.08)); } }, 500); });
+  extra.push((t, dt)=>{ chestT = Math.max(0, chestT - dt); const k = 3.5 - chestT, o = chestT > 0 ? (k < 0.5 ? k/0.5 : chestT < 0.6 ? chestT/0.6 : 1) : 0;
+    chLid.rotation.x = -o*1.9; chestGlow.material.opacity = o; lock.visible = o < 0.1; });
+
+  // ---------- 魔法の鏡（タップ：鏡の中に魔女の顔が現れて笑う） ----------
+  const mirTex = [0, 1].map(m=>canvasTex(256, 320, (x, w, h)=>{
+    const g = x.createLinearGradient(0, 0, w, h); g.addColorStop(0, m ? '#2a0a3a' : '#9ab8d8'); g.addColorStop(1, m ? '#5a1a6a' : '#3a5a7a'); x.fillStyle = g; x.fillRect(0, 0, w, h);
+    if(!m){ x.fillStyle = 'rgba(255,255,255,.35)'; x.beginPath(); x.moveTo(40, 40); x.lineTo(90, 40); x.lineTo(30, 140); x.lineTo(20, 120); x.fill(); return; }
+    x.fillStyle = '#6ad05a'; x.beginPath(); x.ellipse(128, 190, 70, 90, 0, 0, 7); x.fill();                                   // 顔
+    x.fillStyle = '#1a0a2a'; x.beginPath(); x.moveTo(20, 130); x.lineTo(236, 130); x.lineTo(150, 110); x.lineTo(150, 10); x.lineTo(110, 112); x.closePath(); x.fill(); // 帽子
+    x.fillStyle = '#ffe040'; [[100,180],[156,180]].forEach(([cx, cy])=>{ x.beginPath(); x.ellipse(cx, cy, 14, 10, 0, 0, 7); x.fill(); });
+    x.fillStyle = '#111'; [[100,180],[156,180]].forEach(([cx, cy])=>{ x.beginPath(); x.ellipse(cx, cy, 4, 9, 0, 0, 7); x.fill(); });
+    x.fillStyle = '#4ab03a'; x.beginPath(); x.moveTo(128, 190); x.lineTo(150, 225); x.lineTo(128, 220); x.fill();             // 鼻
+    x.strokeStyle = '#1a0a0a'; x.lineWidth = 6; x.beginPath(); x.arc(128, 230, 34, 0.15*Math.PI, 0.85*Math.PI); x.stroke();     // 笑う口
+  }));
+  const mir = new THREE.Group(); mir.position.copy(at(-75, R-0.04, 1.85)); face(mir); root.add(mir);
+  add(mir, new THREE.TorusGeometry(0.5, 0.06, 8, 32), hMat(0xc8962a, 0xc8962a, .35), [0.8, 1, 1], [0, 0, 0.02]);
+  const mirM = new THREE.MeshBasicMaterial({map:mirTex[0]}); add(mir, new THREE.CircleGeometry(0.5, 32), mirM, [0.8, 1, 1], [0, 0, 0.01]);
+  let mirT = 0;
+  hit(mir, 0.5, 0, ()=>{ mirT = 2.6; mirM.map = mirTex[1]; mirM.needsUpdate = true; const a = au(); if(!a) return; const n = a.currentTime; [0,0.14,0.28,0.42,0.56,0.7].forEach((d,i)=>tone('sawtooth', 900 - i*60, n + d, 0.12, 0.05, 1300 - i*80)); });
+  extra.push((t, dt)=>{ if(mirT > 0){ mirT -= dt; mir.position.y = 1.85 + Math.sin(t*30)*0.01; if(mirT <= 0){ mirM.map = mirTex[0]; mirM.needsUpdate = true; } } });
+
+  // ---------- 窓（タップ：いなずまが光って雷が鳴り、月の前を魔女が横切る） ----------
+  const witchTex = canvasTex(256, 128, (x, w, h)=>{ x.fillStyle = '#0a0612';
+    x.fillRect(40, 70, 170, 6); x.beginPath(); x.moveTo(40, 64); x.lineTo(10, 60); x.lineTo(14, 86); x.lineTo(40, 82); x.fill();                       // ほうき
+    x.beginPath(); x.ellipse(120, 58, 22, 18, 0, 0, 7); x.fill(); x.beginPath(); x.moveTo(98, 60); x.lineTo(150, 74); x.lineTo(120, 80); x.fill();      // 体とマント
+    x.beginPath(); x.arc(132, 36, 10, 0, 7); x.fill(); x.beginPath(); x.moveTo(116, 30); x.lineTo(152, 30); x.lineTo(126, 2); x.fill(); });              // 頭と帽子
+  const witch = add(win, new THREE.PlaneGeometry(0.8, 0.4), new THREE.MeshBasicMaterial({map:witchTex, transparent:true, depthWrite:false}), [1,1,1], [2, 0, 0.02]);
+  const flashL = new THREE.PointLight(0xc8d8ff, 0, 12, 1.5); flashL.position.set(0, 0, 1.2); win.add(flashL);
+  let winT = 0;
+  hit(win, 0.9, 0, ()=>{ if(winT > 0) return; winT = 4; const a = au(); if(!a) return; const n = a.currentTime;
+    const len = Math.floor(a.sampleRate*2.2), nb = a.createBuffer(1, len, a.sampleRate), d = nb.getChannelData(0); let lp = 0;
+    for(let i=0;i<len;i++){ lp = lp*0.97 + (Math.random()*2 - 1)*0.03; d[i] = lp*8*Math.pow(1 - i/len, 1.5)*(i < a.sampleRate*0.05 ? i/(a.sampleRate*0.05) : 1); }
+    const s = a.createBufferSource(), g = a.createGain(); s.buffer = nb; g.gain.value = 0.9; s.connect(g); g.connect(AOUT); s.start(n + 0.25); });
+  extra.push((t, dt)=>{ if(winT > 0){ winT -= dt; const k = 4 - winT;
+      flashL.intensity = (k < 0.08 || (k > 0.18 && k < 0.26)) ? 9 : 0; moonM.color.setScalar(k < 0.3 ? 1.6 : 1);
+      witch.position.x = 1.0 - Math.min(1, k/3.2)*2.0; witch.position.y = Math.sin(k*3)*0.1; witch.visible = k < 3.4;
+    } else { flashL.intensity = 0; witch.visible = false; moonM.color.setScalar(1); } });
+  witch.visible = false;
+
   // ---------- Trick or Treat の文字 ----------
   const trick = new THREE.Sprite(new THREE.SpriteMaterial({map:tex.trick, transparent:true, depthTest:false})); trick.renderOrder = 12; trick.scale.set(1.6,1.6,1); trick.material.opacity = 0; root.add(trick);
   let trickT = 0;
@@ -2788,6 +2902,7 @@ function createHalloween(){
         if(o.t > 4){ root.remove(o.c); candies.splice(k,1); } }
       if(trickT > 0){ trickT -= dt; trick.material.opacity = Math.min(1, trickT*1.5); trick.position.y += dt*0.15; }
       motes.forEach(m=>{ m.a += dt*m.sp; m.s.position.set(Math.cos(m.a)*m.r, m.y + Math.sin(t*0.8 + m.a*3)*0.2, Math.sin(m.a)*m.r); m.s.material.opacity = 0.5 + Math.sin(t*2 + m.a*5)*0.3; });
+      extra.forEach(f=>f(t, dt));
     }
   };
 }
@@ -2811,27 +2926,62 @@ function sfxBubble(){ const a = au(); if(!a) return; const n = a.currentTime; fo
 function sfxWhoosh(){ const a = au(); if(!a) return; const n = a.currentTime; tone('sawtooth', 120, n, 0.8, 0.05, 900); }
 function sfxChime(){ const a = au(); if(!a) return; const n = a.currentTime; [1319,1568,2093].forEach((f,i)=>tone('sine', f, n + i*0.08, 0.6, 0.1)); }
 
-/* ---------- ハロウィンの音楽：オルゴール風のちょっと不思議なワルツ（自動演奏） ---------- */
+/* ---------- ハロウィンの音楽：おばけたちのダンス（ニ短調・オリジナル曲）
+   はねるような低音、骨がカタカタ鳴るような木琴、うす気味わるいオルガン、
+   後半はテルミンのような「ひゅ〜」とすべる声。ときどき遠くでオオカミやフクロウ ---------- */
 const HW = {timer:null, next:0, step:0, gain:null};
 function startHalloweenMusic(){
   stopHalloweenMusic();
   if(!audio) return;
-  HW.gain = audio.createGain(); HW.gain.gain.setValueAtTime(0.0001, audio.currentTime); HW.gain.gain.linearRampToValueAtTime(muted ? 0.0001 : 0.5, audio.currentTime + 3); HW.gain.connect(AOUT);
+  HW.gain = audio.createGain(); HW.gain.gain.setValueAtTime(0.0001, audio.currentTime); HW.gain.gain.linearRampToValueAtTime(muted ? 0.0001 : 0.55, audio.currentTime + 2); HW.gain.connect(AOUT);
   HW.next = audio.currentTime + 0.1; HW.step = 0;
-  // ニ短調のワルツ（1拍＝0.42秒、3拍子）
-  const B = 0.42, MEL = [74,77,81, 79,77,76, 74,0,73, 74,0,0, 77,81,86, 84,82,81, 79,77,76, 77,0,0, 74,77,81, 79,77,76, 74,73,74, 76,0,0, 82,81,79, 77,76,74, 73,76,79, 74,0,0];
-  const BASS = [50,45,46,45, 46,48,46,45, 50,45,43,45, 46,45,45,50];
-  const n = (m, at, dur, v)=>{ const f = 440*Math.pow(2,(m-69)/12), o = audio.createOscillator(), o2 = audio.createOscillator(), g = audio.createGain();
-    o.type = 'sine'; o2.type = 'sine'; o.frequency.value = f; o2.frequency.value = f*3.01;
-    g.gain.setValueAtTime(0.0001, at); g.gain.linearRampToValueAtTime(v, at + 0.008); g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
-    const g2 = audio.createGain(); g2.gain.value = 0.15; o.connect(g); o2.connect(g2); g2.connect(g); g.connect(HW.gain); o.start(at); o2.start(at); o.stop(at + dur + 0.05); o2.stop(at + dur + 0.05); };
+  const S = 0.2;                                    // 8分音符の長さ（テンポ150）
+  const hz = m => 440*Math.pow(2, (m - 69)/12);
+  // 和音（1小節＝8分音符8つ）：Dm Dm B♭ A7 | Dm Gm A7 Dm
+  const CH = [[50,53,57],[50,53,57],[46,50,53],[45,49,52,55],[50,53,57],[43,46,50],[45,49,52,55],[50,53,57]];
+  // 木琴の旋律（0は休み）。前半8小節
+  const XY = [74,0,77,0,81,0,80,81, 77,0,76,0,74,0,0,0, 70,0,74,0,77,0,76,77, 76,0,73,0,69,0,0,0,
+              81,0,79,0,77,0,76,74, 79,0,82,0,86,0,85,86, 76,77,79,81,82,81,80,81, 74,0,69,0,62,0,0,0];
+  // テルミンの旋律（後半8小節、1音＝4拍）
+  const TH = [81,80, 77,76, 82,81, 73,0, 81,86, 85,82, 81,80, 74,0];
+  const voice = (type, f, at, dur, v, cut)=>{ const o = audio.createOscillator(), g = audio.createGain(), fl = audio.createBiquadFilter();
+    o.type = type; o.frequency.value = f; fl.type = 'lowpass'; fl.frequency.value = cut || 4000;
+    g.gain.setValueAtTime(0.0001, at); g.gain.linearRampToValueAtTime(v, at + 0.006); g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+    o.connect(fl); fl.connect(g); g.connect(HW.gain); o.start(at); o.stop(at + dur + 0.05); };
+  const xylo = (m, at)=>{ voice('sine', hz(m), at, 0.35, 0.16); voice('sine', hz(m)*3.9, at, 0.08, 0.05); voice('square', hz(m)*2, at, 0.03, 0.02, 3000); };
+  const bass = (m, at, v)=>{ voice('triangle', hz(m), at, 0.17, v); voice('square', hz(m), at, 0.09, v*0.18, 600); };
+  const organ = (ch, at, dur)=>ch.forEach(m=>{ [0, 12].forEach(oc=>{ const o = audio.createOscillator(), g = audio.createGain(), fl = audio.createBiquadFilter(), lfo = audio.createOscillator(), lg = audio.createGain();
+    o.type = 'sawtooth'; o.frequency.value = hz(m + 12 + oc); lfo.frequency.value = 5.5; lg.gain.value = 3; lfo.connect(lg); lg.connect(o.detune);
+    fl.type = 'lowpass'; fl.frequency.value = 1300; g.gain.setValueAtTime(0.0001, at); g.gain.linearRampToValueAtTime(oc ? 0.008 : 0.016, at + 0.25); g.gain.setValueAtTime(oc ? 0.008 : 0.016, at + dur - 0.3); g.gain.linearRampToValueAtTime(0.0001, at + dur);
+    o.connect(fl); fl.connect(g); g.connect(HW.gain); o.start(at); lfo.start(at); o.stop(at + dur + 0.05); lfo.stop(at + dur + 0.05); }); });
+  const theremin = (m, m2, at, dur)=>{ const o = audio.createOscillator(), g = audio.createGain(), lfo = audio.createOscillator(), lg = audio.createGain();
+    o.type = 'sine'; o.frequency.setValueAtTime(hz(m) * 0.94, at); o.frequency.exponentialRampToValueAtTime(hz(m), at + 0.25);
+    if(m2) o.frequency.exponentialRampToValueAtTime(hz(m2), at + dur);
+    lfo.frequency.value = 6; lg.gain.value = hz(m)*0.012; lfo.connect(lg); lg.connect(o.frequency);
+    g.gain.setValueAtTime(0.0001, at); g.gain.linearRampToValueAtTime(0.11, at + 0.2); g.gain.setValueAtTime(0.11, at + dur - 0.25); g.gain.linearRampToValueAtTime(0.0001, at + dur);
+    o.connect(g); g.connect(HW.gain); o.start(at); lfo.start(at); o.stop(at + dur + 0.05); lfo.stop(at + dur + 0.05); };
+  const bone = (at, hi)=>{ voice('square', hi ? 1800 : 1200, at, 0.03, 0.03, 5000); voice('triangle', hi ? 900 : 600, at, 0.05, 0.05); };
+  const wolf = at=>{ const o = audio.createOscillator(), g = audio.createGain(); o.type = 'sine';
+    o.frequency.setValueAtTime(380, at); o.frequency.exponentialRampToValueAtTime(820, at + 0.8); o.frequency.setValueAtTime(820, at + 1.6); o.frequency.exponentialRampToValueAtTime(520, at + 2.6);
+    g.gain.setValueAtTime(0.0001, at); g.gain.linearRampToValueAtTime(0.06, at + 0.5); g.gain.linearRampToValueAtTime(0.0001, at + 2.7); o.connect(g); g.connect(HW.gain); o.start(at); o.stop(at + 2.8); };
+  const owl = at=>{ [0, 0.45, 0.75].forEach((d, i)=>{ const o = audio.createOscillator(), g = audio.createGain(); o.type = 'sine'; o.frequency.setValueAtTime(i ? 430 : 470, at + d); o.frequency.linearRampToValueAtTime(i ? 390 : 420, at + d + 0.3);
+    g.gain.setValueAtTime(0.0001, at + d); g.gain.linearRampToValueAtTime(0.05, at + d + 0.05); g.gain.exponentialRampToValueAtTime(0.0001, at + d + 0.35); o.connect(g); g.connect(HW.gain); o.start(at + d); o.stop(at + d + 0.4); }); };
   HW.timer = setInterval(()=>{
     if(!audio || !HW.gain) return;
-    while(HW.next < audio.currentTime + 0.3){
-      const i = HW.step % MEL.length, bar = Math.floor(HW.step/3) % BASS.length, beat = HW.step % 3;
-      if(MEL[i]) n(MEL[i], HW.next, 1.2, 0.18);
-      if(beat === 0) n(BASS[bar] - 12, HW.next, 1.4, 0.16); else n(BASS[bar] + (beat === 1 ? 3 : 7), HW.next, 0.5, 0.06);
-      HW.next += B; HW.step++;
+    while(HW.next < audio.currentTime + 0.35){
+      const st = HW.step, bar = Math.floor(st/8) % 16, inBar = st % 8, ch = CH[bar % 8], at = HW.next, second = bar >= 8;
+      // 低音：根音と5度を、はねるように
+      if(inBar % 2 === 0) bass((inBar % 4 === 0 ? ch[0] : ch[0] + 7) - 12, at, 0.2);
+      else if(inBar === 7) bass(ch[0] - 13, at, 0.12);   // 半音下からの近づき
+      // 骨のカタカタ（裏拍）
+      if(inBar % 2 === 1) bone(at, inBar === 3 || inBar === 7);
+      // オルガン（小節の頭）
+      if(inBar === 0) organ(ch, at, S*8);
+      if(!second){ const m = XY[(bar*8 + inBar) % XY.length]; if(m) xylo(m, at); }
+      else { if(inBar % 4 === 0){ const i = ((bar - 8)*2 + inBar/4) % TH.length, m = TH[i], m2 = TH[(i + 1) % TH.length]; if(m) theremin(m, inBar === 4 && m2 ? m2 : 0, at, S*4); }
+             if(inBar === 0 || inBar === 3 || inBar === 6) xylo(ch[0] + 24 + (inBar === 3 ? 3 : inBar === 6 ? 7 : 0), at); }
+      if(st % 256 === 120) wolf(at); if(st % 256 === 248) owl(at);
+      HW.next += S; HW.step++;
     }
   }, 60);
 }
