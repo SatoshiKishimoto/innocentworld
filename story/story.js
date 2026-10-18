@@ -503,9 +503,27 @@
     enterScene();
   }
   function scene(){ return P && P.b.scenes[P.id]; }
-  function addAll(add, flag, item){
+  /* ポイント：その物語（作品×施設）を初めて最後まで読んだときだけ、1回分を受け取る。
+     読んでいる間は「仮の点数」（P.pend）にため、読み終えたときに住民票へ加える。途中で地図に戻ったら仮の点数は捨てる。
+     読み終えた物語は、もう一度読んでもポイントは増えない（記録 _pts:作品:施設 で判断。この記録はサーバーにも保存される） */
+  function storyKey(b){ return (L.day ? L.day.event : '') + ':' + (b ? b.facility : ''); }
+  function canEarn(b){ const st = L.state, k = storyKey(b); return !!b && !st.flags['_pts:' + k] && !(b.facility !== 'intro' && st.done[k]); }
+  function addPoints(add, srcKey){
+    if(!add || !P || !P.b || !canEarn(P.b)) return;
+    P.pend = P.pend || {}; P.pendSrc = P.pendSrc || {};
+    if(P.pendSrc[srcKey]) return;            // 同じ場面・同じ分かれ道からは1回だけ
+    P.pendSrc[srcKey] = true;
+    Object.keys(add).forEach(k => P.pend[k] = (P.pend[k] || 0) + add[k]);
+  }
+  function commitPoints(b, pend){
+    const st = L.state; if(!b || !canEarn(b)) return;
+    Object.keys(pend || {}).forEach(k => st.points[k] = (st.points[k] || 0) + pend[k]);
+    st.flags['_pts:' + storyKey(b)] = true;
+  }
+  function pointOf(k){ return (L.state.points[k] || 0) + (P && P.pend && P.pend[k] || 0); }
+  function addAll(add, flag, item, srcKey){
     const st = L.state, got = [];
-    if(add) Object.keys(add).forEach(k => st.points[k] = (st.points[k] || 0) + add[k]);
+    addPoints(add, srcKey || ('?' + Math.random()));
     (flag || []).forEach(f => st.flags[f] = true);
     (item || []).forEach(i => { if(!st.items[i]){ st.items[i] = L.today; got.push(i); } });
     save(); return got;
@@ -524,7 +542,7 @@
   function enterScene(){
     const sc = scene();
     if(!sc){ toast(t('sceneMissing')); return finish(); }
-    P.got = addAll(sc.add, sc.flag, sc.item); P.line = 0; P.gotShown = false;
+    P.got = addAll(sc.add, sc.flag, sc.item, 'scene:' + P.id); P.line = 0; P.gotShown = false;
     rePage(); render();
   }
   // 表示モードに合わせてページを作る（切りかえたときは、同じセリフの最初のページから）
@@ -550,7 +568,7 @@
     if(c.flags && !c.flags.every(f => st.flags[f])) return false;
     if(c.notFlags && c.notFlags.some(f => st.flags[f])) return false;
     if(c.items && !c.items.every(i => st.items[i])) return false;
-    if(c.points && !Object.keys(c.points).every(k => (st.points[k] || 0) >= c.points[k])) return false;
+    if(c.points && !Object.keys(c.points).every(k => pointOf(k) >= c.points[k])) return false;
     const ev = L.day ? L.day.event : '';
     if(c.done && !c.done.every(f => st.done[ev + ':' + f])) return false;
     if(c.doneCount && Object.keys(st.done).filter(k => k.indexOf(ev + ':') === 0).length < c.doneCount) return false;
@@ -687,12 +705,13 @@
   }
   function choose(i){
     const sc = scene(), c = sc.choices[i]; if(!c) return;
-    const got = addAll(c.add, c.flag, c.item); if(got.length) setTimeout(() => itemPop(got), 300);
+    const got = addAll(c.add, c.flag, c.item, 'choice:' + P.id); if(got.length) setTimeout(() => itemPop(got), 300);   // 同じ分かれ道で選び直しても1回だけ
     push({type:'choice', scene:P.id, choice:c.id, text:typeof c.text === 'object' ? (c.text.ja || T(c.text)) : c.text});   // 集計は日本語の文で（言語で分かれない）
     if(c.next && P.b.scenes[c.next]){ P.id = c.next; enterScene(); } else finish();
   }
   async function finish(){
-    const b = P && P.b; P = null;
+    const b = P && P.b, pend = P && P.pend; P = null;
+    commitPoints(b, pend);   // 初めて読み終えたときだけポイントを受け取る（done をつける前に判断）
     if(b && b.facility !== 'intro'){
       const dk = (L.day ? L.day.event : '') + ':' + b.facility;
       if(!L.state.done[dk]) L.state.done[dk] = L.today;
