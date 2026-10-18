@@ -691,7 +691,6 @@
       <div class="sstop"><button class="sbtn ghost" data-act="leave">‹ ${esc(t('toMap'))}</button><span class="sbarr">${langBtn()}${soundBtn()}</span></div>
       ${fac && !inRoom ? `<span class="sfac">${esc(T(fac.name))}</span>` : ''}
       ${who && scBg !== 'bedroom_window' ? `<img class="sactor" src="${charImg(who)}" alt="" aria-hidden="true">` : ''}
-      ${scBg === 'bedroom_bookmark' && !titleCard ? `<div class="sprop">${bookmarkSVG(150)}</div>` : ''}
       ${titleCard ? `<div class="sfinale${P.line === pages.length - 1 ? ' last' : ''}"><span>${cardHtml()}</span></div>` : ''}
       <article class="sbook ${who ? '' : 'narr'}${titleCard ? ' quiet' : ''}" aria-live="polite">
         ${who ? `<header class="sspeaker">${face(who)}<b>${esc(cname(who))}</b></header>` : ''}
