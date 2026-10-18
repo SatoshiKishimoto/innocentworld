@@ -145,7 +145,7 @@
     let ctx = null, on = true;
     try{ on = localStorage.getItem('iw_story_sound') !== 'off'; }catch(e){}
     let voiceEl = null;
-    function ac(){ if(!ctx){ const C = window.AudioContext || window.webkitAudioContext; if(!C) return null; ctx = new C(); } if(ctx.state === 'suspended') ctx.resume(); return ctx; }
+    function ac(){ if(!ctx){ const C = window.AudioContext || window.webkitAudioContext; if(!C) return null; ctx = new C(); } if(ctx.state !== 'running') ctx.resume().catch(() => {}); return ctx; }
     function tone(f, t, d, type, vol){
       const c = ac(); if(!c) return;
       const o = c.createOscillator(), g = c.createGain(), t0 = c.currentTime + t;

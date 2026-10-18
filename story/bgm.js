@@ -176,10 +176,38 @@
     on = !!v;
     if(ctx){ const t = ctx.currentTime; master.gain.cancelScheduledValues(t); master.gain.setValueAtTime(master.gain.value, t); master.gain.linearRampToValueAtTime(on ? 1 : 0, t + 0.3); if(on && ctx.state === 'suspended') ctx.resume().catch(() => {}); }
   }
-  // スマホは、画面にさわったあとでないと音が出せない
-  const unlock = () => { if(ctx && ctx.state !== 'running') ctx.resume().catch(() => {}); };
-  ['pointerdown', 'touchend', 'keydown'].forEach(e => document.addEventListener(e, unlock, {passive:true}));
-  // 別のアプリに切りかえたら止め、もどったら再開
-  document.addEventListener('visibilitychange', () => { if(!ctx) return; if(document.visibilityState === 'hidden') ctx.suspend().catch(() => {}); else if(on) ctx.resume().catch(() => {}); });
+  // iPhone：消音スイッチ（マナーモード）がオンでも、このページの音は鳴らす（🔊 ボタンで消せる）
+  function playbackSession(){
+    try{ if(navigator.audioSession) navigator.audioSession.type = 'playback'; }catch(e){}
+  }
+  // 古い iPhone 向け：無音の音声を1回流すと、消音スイッチの影響を受けない再生モードになる
+  let silentEl = null;
+  function silentWav(){
+    const n = 2205, b = new ArrayBuffer(44 + n * 2), v = new DataView(b), w = (o, s) => { for(let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+    w(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); w(8, 'WAVE'); w(12, 'fmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+    v.setUint32(24, 22050, true); v.setUint32(28, 44100, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true); w(36, 'data'); v.setUint32(40, n * 2, true);
+    return URL.createObjectURL(new Blob([b], {type:'audio/wav'}));
+  }
+  // スマホは、画面にさわったときでないと音を出し始められない
+  let unlocked = false;
+  function unlock(){
+    playbackSession();
+    if(!navigator.audioSession && !silentEl && /iP(hone|ad|od)|Macintosh/.test(navigator.userAgent) && 'ontouchend' in document){
+      try{ silentEl = new Audio(silentWav()); silentEl.setAttribute('playsinline', ''); silentEl.loop = true; silentEl.play().catch(() => { silentEl = null; }); }catch(e){}
+    }
+    const c = ac(); if(!c) return;
+    if(c.state !== 'running') c.resume().catch(() => {});
+    if(!unlocked){   // 無音を一瞬鳴らして、音の出口をひらく
+      try{ const s = c.createBufferSource(); s.buffer = c.createBuffer(1, 1, 22050); s.connect(c.destination); s.start(0); unlocked = true; }catch(e){}
+    }
+  }
+  ['touchend', 'click', 'keydown', 'pointerup'].forEach(e => document.addEventListener(e, unlock, {passive:true, capture:true}));
+  // 別のアプリに切りかえたら止め、もどったら再開（iPhone の「中断」からも戻す）
+  document.addEventListener('visibilitychange', () => {
+    if(!ctx) return;
+    if(document.visibilityState === 'hidden'){ ctx.suspend().catch(() => {}); if(silentEl) try{ silentEl.pause(); }catch(e){} }
+    else if(on){ ctx.resume().catch(() => {}); if(silentEl) silentEl.play().catch(() => {}); }
+  });
+  playbackSession();
   window.IWBGM = {play, setOn, songs:Object.keys(SONGS), get current(){ return cur && cur.name; }};
 })();
