@@ -338,3 +338,14 @@ html[data-lang=en] .sfinale.last span{letter-spacing:.08em;padding:18px 22px}
 .sivname{display:block;margin:12px 0 6px;font-size:20px;color:var(--navy)}
 .sivdesc{margin:0 0 10px;font-size:15px;line-height:1.7;color:#3a3040;text-align:left}
 .sivwhen{margin:0 0 16px;font-size:12px;color:#8a7a6a}
+
+/* 光に包まれて何も見えなくなり、部屋へ戻る */
+.slightout{position:fixed;inset:0;z-index:90;pointer-events:all;overflow:hidden;background:rgba(255,252,236,0);animation:slightin 2.1s ease-in forwards}
+.slightout .slightcore{position:absolute;left:50%;top:42%;width:40px;height:40px;margin:-20px;border-radius:50%;background:radial-gradient(circle,#fff 0 30%,rgba(255,244,190,.9) 55%,rgba(255,244,190,0) 72%);animation:slightgrow 2.1s ease-in forwards}
+.slightout i{position:absolute;left:var(--x);top:var(--y);width:var(--s);height:var(--s);background:#fff6c8;clip-path:polygon(50% 0,61% 39%,100% 50%,61% 61%,50% 100%,39% 61%,0 50%,39% 39%);opacity:0;animation:slightstar 1.4s ease-out var(--d) forwards}
+.slightout.clear{animation:slightoutfade 1.5s ease-out forwards;background:#fffcec}
+.slightout.clear .slightcore,.slightout.clear i{display:none}
+@keyframes slightin{0%{background:rgba(255,252,236,0)}55%{background:rgba(255,252,236,.55)}100%{background:#fffcec}}
+@keyframes slightgrow{0%{transform:scale(.2);opacity:.6}100%{transform:scale(60);opacity:1}}
+@keyframes slightstar{0%{opacity:0;transform:scale(.3)}40%{opacity:1}100%{opacity:0;transform:scale(1.6) rotate(45deg)}}
+@keyframes slightoutfade{from{opacity:1}to{opacity:0}}

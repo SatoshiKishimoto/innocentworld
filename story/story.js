@@ -715,8 +715,20 @@
   function next(){
     const sc = scene(); if(!sc) return;
     if(P.line < P.pages.length - 1){ P.line++; SFX.play('page'); return render(); }
-    if(sc.next && P.b.scenes[sc.next]){ P.id = sc.next; return enterScene(); }
+    if(sc.next && P.b.scenes[sc.next]){
+      const nx = P.b.scenes[sc.next];
+      // 村から自分の部屋へ：まぶしい光に包まれて何も見えなくなり、光が消えると部屋にいる
+      if(/^bedroom/.test(nx.bg || '') && !/^bedroom/.test(sc.bg || '')) return lightTransition(() => { P.id = sc.next; enterScene(); });
+      P.id = sc.next; return enterScene();
+    }
     finish();
+  }
+  function lightTransition(mid){
+    const c = document.createElement('div'); c.className = 'slightout'; c.setAttribute('aria-hidden', 'true');
+    c.innerHTML = '<div class="slightcore"></div>' + Array.from({length:26}, () => `<i style="--x:${(Math.random()*100).toFixed(1)}%;--y:${(Math.random()*100).toFixed(1)}%;--d:${(Math.random()*1.2).toFixed(2)}s;--s:${(6 + Math.random()*12).toFixed(0)}px"></i>`).join('');
+    document.body.appendChild(c); SFX.play('item');
+    setTimeout(() => { mid(); c.classList.add('clear'); }, 2300);       // まっ白のあいだに部屋へ切りかえる
+    setTimeout(() => c.remove(), 2300 + 1600);
   }
   function choose(i){
     const sc = scene(), c = sc.choices[i]; if(!c) return;
