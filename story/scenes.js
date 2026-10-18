@@ -151,21 +151,77 @@
         ${[[300,350,'#ff6a8a'],[330,356,'#ffd000'],[360,348,'#ffffff'],[270,354,'#8a5ab8'],[60,470,'#ff6a8a'],[90,480,'#ffd000'],[340,480,'#ffffff']].map(([x, y, c]) => flower(x, y, c)).join('')}
         ${[[30,340],[380,332]].map(([x, y]) => `<g transform="translate(${x},${y})"><rect x="-10" y="-6" width="20" height="10" rx="5" fill="#c84a3a"/><path d="M-8 4 V12 M8 4 V12" fill="none" stroke="${K}" stroke-width="2"/><circle class="ns" cx="-4" cy="-2" r="1.6" fill="#fff"/><circle class="ns" cx="4" cy="-3" r="1.6" fill="#fff"/></g>`).join('')}`);
     },
-    // ルークとアリカの時計台：大きな文字盤、歯車、鐘、はしご
+    // ルークとアリカの時計台（塔の中）：内側から見た文字盤のガラス、時を進める歯車の列（左）、
+    // 鐘を打つ歯車の列（右）、振り子とおもり、文字盤へ力を伝える軸、上の鐘。物語のとおり、時計は止まっている
     clock(){
-      return wrap(sky('scWallC', '#c9b49a', '#a8906e') + brickPattern('scBrC', '#b9875a', '#c49464', '#a87a4e'),
-        `<rect class="ns" width="400" height="800" fill="url(#scBrC)"/>
-        <rect x="-10" y="40" width="420" height="16" fill="#7a4a2a"/><rect x="-10" y="430" width="420" height="16" fill="#7a4a2a"/>
-        <rect x="40" y="40" width="16" height="400" fill="#7a4a2a"/><rect x="344" y="40" width="16" height="400" fill="#7a4a2a"/>
-        <g ${F} transform="translate(200,200)">
-          <circle cx="0" cy="0" r="120" fill="#c89a3a"/><circle cx="0" cy="0" r="106" fill="#fffbe8"/>
-          ${Array.from({length:12}, (_, i) => { const a = i / 12 * Math.PI * 2 - Math.PI / 2; return `<text x="${r1(Math.cos(a)*86)}" y="${r1(Math.sin(a)*86 + 6)}" text-anchor="middle" font-size="16" font-weight="900" fill="${K}">${['XII','I','II','III','IIII','V','VI','VII','VIII','IX','X','XI'][i]}</text>`; }).join('')}
-          <path d="M0 0 L-4 -70 L0 -78 L4 -70 Z" fill="${K}"/><path d="M0 0 L46 30 L52 36 L42 34 Z" fill="${K}"/><circle cx="0" cy="0" r="7" fill="#c89a3a"/>
+      const IRON = '#3a4048', BRASS = '#d8a838', BRASS2 = '#b8862a';
+      // 歯の大きさをそろえた本物らしい歯車（リム・スポーク・軸）
+      const wheel = (cx, cy, r, rot, spokes) => {
+        const n = Math.max(8, Math.round(r / 2.4)); let d = '';
+        for(let i = 0; i < n; i++){
+          const a = rot + i / n * Math.PI * 2, w = Math.PI / n;
+          const p = [[a - w * 0.55, r * 0.86], [a - w * 0.3, r], [a + w * 0.3, r], [a + w * 0.55, r * 0.86]];
+          d += (i ? 'L' : 'M') + p.map(([t, rr]) => r1(cx + Math.cos(t) * rr) + ' ' + r1(cy + Math.sin(t) * rr)).join(' L');
+        }
+        const sp = spokes || (r > 20 ? 5 : 0);
+        return `<path d="${d}Z" fill="${BRASS}"/>` + (sp ? `<circle cx="${cx}" cy="${cy}" r="${r1(r * 0.7)}" fill="#5a4a3a"/>` +
+          Array.from({length:sp}, (_, k) => { const t = rot + k / sp * Math.PI * 2; return `<path d="M${r1(cx + Math.cos(t - 0.12) * r * 0.2)} ${r1(cy + Math.sin(t - 0.12) * r * 0.2)} L${r1(cx + Math.cos(t - 0.06) * r * 0.74)} ${r1(cy + Math.sin(t - 0.06) * r * 0.74)} L${r1(cx + Math.cos(t + 0.06) * r * 0.74)} ${r1(cy + Math.sin(t + 0.06) * r * 0.74)} L${r1(cx + Math.cos(t + 0.12) * r * 0.2)} ${r1(cy + Math.sin(t + 0.12) * r * 0.2)} Z" fill="${BRASS2}"/>`; }).join('') : '') +
+          `<circle cx="${cx}" cy="${cy}" r="${r1(Math.max(3, r * 0.2))}" fill="${BRASS2}"/><circle cx="${cx}" cy="${cy}" r="2.2" fill="${IRON}"/>`;
+      };
+      // かみ合う位置（2つの歯車の中心の距離 ＝ 半径の和 × 0.9）
+      const next = (x, y, r0, r, deg) => [r1(x + Math.cos(deg * Math.PI / 180) * (r0 + r) * 0.9), r1(y + Math.sin(deg * Math.PI / 180) * (r0 + r) * 0.9)];
+      const G1 = [52, 364], g1 = 44, [g2x, g2y] = next(...G1, g1, 24, -58), [g3x, g3y] = next(g2x, g2y, 24, 16, -8), [ex, ey] = next(g3x, g3y, 16, 14, -104);
+      const S1 = [338, 372], s1 = 40, [s2x, s2y] = next(...S1, s1, 22, -128);
+      const stone = `<pattern id="scStone" width="60" height="34" patternUnits="userSpaceOnUse"><rect class="ns" width="60" height="34" fill="#8a7a6a"/><rect class="ns" x="2" y="2" width="26" height="13" rx="2" fill="#968676"/><rect class="ns" x="32" y="19" width="26" height="13" rx="2" fill="#7e6e60"/>
+        <path class="ns" d="M0 0H60M0 17H60M30 0V17M15 17V34M45 17V34" fill="none" stroke="#4a3e34" stroke-width="1.4"/></pattern>`;
+      const glow = `<radialGradient id="scDial" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#fff8d8"/><stop offset=".8" stop-color="#ffe7a0"/><stop offset="1" stop-color="#f0c868"/></radialGradient>`;
+      const DX = 200, DY = 128, DR = 78;
+      return wrap(stone + glow,
+        `<rect class="ns" width="400" height="800" fill="url(#scStone)"/>
+        <path class="ns" d="M${DX - 60} ${DY + 40} L40 470 H360 L${DX + 60} ${DY + 40} Z" fill="rgba(255,230,150,.16)"/>
+        <!-- 天井の梁と柱 -->
+        <g ${F}><rect x="-10" y="18" width="420" height="16" fill="#7a4a2a"/><rect x="-10" y="226" width="420" height="12" fill="#7a4a2a"/>
+          <rect x="4" y="18" width="14" height="420" fill="#6a3e22"/><rect x="382" y="18" width="14" height="420" fill="#6a3e22"/>
+          <path d="M18 34 L60 34 L18 76 Z M382 34 L340 34 L382 76 Z" fill="#7a4a2a"/></g>
+        <!-- 床 -->
+        <rect x="-10" y="434" width="420" height="380" fill="#6a4a32"/>${[0, 1, 2, 3, 4].map(i => `<path d="M-10 ${462 + i * 30} H410" fill="none" stroke="${K}" stroke-width="1.6"/>`).join('')}
+        <path d="M-10 434 H410" fill="none" stroke="${K}" stroke-width="2.5"/>
+        <rect x="18" y="434" width="30" height="10" fill="#1d1414"/>
+        <!-- 内側から見た文字盤（すりガラスに外の光。数字は裏返し） -->
+        <g ${F}><circle cx="${DX}" cy="${DY}" r="${DR + 8}" fill="${IRON}"/><circle cx="${DX}" cy="${DY}" r="${DR}" fill="url(#scDial)"/></g>
+        <g transform="translate(${DX},${DY}) scale(-1,1)">
+          ${Array.from({length:12}, (_, i) => { const t = i / 12 * Math.PI * 2 - Math.PI / 2; return `<path class="ns" d="M${r1(Math.cos(t) * 24)} ${r1(Math.sin(t) * 24)} L${r1(Math.cos(t) * DR)} ${r1(Math.sin(t) * DR)}" stroke="${IRON}" stroke-width="2.4"/>
+            <text x="${r1(Math.cos(t) * 60)}" y="${r1(Math.sin(t) * 60 + 5)}" text-anchor="middle" font-size="13" font-weight="900" fill="#b08a48" opacity=".55">${['XII','I','II','III','IIII','V','VI','VII','VIII','IX','X','XI'][i]}</text>`; }).join('')}
+          <circle class="ns" r="24" fill="none" stroke="${IRON}" stroke-width="2.4"/><circle class="ns" r="${DR - 14}" fill="none" stroke="${IRON}" stroke-width="1.6"/>
+          <path class="ns" d="M0 0 L-3 -62 L0 -70 L3 -62 Z" fill="rgba(30,30,40,.55)"/><path class="ns" d="M0 0 L32 26 L38 32 L28 30 Z" fill="rgba(30,30,40,.55)"/>
         </g>
-        <g ${F} class="spin1">${gear(70, 120, 34, 10, '#c8a050')}</g><g ${F} class="spin2">${gear(338, 100, 26, 8, '#a8a8b8')}</g><g ${F} class="spin1">${gear(350, 330, 40, 12, '#c8a050')}</g><g ${F} class="spin2">${gear(54, 340, 28, 9, '#a8a8b8')}</g>
-        <g ${F} transform="translate(200,30)"><path d="M-26 0 Q-26 -30 0 -32 Q26 -30 26 0 L32 10 H-32 Z" fill="#e0b040"/><circle cx="0" cy="16" r="6" fill="#a87a2a"/></g>
-        <g ${F} transform="translate(300,446)">${[0,1,2,3,4,5,6].map(i => `<rect x="${i*14}" y="${-i*12}" width="80" height="12" fill="#8a5a32"/>`).join('')}</g>
-        <rect x="-10" y="446" width="420" height="360" fill="#6a4a32"/>${[0,1,2,3,4,5].map(i => `<path d="M-10 ${470 + i*30} H410" fill="none" stroke="${K}" stroke-width="2"/>`).join('')}`);
+        <!-- 文字盤の中心の歯車箱と、動力を伝える軸 -->
+        <path d="M${g2x} ${g2y} V${DY} H${DX}" fill="none" stroke="${K}" stroke-width="7" stroke-linejoin="round"/><path d="M${g2x} ${g2y} V${DY} H${DX}" fill="none" stroke="#9aa2aa" stroke-width="3.5" stroke-linejoin="round"/>
+        <g ${F}><rect x="${g2x - 9}" y="${DY - 9}" width="18" height="18" rx="3" fill="${IRON}"/><circle cx="${DX}" cy="${DY}" r="15" fill="${IRON}"/>${wheel(DX - 5, DY - 3, 8, 0.2, 0)}${wheel(DX + 7, DY + 5, 6, 0.5, 0)}</g>
+        <!-- 左：時を進める歯車の列（鋳鉄のわく、大きな車・二番車・三番車・がんぎ車、アンクル、振り子、おもり） -->
+        <g ${F}>
+          <path d="M10 430 L22 290 H${ex + 22} L${ex + 34} 430 Z" fill="none" stroke="${IRON}" stroke-width="7"/>
+          <rect x="6" y="424" width="${ex + 40}" height="10" fill="${IRON}"/>
+          <rect x="${G1[0] - 34}" y="${G1[1] - 12}" width="68" height="24" rx="6" fill="#8a6a4a"/>
+          ${wheel(...G1, g1, 0.1)}${wheel(g2x, g2y, 24, 0.3)}${wheel(g3x, g3y, 16, 0.05)}
+          ${(() => { let d = ''; const n = 15, r = 14; for(let i = 0; i < n; i++){ const t = i / n * Math.PI * 2; d += (i ? 'L' : 'M') + `${r1(ex + Math.cos(t) * r * 0.7)} ${r1(ey + Math.sin(t) * r * 0.7)} L${r1(ex + Math.cos(t + 0.32) * r)} ${r1(ey + Math.sin(t + 0.32) * r)}`; } return `<path d="${d}Z" fill="${BRASS}"/><circle cx="${ex}" cy="${ey}" r="3" fill="${IRON}"/>`; })()}
+          <path d="M${ex - 18} ${ey + 4} L${ex} ${ey - 20} L${ex + 18} ${ey + 4}" fill="none" stroke="${IRON}" stroke-width="5" stroke-linejoin="round"/>
+          <path d="M${ex} ${ey - 20} V${ey + 118}" fill="none" stroke="#9aa2aa" stroke-width="3"/>
+          <circle cx="${ex}" cy="${ey + 132}" r="16" fill="${BRASS}"/><circle class="ns" cx="${ex - 5}" cy="${ey + 126}" r="5" fill="rgba(255,255,255,.4)"/>
+          <path d="M${G1[0] - 19} ${G1[1] + 8} V438" fill="none" stroke="#c8b898" stroke-width="2.5"/>
+        </g>
+        <!-- 右：鐘を打つ歯車の列と、鐘へのレバー -->
+        <g ${F}>
+          <path d="M${s2x - 30} 430 L${s2x - 22} 300 H392 V430 Z" fill="none" stroke="${IRON}" stroke-width="7"/>
+          <rect x="${s2x - 34}" y="424" width="${400 - s2x + 34}" height="10" fill="${IRON}"/>
+          ${wheel(...S1, s1, 0.4)}${wheel(s2x, s2y, 22, 0.2)}
+          <rect x="${s2x - 3}" y="${s2y - 52}" width="6" height="40" fill="#9aa2aa"/><path d="M${s2x - 18} ${s2y - 54} h36 v10 h-36 Z" fill="#a8a8b8"/>
+          ${[0, 1, 2, 3, 4, 5, 6, 7, 8].map(i => `<circle cx="${r1(S1[0] + Math.cos(i * 0.7) * 30)}" cy="${r1(S1[1] + Math.sin(i * 0.7) * 30)}" r="2.6" fill="${IRON}"/>`).join('')}
+          <path d="M${S1[0] + 18} ${S1[1] - 26} L360 190 L344 96" fill="none" stroke="${IRON}" stroke-width="4" stroke-linejoin="round"/>
+        </g>
+        <!-- 鐘 -->
+        <g ${F}><rect x="296" y="34" width="70" height="10" fill="#7a4a2a"/><path d="M308 96 Q308 52 331 46 Q354 52 354 96 L362 104 H300 Z" fill="#e0b040"/><circle cx="331" cy="108" r="6" fill="#a87a2a"/><circle cx="344" cy="96" r="5" fill="${IRON}"/></g>
+        `);
     },
     // リリィとヌールの図書館：高い本棚、アーチの窓、書見台の古い絵本
     library(){
