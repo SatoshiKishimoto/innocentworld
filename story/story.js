@@ -153,36 +153,13 @@
       g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(vol || 0.12, t0 + 0.012); g.gain.exponentialRampToValueAtTime(0.0001, t0 + d);
       o.connect(g); g.connect(c.destination); o.start(t0); o.stop(t0 + d + 0.05);
     }
-    // 中世の教会の鐘（本物の鐘の鳴り方をまねた合成）：
-    //  ・本物の鐘の倍音の比（ハム・プライム・短三度・五度・ノミナル…）を重ねる
-    //  ・高い倍音ほど早く消え、低いハム音が長く残る。倍音を2本ずつわずかにずらして「ワンワン」とうなる
-    //  ・舌が当たる瞬間の金属的な打音（ノイズ）と、石造りの塔に響く残響を加える
-    let bellBus = null;
-    function bellOut(){
-      const c = ac(); if(!c) return null;
-      if(bellBus) return bellBus;
-      const dry = c.createGain(), wet = c.createGain(), conv = c.createConvolver(), len = Math.floor(c.sampleRate * 3.2), ir = c.createBuffer(2, len, c.sampleRate);
-      for(let ch = 0; ch < 2; ch++){ const d = ir.getChannelData(ch); let lp = 0; for(let i = 0; i < len; i++){ lp = lp * 0.6 + (Math.random() * 2 - 1) * 0.4; d[i] = lp * Math.pow(1 - i / len, 2.6); } }
-      conv.buffer = ir; dry.gain.value = 0.75; wet.gain.value = 0.55;
-      dry.connect(c.destination); conv.connect(wet); wet.connect(c.destination);
-      bellBus = {c, dry, conv}; return bellBus;
-    }
-    function bellStrike(nominal, t, v){
-      const B = bellOut(); if(!B) return; const c = B.c, t0 = c.currentTime + t, f = nominal / 2;
-      const P = [[0.5, 0.35, 9], [1, 0.5, 6.5], [1.183, 0.5, 5.2], [1.506, 0.22, 3.6], [2, 1, 4.6], [2.66, 0.32, 2.4], [3.17, 0.26, 1.9], [4.15, 0.16, 1.2], [5.0, 0.1, 0.8], [5.92, 0.07, 0.55], [6.84, 0.05, 0.4]];
-      P.forEach(([m, a, d]) => [0, 1].forEach(k => {
-        const o = c.createOscillator(), g = c.createGain(), fr = f * m * (k ? 1 + 0.0009 * (1 + m * 0.3) : 1);
-        o.type = 'sine'; o.frequency.setValueAtTime(fr, t0);
-        const pk = v * a * (k ? 0.45 : 0.6);
-        g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(pk, t0 + 0.004); g.gain.exponentialRampToValueAtTime(0.0001, t0 + d);
-        o.connect(g); g.connect(B.dry); g.connect(B.conv); o.start(t0); o.stop(t0 + d + 0.05);
-      }));
-      // 打音：短い金属ノイズ
-      const n = c.createBufferSource(), nb = c.createBuffer(1, Math.floor(c.sampleRate * 0.06), c.sampleRate), nd = nb.getChannelData(0);
-      for(let i = 0; i < nd.length; i++) nd[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / nd.length, 3);
-      const bp = c.createBiquadFilter(), ng = c.createGain(); bp.type = 'bandpass'; bp.frequency.value = nominal * 3.2; bp.Q.value = 2.5; ng.gain.value = v * 0.9;
-      n.buffer = nb; n.connect(bp); bp.connect(ng); ng.connect(B.dry); ng.connect(B.conv); n.start(t0);
-    }
+    const SAMPLES = {bell1:'sfx/church-bell-1.mp3', bell3:'sfx/church-bell-3.mp3'}, sEl = {};
+    function sEls(){ Object.keys(SAMPLES).forEach(k => { if(!sEl[k]){ const a = new Audio(SAMPLES[k]); a.preload = 'auto'; a.setAttribute('playsinline', ''); sEl[k] = a; } }); }
+    let sUnlocked = false;
+    function sUnlock(){ if(sUnlocked) return; sUnlocked = true; sEls(); Object.values(sEl).forEach(a => { a.muted = true; const p = a.play(); if(p && p.then) p.then(() => { a.pause(); a.currentTime = 0; a.muted = false; }).catch(() => { a.muted = false; }); else { a.pause(); a.muted = false; } }); }
+    ['touchend', 'click', 'keydown'].forEach(e => document.addEventListener(e, sUnlock, {passive:true, capture:true}));
+    function sample(k){ sEls(); const a = sEl[k]; if(!a) return; try{ a.pause(); a.currentTime = 0; a.muted = false; const p = a.play(); if(p && p.catch) p.catch(() => {}); }catch(e){} }
+    function stopSamples(){ Object.values(sEl).forEach(a => { try{ a.pause(); }catch(e){} }); }
     const bell = (f, t, d, v) => { tone(f, t, d, 'sine', v); tone(f*2, t, d*0.6, 'sine', (v || 0.12)*0.35); tone(f*3.01, t, d*0.3, 'triangle', (v || 0.12)*0.12); };
     const N = n => 440 * Math.pow(2, (n - 69)/12);
     const play = {
@@ -190,10 +167,9 @@
       correct(){ [72, 76, 79, 84].forEach((n, i) => bell(N(n), i*0.09, 0.9, 0.11)); },
       wrong(){ tone(N(57), 0, 0.18, 'triangle', 0.08); tone(N(53), 0.16, 0.28, 'triangle', 0.08); },
       // 時計台の鐘：金属の鐘らしい、整数倍でない倍音を重ねて長く響かせる
-      bell(){ bellStrike(N(76), 0, 0.2); },   // カーン（1回）
-      // 塔のいくつもの鐘が高い音から順に鳴る「ラウンド」を2回、最後にいちばん低い鐘
-      chime(){ const peal = [79, 77, 76, 74, 72, 71]; [0, 1].forEach(r => peal.forEach((n, i) => bellStrike(N(n), r * 3.4 + i * 0.5, 0.13)));
-        bellStrike(N(67), 7.0, 0.18); },
+      // 時計台の鐘：録音した本物の教会の鐘（story/sfx/）。1回だけ／3回つく
+      bell(){ sample('bell1'); },
+      chime(){ sample('bell3'); },
       knock(){ [0, 0.22].forEach(t => { tone(260, t, 0.09, 'triangle', 0.22); tone(520, t, 0.05, 'sine', 0.08); tone(1400, t, 0.02, 'square', 0.02); }); },
       item(){ [84, 88, 91, 96, 100].forEach((n, i) => bell(N(n), i*0.06, 0.6, 0.07)); },
       ending(){ [[60,64,67],[65,69,72],[67,71,74],[72,76,79,84]].forEach((ch, i) => ch.forEach(n => { tone(N(n), i*0.32, i === 3 ? 2.2 : 0.4, 'triangle', 0.06); tone(N(n+12), i*0.32, i === 3 ? 1.6 : 0.3, 'sine', 0.03); }));
@@ -201,9 +177,10 @@
     };
     return {
       get on(){ return on; },
-      set(v){ on = v; try{ localStorage.setItem('iw_story_sound', v ? 'on' : 'off'); }catch(e){} if(window.IWBGM) window.IWBGM.setOn(v); if(!v) this.stopVoice(); else ac(); },
+      set(v){ on = v; try{ localStorage.setItem('iw_story_sound', v ? 'on' : 'off'); }catch(e){} if(window.IWBGM) window.IWBGM.setOn(v); if(!v){ this.stopVoice(); stopSamples(); } else ac(); },
       play(name){ if(!on || !play[name]) return; try{ play[name](); }catch(e){} },
       voice(url){ this.stopVoice(); if(!on || !url) return; try{ voiceEl = new Audio(url); voiceEl.play().catch(() => {}); }catch(e){} },
+      stopSamples(){ stopSamples(); },
       stopVoice(){ if(voiceEl){ try{ voiceEl.pause(); }catch(e){} voiceEl = null; } }
     };
   })();
@@ -473,7 +450,7 @@
     return `<g transform="translate(${x},${y})" filter="url(#svOl)"><rect x="-22" y="-17" width="44" height="32" rx="8" fill="#008830"/>${c.map(([a, b]) => `<circle cx="${a}" cy="${b}" r="7" fill="#00a844" stroke="#003a10" stroke-width="1.2"/><circle cx="${a - 2}" cy="${b - 2}" r="2.5" fill="#58d854"/>`).join('')}</g>`;
   }
   function showMap(){
-    VIEW = showMap;
+    VIEW = showMap; SFX.stopSamples();   // 物語の鐘の音は、地図に戻ったら止める
     if(window.IWCheckUpdate) setTimeout(window.IWCheckUpdate, 400);   // 地図に戻ったら新しい版を確かめる
     const facs = L.map || [];
     const pins = facs.map(f => {
@@ -741,7 +718,7 @@
     // 「鐘」が「鳴る」ページで鐘の音（日本語の文で判断するので、どの言語でも鳴る）。同じページでは1回だけ
     const sfxKey = P.id + ':' + P.line;
     if(P.sfxKey !== sfxKey){ P.sfxKey = sfxKey;
-      if(/鐘/.test(jaText) && /鳴/.test(jaText)) setTimeout(() => SFX.play(/一度/.test(jaText) ? 'bell' : 'chime'), 350); }
+      if(/鐘/.test(jaText) && /鳴/.test(jaText)) SFX.play(/一度/.test(jaText) ? 'bell' : 'chime'); }
     if(last && P.got.length && !P.gotShown){ P.gotShown = true; setTimeout(() => itemPop(P.got), 250); }
     if(ending && !P.endShown){ P.endShown = true; endingFx(); }
     if(finale && last && !P.endShown){ P.endShown = true; endingFx(true); }
