@@ -350,8 +350,18 @@ html[data-lang=en] .sfinale.last span{letter-spacing:.08em;padding:18px 22px}
 @keyframes slightstar{0%{opacity:0;transform:scale(.3)}40%{opacity:1}100%{opacity:0;transform:scale(1.6) rotate(45deg)}}
 @keyframes slightoutfade{from{opacity:1}to{opacity:0}}
 
-/* エスパーとミミが星にもどっていく */
-.sbgart .friendsOut{animation:sfriendsout 3.2s ease-in .4s forwards}
-@keyframes sfriendsout{0%{opacity:1;filter:brightness(1)}35%{opacity:1;filter:brightness(1.6) drop-shadow(0 0 8px #fff6c8)}100%{opacity:0;filter:brightness(2.4) blur(3px)}}
-.sbgart .tostar{opacity:0;transform-box:fill-box;transform-origin:50% 50%;animation:stostar 3s ease-out var(--d) forwards}
-@keyframes stostar{0%{opacity:0;transform:translate(0,0) scale(.4)}25%{opacity:1}100%{opacity:0;transform:translate(var(--dx),-150px) scale(1.1) rotate(90deg)}}
+/* エスパーとミミが星にもどっていく（Safari でも動くよう、opacity と transform だけで動かす）
+   0〜1.4秒：体のまわりに星がまたたく → 0.6〜2.4秒：体が光に包まれる → 1.2〜2.8秒：体が薄れる → 1.3〜4.6秒：小さな星が夜空へのぼる */
+.sbgart .friendsOut{animation:sfriendsout 2.8s ease-in forwards}
+@keyframes sfriendsout{0%,43%{opacity:1}100%{opacity:0}}
+.sbgart .friendsGlow{opacity:0;animation:sfriendsglow 3s ease-in-out .5s forwards}
+@keyframes sfriendsglow{0%{opacity:0}45%{opacity:.95}100%{opacity:0}}
+.sbgart .spk{opacity:0;transform-box:fill-box;transform-origin:50% 50%;animation:ssparkle 1s ease-in-out both}
+@keyframes ssparkle{0%{opacity:0;transform:scale(.2) rotate(0)}45%{opacity:1;transform:scale(1.25) rotate(45deg)}100%{opacity:0;transform:scale(.3) rotate(90deg)}}
+.sbgart .rise{opacity:0;transform-box:fill-box;transform-origin:50% 50%;animation:srise0 3s ease-out both}
+.sbgart .rise.r1{animation-name:srise1}.sbgart .rise.r2{animation-name:srise2}.sbgart .rise.r3{animation-name:srise3}.sbgart .rise.r4{animation-name:srise4}
+@keyframes srise0{0%{opacity:0;transform:translate(0,0) scale(.4)}20%{opacity:1}100%{opacity:0;transform:translate(-12px,-160px) scale(1.1) rotate(90deg)}}
+@keyframes srise1{0%{opacity:0;transform:translate(0,0) scale(.4)}20%{opacity:1}100%{opacity:0;transform:translate(-6px,-150px) scale(1.1) rotate(90deg)}}
+@keyframes srise2{0%{opacity:0;transform:translate(0,0) scale(.4)}20%{opacity:1}100%{opacity:0;transform:translate(0,-170px) scale(1.1) rotate(90deg)}}
+@keyframes srise3{0%{opacity:0;transform:translate(0,0) scale(.4)}20%{opacity:1}100%{opacity:0;transform:translate(6px,-150px) scale(1.1) rotate(90deg)}}
+@keyframes srise4{0%{opacity:0;transform:translate(0,0) scale(.4)}20%{opacity:1}100%{opacity:0;transform:translate(12px,-160px) scale(1.1) rotate(90deg)}}

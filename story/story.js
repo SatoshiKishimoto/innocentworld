@@ -653,11 +653,18 @@
     const books = Array.from({length:18}, (_, i) => { const row = Math.floor(i/6), x = 18 + (i%6)*13, h = 54 + ((i*7)%4)*6, c = ['#e2687e','#5a6ab8','#ffd000','#4f9a4a','#d9534a','#8a5ab8'][(i+row)%6];
       return `<rect x="${x}" y="${240 + row*92 + (72 - h)}" width="11" height="${h}" rx="2" fill="${c}"/>`; }).join('');
     // 窓の外のエスパーとミミ（住人のイラストをそのまま使い、窓わくの内側だけに見せる）
-    // 2人が星にもどっていく：体がきらきら光りながら薄れ、小さな星になって夜空へのぼっていく
-    const toStars = curtain === 'leaving' ? `<g clip-path="url(#svWin)">${Array.from({length:22}, (_, i) => { const x = 128 + ((i * 37) % 150), y = 230 + ((i * 53) % 70), d = (1.0 + (i % 7) * 0.2).toFixed(2), dx = ((i % 5) - 2) * 6;
-      return `<path class="ns tostar" style="--d:${d}s;--dx:${dx}px" d="M${x} ${y - 7} L${x + 2.2} ${y - 2.2} L${x + 7} ${y} L${x + 2.2} ${y + 2.2} L${x} ${y + 7} L${x - 2.2} ${y + 2.2} L${x - 7} ${y} L${x - 2.2} ${y - 2.2} Z" fill="#fff6c8"/>`; }).join('')}</g>` : '';
-    const friends = win ? `<g clip-path="url(#svWin)" class="${curtain === 'opening' ? 'friendsIn' : curtain === 'leaving' ? 'friendsOut' : ''}"><image class="wave l" href="${charImg('esper')}" x="110" y="198" width="100" height="150" preserveAspectRatio="xMidYMax meet"/>
-      <image class="wave r" href="${charImg('mimi')}" x="208" y="196" width="84" height="150" preserveAspectRatio="xMidYMax meet"/></g>` : '';
+    // 2人が星にもどっていく：まず体のまわりに星がきらきらまたたき、体が光に包まれて薄れ、小さな星になって夜空へのぼっていく。
+    // iPhone の Safari でも同じに見えるよう、SVG の要素には CSS の filter（明るさ・ぼかし）や、@keyframes の中の var() を使わない
+    const star4 = r => `M0 ${-r} L${r * .3} ${-r * .3} L${r} 0 L${r * .3} ${r * .3} L0 ${r} L${-r * .3} ${r * .3} L${-r} 0 L${-r * .3} ${-r * .3} Z`;
+    const leaving = curtain === 'leaving';
+    const sparks = leaving ? Array.from({length:18}, (_, i) => { const x = 124 + ((i * 41) % 160), y = 212 + ((i * 29) % 120), d = ((i * 0.13) % 1.3).toFixed(2), r = 6 + (i % 3) * 3;
+      return `<g transform="translate(${x} ${y})"><path class="ns spk" style="animation-delay:${d}s" d="${star4(r)}" fill="#fff6c8"/></g>`; }).join('') : '';
+    const rise = leaving ? Array.from({length:22}, (_, i) => { const x = 128 + ((i * 37) % 150), y = 236 + ((i * 53) % 80), d = (1.3 + (i % 7) * 0.22).toFixed(2);
+      return `<g transform="translate(${x} ${y})"><path class="ns rise r${i % 5}" style="animation-delay:${d}s" d="${star4(i % 3 ? 4.5 : 6.5)}" fill="#fff6c8"/></g>`; }).join('') : '';
+    const pair = (cls) => `<image class="wave l" href="${charImg('esper')}" x="110" y="198" width="100" height="150" preserveAspectRatio="xMidYMax meet"/>
+      <image class="wave r" href="${charImg('mimi')}" x="208" y="196" width="84" height="150" preserveAspectRatio="xMidYMax meet"/>`;
+    const toStars = leaving ? `<g clip-path="url(#svWin)"><g class="friendsGlow" filter="url(#svGlow)">${pair()}</g>${sparks}${rise}</g>` : '';
+    const friends = win ? `<g clip-path="url(#svWin)" class="${curtain === 'opening' ? 'friendsIn' : leaving ? 'friendsOut' : ''}">${pair()}</g>` : '';
     // カーテン：開いた形を描き、閉じているときは横に広げる（ひだの線は太さを変えない）
     const folds = side => [0.3, 0.55, 0.8].map(k => { const x = side < 0 ? 76 + 26 * k : 324 - 26 * k; return `<path d="M${x} 74 Q${x + side * 3} 210 ${x - side * 2} 350" fill="none" stroke="#b8405a" stroke-width="1.6" vector-effect="non-scaling-stroke"/>`; }).join('');
     const cState = curtain === 'closed' ? 'closed' : curtain === 'opening' ? 'opening' : '';
@@ -668,6 +675,7 @@
         <linearGradient id="svSky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#14184a"/><stop offset="1" stop-color="#3a3f8a"/></linearGradient>
         <radialGradient id="svLamp" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="rgba(255,214,120,.55)"/><stop offset="1" stop-color="rgba(255,214,120,0)"/></radialGradient>
         <clipPath id="svWin"><rect x="112" y="96" width="176" height="196"/></clipPath>
+        <filter id="svGlow" x="-20%" y="-20%" width="140%" height="140%" color-interpolation-filters="sRGB"><feColorMatrix type="matrix" values="0 0 0 0 1  0 0 0 0 .97  0 0 0 0 .82  0 0 0 1 0"/><feGaussianBlur stdDeviation="2.5"/></filter>
         <pattern id="svPaper" width="40" height="40" patternUnits="userSpaceOnUse"><circle class="ns" cx="10" cy="10" r="2" fill="rgba(255,255,255,.07)"/><circle class="ns" cx="30" cy="30" r="2" fill="rgba(255,255,255,.07)"/></pattern></defs>
       <rect class="ns" width="400" height="800" fill="url(#svWall)"/><rect class="ns" width="400" height="800" fill="url(#svPaper)"/>
       <rect y="560" width="400" height="240" fill="#7a4a2a"/>${[580,610,640,670,700,730].map((y, i) => `<path d="M0 ${y} H400${[0,1,2,3].map(k => ` M${(k*110 + (i%2)*55) % 400} ${y} V${y+30}`).join('')}" fill="none" stroke="#1d1414" stroke-width="2"/>`).join('')}
