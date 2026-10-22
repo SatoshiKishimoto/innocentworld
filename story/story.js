@@ -11,6 +11,9 @@
   // テスト用：自分のパソコン（localhost）で開いたときだけ ?api= で接続先を変えられる
   const API = (() => { try{ const q = new URLSearchParams(location.search).get('api'); if(q && /^(localhost|127\.0\.0\.1)$/.test(location.hostname)) return q; }catch(e){} return CFG.api || ''; })();
   const AR_URL = CFG.arUrl || '../index.html';
+  // 住人の色味の調整（story/art/manifest.js の characterTone）。手元の確認用：localhost では ?tone=1 / ?tone=0 で切りかえられる
+  try{ const q = new URLSearchParams(location.search).get('tone'); if(q !== null && /^(localhost|127\.0\.0\.1)$/.test(location.hostname) && window.IW_ART) window.IW_ART.characterTone = q === '1'; }catch(e){}
+  if(window.IW_ART && window.IW_ART.characterTone) document.documentElement.classList.add('iwtone');
   const KEY = 'iw_story_v2';
   const $ = id => document.getElementById(id);
   const app = $('app');
@@ -27,8 +30,16 @@
   function t(key){ const v = I.ui[key]; let s = v ? (v[lang()] || v.ja) : key; for(let i = 1; i < arguments.length; i++) s = s.replace('{' + (i - 1) + '}', arguments[i]); return s; }
 
   /* ---------- スマホ内の保存（控え） ---------- */
-  function emptyState(){ return {points:{}, flags:{}, items:{}, done:{}, introSeen:{}}; }
-  function fresh(){ return {rid:'', token:'', recovery:'', resident:null, state:emptyState(), outbox:[], defs:null, day:null, today:'', visits:[], returning:false, unlocked:null, map:null, stories:{}, intro:null}; }
+  function emptyState(){ return {points:{}, flags:{}, items:{}, done:{}, introSeen:{}, runs:{}}; }
+  function fresh(){ return {rid:'', token:'', recovery:'', resident:null, state:emptyState(), outbox:[], defs:null, day:null, shows:[], ended:false, today:'', visits:[], returning:false, unlocked:null, map:null, stories:{}, intro:null}; }
+  /* 物語の進み具合は「作品ID＠開催日」ごと（同じ作品の再公開は、はじめから）。アイテム・ポイントは住民票に通算で残る */
+  function runKey(){ return L.day ? (L.day.key || (L.day.event + '@' + L.today)) : ''; }
+  function run(){
+    const st = L.state; st.runs = st.runs || {};
+    const k = runKey(), r = st.runs[k] || (st.runs[k] = {flags:{}, items:{}, done:{}});
+    r.flags = r.flags || {}; r.items = r.items || {}; r.done = r.done || {};
+    return r;
+  }
   let L = load();
   function load(){ try{ const v = JSON.parse(localStorage.getItem(KEY)); if(v && typeof v === 'object') return Object.assign(fresh(), v); }catch(e){} return fresh(); }
   function save(){ try{ localStorage.setItem(KEY, JSON.stringify(L)); }catch(e){} }
@@ -89,14 +100,21 @@
   function cname(k){ return T(defs().characters[k]) || k; }
   function cnameEn(k){ const c = defs().characters[k]; return (c && typeof c === 'object' && c.en) || (defs().charactersEn || {})[k] || ''; }
   // セリフの差し込み：{name}（または {住民名}）＝住民名。ほかの登録項目も {項目ID} で差し込めます
-  function fill(t){
+  // 文の中の {name}（{住民名}）や {color} などを、住民の登録内容に置きかえる。
+  // 名前が未設定なら「あなた」（「{name}さん」は「あなた」に。英語で文の始まりなら "You"）。そのほかの項目が未設定なら、何も表示しない（{color} などをそのまま見せない）
+  function fill(src){
     const r = L.resident, f = (r && r.fields) || {}, regs = defs().regfields || [];
     const nameF = regs.find(x => x.type === 'text');
-    return String(t == null ? '' : t).replace(/\{(name|住民名|[A-Za-z_][A-Za-z0-9_]*)\}/g, (m, k) => {
-      if(k === 'name' || k === '住民名') return f.name || (nameF && f[nameF.id]) || t('you');
-      if(!(k in f)) return m;
+    return String(src == null ? '' : src).replace(/\{(name|住民名|[A-Za-z_][A-Za-z0-9_]*)\}(さん)?/g, (m, k, san, at, all) => {
+      if(k === 'name' || k === '住民名'){
+        const nm = String(f.name || (nameF && f[nameF.id]) || '').trim();
+        if(nm) return nm + (san || '');
+        const you = t('you'), head = !all.slice(0, at).trim() || /[.!?。！？]\s*$/.test(all.slice(0, at));
+        return head ? you.charAt(0).toUpperCase() + you.slice(1) : you;
+      }
+      if(!(k in f) || f[k] == null || f[k] === '') return san || '';
       const rf = regs.find(x => x.id === k);
-      return rf && rf.type === 'character' ? cname(f[k]) : optLabel(rf, f[k]);
+      return (rf && rf.type === 'character' ? cname(f[k]) : optLabel(rf, f[k])) + (san || '');
     });
   }
   // 登録項目の「選択肢」：保存する値は日本語のまま、表示だけ切りかえる
@@ -210,7 +228,7 @@
     const got = L.state.items[id], when = typeof got === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(got) ? fmtDate(got) : '';
     const old = $('svItem'); if(old) old.remove();
     const c = document.createElement('div'); c.id = 'svItem'; c.className = 'sitemview'; c.setAttribute('role', 'dialog'); c.setAttribute('aria-modal', 'true'); c.setAttribute('aria-label', T(it.name));
-    const art = id === 'old_bookmark' ? `<div class="sivart">${bookmarkSVG(110)}</div>` : `<div class="sivicon" aria-hidden="true">${esc(it.icon || '★')}</div>`;
+    const art = artItem(id) ? `<div class="sivart"><img src="${esc(artItem(id))}" alt="" style="width:140px;height:140px;object-fit:contain"></div>` : id === 'old_bookmark' ? `<div class="sivart">${bookmarkSVG(110)}</div>` : `<div class="sivicon" aria-hidden="true">${esc(it.icon || '★')}</div>`;
     c.innerHTML = `<div class="sivcard">${art}<b class="sivname">${esc(T(it.name))}</b>
       ${T(it.desc) ? `<p class="sivdesc">${esc(fill(T(it.desc)))}</p>` : ''}
       ${when ? `<p class="sivwhen">${esc(t('itemGot', when))}</p>` : ''}
@@ -287,17 +305,19 @@
   function todayLocal(){ const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
   function takeBoot(j){
     if(j.defs) L.defs = j.defs;
-    if(j.today !== L.today){ L.stories = {}; L.intro = null; }      // 日がかわったら、前の日の解放は使わない
-    L.today = j.today; L.day = j.day; L.resident = j.resident || L.resident;
+    if(j.today !== L.today || (L.day && j.day && L.day.key !== j.day.key)){ L.stories = {}; L.intro = null; }      // 日や作品がかわったら、前の解放は使わない
+    L.today = j.today; L.day = j.day || null; L.shows = j.shows || []; L.ended = !!j.ended; L.resident = j.resident || L.resident;
     if(j.state) L.state = Object.assign(emptyState(), j.state);
     L.visits = j.visits || []; L.returning = !!j.returning; L.returningThis = !!j.returningThis; L.prevEvent = !!j.prevEvent; L.unlocked = j.unlocked || null; L.map = j.map || null; L.upcoming = j.upcoming || [];
     save();
   }
   function route(){
     if(!L.rid) return showWelcome();
-    if(!L.day) return showClosed();
-    if(!L.unlocked || !L.unlocked.entrance) return showGate();
-    if(L.intro && !L.state.introSeen[L.today]){ L.state.introSeen[L.today] = true; save(); return play(L.intro); }
+    if(L.ended) return showEnded();
+    if(!L.day && !(L.shows || []).length) return showClosed();
+    if(!L.day || !L.unlocked || !L.unlocked.entrance) return showGate();
+    // 作品×開催日ごとに1回：部屋で絵本をひらく導入 → レンガ村に到着 → intro（導入のない作品は共通の導入）
+    if(!L.state.introSeen[runKey()]) return play(L.prologue || defaultPrologue());
     showMap();
   }
   function showError(j, retry){
@@ -309,7 +329,7 @@
   /* ---------- ようこそ・住民登録・復元 ---------- */
   async function ensureDefs(){
     if(L.defs && L.defs.regfields && L.defs.regfields.length) return true;
-    try{ const j = await api('config'); if(j.ok){ L.defs = j.defs; L.today = j.today; L.day = j.day; save(); return true; } }catch(e){}
+    try{ const j = await api('config'); if(j.ok){ L.defs = j.defs; L.today = j.today; L.shows = j.shows || []; L.upcoming = j.upcoming || []; save(); return true; } }catch(e){}
     return false;
   }
   async function showWelcome(msgKey){
@@ -372,34 +392,125 @@
   }
 
   /* ---------- お休みの日 ---------- */
+  // 作品の一覧（閉村日の「次の開催日」や、入口の「今日の物語」）。ひみつのことばは出さない
+  function phaseBadge(ph){ const k = {before:'phaseBefore', open:'phaseOpen', grace:'phaseGrace', over:'phaseOver'}[ph]; return k ? `<em class="sph ${esc(ph)}">${esc(t(k))}</em>` : ''; }
+  function workLine(w, withPhase){
+    const tm = w.start && !(w.start === '00:00' && w.end === '24:00') ? `<small>${esc(t('timeRange', w.start, w.end === '24:00' ? '' : w.end))}</small>` : '';
+    return `<li class="swork"><b>『${esc(T(w.name))}』</b>${tm}${withPhase ? phaseBadge(w.phase) : ''}</li>`;
+  }
+  function upcomingCard(){
+    const up = L.upcoming || [];
+    if(!up.length) return '';
+    return `<div class="scard"><b class="sh">${esc(t('nextDays'))}</b><ul class="sdays">${up.map(d => `<li><span class="sdate">${esc(fmtDate(d.date))}${d.label && T(d.label) ? `　${esc(T(d.label))}` : ''}</span>
+      ${d.works && d.works.length ? `<ul class="sworks">${d.works.map(w => workLine(w)).join('')}</ul>` : ''}</li>`).join('')}</ul></div>`;
+  }
   function showClosed(){
     VIEW = showClosed;
-    const up = L.upcoming || [];
     set(topbar('') + `<div class="spage"><div class="shero"><div class="sbig-icon">🌙</div><p class="skicker">CLOSED TODAY</p><h2>${esc(t('closedHead'))}</h2>
       <p>${esc(t('closedLead'))}</p></div>
-      ${up.length ? `<div class="scard"><b class="sh">${esc(t('nextDays'))}</b><ul class="sdays">${up.map(d => `<li>${esc(T(d.label))}　${esc(fmtDate(d.date))}</li>`).join('')}</ul></div>` : ''}
+      ${upcomingCard()}
       <button class="sbtn sub" data-act="card">${esc(t('seeCard'))}</button></div>`);
   }
+  // 今日の公開がおわったとき（終了後の猶予もすぎた）
+  function showEnded(){
+    VIEW = showEnded; P = null; SFX.stopSamples();
+    set(topbar('') + `<div class="spage"><div class="shero"><div class="sbig-icon">🌇</div><p class="skicker">SEE YOU AGAIN</p><h2>${esc(t('endedHead'))}</h2>
+      <p>${esc(t('endedLead'))}</p></div>
+      ${upcomingCard()}
+      <button class="sbtn sub" data-act="card">${esc(t('seeCard'))}</button></div>`);
+  }
+  // 公開時間（終了後の猶予まで）をすぎたか：サーバーから受け取った時刻と、スマホの時計で判断（物語のページをめくるときに確かめる）
+  function pastUntil(){
+    const d = L.day; if(!d || !d.until || d.date !== todayLocal()) return false;
+    const n = new Date(), m = n.getHours() * 60 + n.getMinutes(), u = d.until.split(':');
+    return m >= (+u[0]) * 60 + (+u[1]);
+  }
+  function timeUp(){ if(!pastUntil()) return false; toast(t('endedSoon')); L.ended = true; save(); syncSoon(); showEnded(); return true; }
 
   /* ---------- 入口のひみつのことば ---------- */
+  /* 入口：自分の部屋。机の上の絵本の留め金に、ひみつのことばを書くと、留め金が外れる（ことばで作品が決まる） */
   function showGate(){
     const keep = $('svGate') ? $('svGate').w.value : '';
-    VIEW = showGate;
-    set(topbar('') + `<div class="spage"><div class="shero">
-      <div class="sbig-icon">🗝️</div><p class="skicker">${esc(T(L.day.label))}　${esc(fmtDate(L.today))}</p>
-      <h2>${esc(t('gateHead'))}</h2><p>${t('gateLead')}</p></div>
-      <form id="svGate" class="scard"><input class="sinput big" name="w" placeholder="${esc(t('secretWord'))}" value="${esc(keep)}" autocomplete="off" aria-label="${esc(t('gateHead'))}"><button class="sbtn main" type="submit">${esc(t('enter'))}</button></form></div>`);
+    VIEW = showGate; SFX.stopSamples();
+    const shows = L.shows || [], cur = L.day && L.unlocked && L.unlocked.entrance ? L.day : null;
+    set(`<div class="sroompage">${window.IWRoom ? window.IWRoom.art({book:'locked', lace:'closed', img:charImg}) : ''}
+      ${topbar('')}
+      <div class="sroomhero"><p class="skicker">${esc(fmtDate(L.today))}</p></div>
+      <div class="sroomfoot">
+        ${shows.length > 1 || (shows.length === 1 && shows[0].phase !== 'open') ? `<div class="sroomworks"><b class="sh">${esc(t('todayWorks'))}</b><ul class="sworks">${shows.map(w => workLine(w, true)).join('')}</ul></div>` : ''}
+        ${cur ? `<div class="sroomnow"><span>${esc(t('nowPlaying'))}：<b>『${esc(T(cur.eventName))}』</b></span><button class="sbtn ghost" data-act="tomap">${esc(t('backMap'))}</button></div>` : ''}
+        <form id="svGate" class="slockcard"><h2>🔐 ${esc(t('lockHead'))}</h2><p>${t('lockLead')}</p>
+          <input class="sinput big" name="w" placeholder="${esc(t('secretWord'))}" value="${esc(keep)}" autocomplete="off" aria-label="${esc(t('lockHead'))}">
+          <button class="sbtn main" type="submit">${esc(t('lockBtn'))}</button></form>
+      </div></div>`);
+    fitRoom();
     $('svGate').addEventListener('submit', async e => {
       e.preventDefault();
       const w = e.target.w.value.trim(); if(!w) return;
       try{
         const j = await api('entrance', {word:w});
-        if(!j.ok){ if(j.error === 'auth') return start(); shake(e.target); return toast(errText(j)); }
-        L.unlocked = j.unlocked; L.map = j.map; L.visits = j.visits || L.visits; L.returning = !!j.returning; L.returningThis = !!j.returningThis; L.prevEvent = !!j.prevEvent; L.intro = j.intro || null; save();
+        if(!j.ok){
+          if(j.error === 'auth') return start();
+          shake(e.target); lockRattle();
+          return toast(j.error === 'not_yet' && j.start ? t('notYetAt', j.start) : errText(j));
+        }
+        if(!L.day || L.day.key !== j.day.key){ L.stories = {}; }      // 作品を切りかえたら、前の作品の物語の控えは使わない
+        L.day = j.day; L.shows = j.shows || L.shows; L.ended = false;
+        L.unlocked = j.unlocked; L.map = j.map; L.visits = j.visits || L.visits; L.returning = !!j.returning; L.returningThis = !!j.returningThis; L.prevEvent = !!j.prevEvent;
+        L.intro = j.intro || null; L.prologue = j.prologue || null; save();
+        // 留め金が外れる
+        const art = document.querySelector('.sroompage > .sbgart');
+        if(art && window.IWRoom) art.outerHTML = window.IWRoom.art({book:'unlocking', lace:'closed', img:charImg});
+        fitRoom();
+        e.target.classList.add('sunlocked');
         celebrate(fill(T(j.message) || t('entered')));
-        setTimeout(route, 1000);
+        setTimeout(route, 1500);
       }catch(err){ toast(errText(err)); }
     });
+  }
+  /* 小さいスマホでは、部屋の絵本が文章の枠に隠れないよう、部屋の絵を少し上にずらす（絵本の下の端を、枠の上に出す） */
+  function fitRoom(){
+    const svg = document.querySelector('.sscene > .sroom, .sroompage > .sroom, .sscene > .simg'), box = document.querySelector('.sscene > .sbook, .sroompage .slockcard');
+    if(!svg || !box) return;
+    svg.style.transform = '';
+    if(svg.dataset.fill) svg.parentNode.style.background = svg.dataset.fill;   // 絵を上にずらしたときに下に見える地の色（小道の色など）
+    const r = svg.getBoundingClientRect(), s = Math.max(r.width / 400, r.height / 800), img = svg.classList.contains('simg');
+    let focus, limit;
+    if(img){
+      // 外の場面：見せたい物（門の足元・噴水）が文章の枠の上に出るように。切りたくない物（時計の文字盤）は上のボタンの下に残す
+      focus = +svg.dataset.focus; if(!focus) return;
+      const keep = +svg.dataset.keep, bar = document.querySelector('.sscene > .sstop');
+      limit = keep ? -(keep * s - (bar ? bar.getBoundingClientRect().bottom : 48) - 4) : -r.height * .3;
+      // 立ち絵が出る場面では、立ち絵の足もとが「床の線」（井戸のふちの上など）より下に来ないようにする（水面の上に浮いて見えないように）
+      const floor = +svg.dataset.floor, actor = document.querySelector('.sscene > .sactor');
+      if(floor && actor){ const ab = actor.getBoundingClientRect().bottom; limit = Math.max(limit, ab - 6 - (r.top + floor * s)); }
+      // 地面の線（ground）：立ち絵が出る場面では、手前の地面の上の端を立ち絵の足もとまで引き上げる（川の上に浮いて見えないように）
+      const ground = +svg.dataset.ground;
+      if(ground && actor){ const ab = actor.getBoundingClientRect().bottom, want = ab + 4 - (r.top + ground * s);
+        if(want < 0){ svg.style.transform = `translateY(${Math.max(-r.height * .3, limit, want).toFixed(0)}px)`; return; } }
+    } else {
+      focus = (((window.IW_ART || {}).room || {}).bookBottom) || 450;     // 400×800 の目安の座標で、絵本の下の端
+      // 窓のアーチの上は切らない（上のボタンの下に少し見える位置まで）。そのぶん絵本の下の端が枠に少しかかるのはよい
+      const win = ((window.IW_ART || {}).room || {}).window; limit = win ? -(win[1] * s - 6) : -r.height * .3;
+    }
+    const shift = Math.max(-r.height * .3, limit, Math.min(0, box.getBoundingClientRect().top - 8 - (r.top + focus * s)));
+    if(shift < 0) svg.style.transform = `translateY(${shift.toFixed(0)}px)`;
+  }
+  window.addEventListener('resize', () => { if(document.querySelector('.sroom')) fitRoom(); });
+  function lockRattle(){ const c = document.querySelector('.sroom .rclasp'); if(!c) return; c.classList.remove('rattle'); void c.getBoundingClientRect(); c.classList.add('rattle'); }
+  /* 共通の短い導入（作品に prologue がないとき）：エスパーが絵本から現れる */
+  function defaultPrologue(){
+    const L3 = (ja, kana, en) => ({ja, kana, en});
+    const sc = (id, bg, next, lines) => ({id, bg, next, item:[], flag:[], add:{}, choices:[], lines});
+    return {facility:'prologue', route:'_default', start:'p1', scenes:{
+      p1: sc('p1', 'room', 'p2', [['', L3('夜。ベッドに入る前、{name}は机の上の絵本をひらこうとしました。', 'よる。ベッドに はいる まえ、{name}は つくえの うえの えほんを ひらこうと しました。', 'At night, before bed, {name} reached for the picture book on the desk.')]]),
+      p2: sc('p2', 'room_book', 'p3', [['', L3('ページをめくると、絵の中の村の窓に、ふっと灯りがともりました。', 'ページを めくると、えの なかの むらの まどに、ふっと あかりが ともりました。', 'As you turned the page, a light flickered on in a window of the village in the picture.')]]),
+      p3: sc('p3', 'room_appear', 'p4', [['esper', L3('こんばんは、{name}！ ぼくの声、聞こえる？', 'こんばんは、{name}！ ぼくの こえ、きこえる？', 'Good evening, {name}! Can you hear me?')],
+        ['', L3('赤い髪の少年が、ふわりとページの外へ出てきました。', 'あかい かみの しょうねんが、ふわりと ページの そとへ でてきました。', 'A red-haired boy floated gently out of the page.')]]),
+      p4: sc('p4', 'room_talk', 'p5', [['esper', L3('ぼくはエスパー。レンガ村から来たんだ。村のみんなが、きみに会いたがっているよ。', 'ぼくは エスパー。レンガむらから きたんだ。むらの みんなが、きみに あいたがって いるよ。', "I'm Esper, from Brick Village. Everyone in the village wants to meet you.")]]),
+      p5: sc('p5', 'room_enter', '', [['esper', L3('ほら、ぼくの手をつかんで！', 'ほら、ぼくの てを つかんで！', 'Here, take my hand!')],
+        ['', L3('その手に触れた瞬間、ページから光があふれ出しました。', 'その てに ふれた しゅんかん、ページから ひかりが あふれだしました。', 'The moment you touched his hand, light poured out of the pages.')]])
+    }};
   }
 
   /* ---------- 地図 ---------- */
@@ -487,7 +598,8 @@
     }).join('');
     const its = Object.keys(L.state.items).filter(k => L.state.items[k] && defs().items[k]);
     set(topbar(t('mapTitle')) + `<div class="spage">
-      <div class="sday"><span>${esc(L.day ? T(L.day.label) : '')}</span>${esc(fmtDate(L.today))}</div>
+      <div class="sday">${L.day && T(L.day.label) ? `<span>${esc(T(L.day.label))}</span>` : ''}${esc(fmtDate(L.today))}</div>
+      ${(L.shows || []).length > 1 && L.day ? `<div class="swhich"><b>『${esc(T(L.day.eventName))}』</b><button class="sbtn chip" data-act="gate">${esc(t('toGate'))}</button></div>` : ''}
       <div class="smap"><svg viewBox="0 0 400 500" role="img" aria-label="${esc(t('mapTitle'))}">
         <defs><filter id="svOl" x="-15%" y="-15%" width="130%" height="130%" color-interpolation-filters="sRGB"><feMorphology in="SourceAlpha" operator="dilate" radius="2.2" result="d"/><feFlood flood-color="#1d1414"/><feComposite in2="d" operator="in" result="o"/><feMerge><feMergeNode in="o"/><feMergeNode in="SourceGraphic"/></feMerge></filter><pattern id="svPave" width="32" height="16" patternUnits="userSpaceOnUse"><rect width="32" height="16" fill="#c8501c"/><rect x="1" y="1" width="14" height="6" fill="#dc6a32"/><rect x="17" y="9" width="14" height="6" fill="#b04014"/><path d="M0 0H32M0 8H32M0 16H32M16 0V8M8 8V16M24 8V16" stroke="#3a0c04" stroke-width="1.2"/></pattern>
         <pattern id="svLane" width="20" height="10" patternUnits="userSpaceOnUse"><rect width="20" height="10" fill="#f8b878"/><path d="M0 0H20M0 5H20M5 0V5M15 5V10" stroke="#a84820" stroke-width="1"/></pattern>
@@ -544,7 +656,7 @@
   let P = null;
   function play(bundle){
     P = {b:bundle, id:bundle.start, line:0, got:[]};
-    if(bundle.facility !== 'intro') push({type:'start', facility:bundle.facility, route:bundle.route});
+    if(bundle.facility !== 'intro' && bundle.facility !== 'prologue') push({type:'start', facility:bundle.facility, route:bundle.route});
     enterScene();
   }
   function scene(){ return P && P.b.scenes[P.id]; }
@@ -565,12 +677,18 @@
     Object.keys(pend || {}).forEach(k => st.points[k] = (st.points[k] || 0) + pend[k]);
     st.flags['_pts:' + storyKey(b)] = true;
   }
+  // 読み終えた印：この上演の読了（地図・条件用）と、作品ごとの最初の読了日（ポイントの二重取り防止・古い形との互換）
+  function markDone(fid){
+    const r = run(); if(!r.done[fid]) r.done[fid] = L.today;
+    const dk = (L.day ? L.day.event : '') + ':' + fid; if(!L.state.done[dk]) L.state.done[dk] = L.today;
+  }
   function pointOf(k){ return (L.state.points[k] || 0) + (P && P.pend && P.pend[k] || 0); }
   function addAll(add, flag, item, srcKey){
     const st = L.state, got = [];
     addPoints(add, srcKey || ('?' + Math.random()));
-    (flag || []).forEach(f => st.flags[f] = true);
-    (item || []).forEach(i => { if(!st.items[i]){ st.items[i] = L.today; got.push(i); } });
+    const r = run();
+    (flag || []).forEach(f => r.flags[f] = true);
+    (item || []).forEach(i => { r.items[i] = r.items[i] || L.today; if(!st.items[i]){ st.items[i] = L.today; got.push(i); } });
     save(); return got;
   }
   // 1画面の文は短く：長いセリフは文の切れ目で自動的にページを分ける（目安60文字）
@@ -610,13 +728,13 @@
     if(c.prevEvent && !L.prevEvent) return false;
     if(c.returningThis === true && !L.returningThis) return false;
     if(c.returningThis === false && L.returningThis) return false;
-    if(c.flags && !c.flags.every(f => st.flags[f])) return false;
-    if(c.notFlags && c.notFlags.some(f => st.flags[f])) return false;
-    if(c.items && !c.items.every(i => st.items[i])) return false;
+    const r = run();   // 記録・アイテム・読了は「この上演の中で」を見る（再公開でははじめから）
+    if(c.flags && !c.flags.every(f => r.flags[f])) return false;
+    if(c.notFlags && c.notFlags.some(f => r.flags[f])) return false;
+    if(c.items && !c.items.every(i => r.items[i])) return false;
     if(c.points && !Object.keys(c.points).every(k => pointOf(k) >= c.points[k])) return false;
-    const ev = L.day ? L.day.event : '';
-    if(c.done && !c.done.every(f => st.done[ev + ':' + f])) return false;
-    if(c.doneCount && Object.keys(st.done).filter(k => k.indexOf(ev + ':') === 0).length < c.doneCount) return false;
+    if(c.done && !c.done.every(f => r.done[f])) return false;
+    if(c.doneCount && Object.keys(r.done).length < c.doneCount) return false;
     return true;
   }
   /* ---------- 物語の背景イラスト（絵で描く背景）：子ども部屋（bedroom）、窓の外に住人（bedroom_window）、机の上のしおり（bedroom_bookmark） ---------- */
@@ -643,62 +761,40 @@
       <text x="60" y="254" text-anchor="middle" font-size="11" font-weight="800" fill="#7a4a20" letter-spacing="2">BRICK VILLAGE</text>
     </svg>`;
   }
-  // curtain：'closed'（カーテンが閉じている）／'opening'（いま開く）／'open'（開いている）
-  function sceneArt(bg, curtain){
-    if(window.IWScenes && window.IWScenes.has(bg)) return window.IWScenes.art(bg);
-    if(!/^bedroom/.test(bg)) return '';
-    curtain = curtain || (bg === 'bedroom' ? 'closed' : 'open');
-    const win = bg === 'bedroom_window' && curtain !== 'closed', mark = bg === 'bedroom_bookmark';
-    const stars = [[148,128],[176,170],[222,118],[258,160],[196,222],[240,250],[160,262],[268,214]].map(([x, y], i) => `<circle class="star ns" style="--d:${(i*0.37).toFixed(2)}s" cx="${x}" cy="${y}" r="${i%3 ? 1.8 : 2.6}" fill="#fff8d0"/>`).join('');
-    const books = Array.from({length:18}, (_, i) => { const row = Math.floor(i/6), x = 18 + (i%6)*13, h = 54 + ((i*7)%4)*6, c = ['#e2687e','#5a6ab8','#ffd000','#4f9a4a','#d9534a','#8a5ab8'][(i+row)%6];
-      return `<rect x="${x}" y="${240 + row*92 + (72 - h)}" width="11" height="${h}" rx="2" fill="${c}"/>`; }).join('');
-    // 窓の外のエスパーとミミ（住人のイラストをそのまま使い、窓わくの内側だけに見せる）
-    // 2人が星にもどっていく：まず体のまわりに星がきらきらまたたき、体が光に包まれて薄れ、小さな星になって夜空へのぼっていく。
-    // iPhone の Safari でも同じに見えるよう、SVG の要素には CSS の filter（明るさ・ぼかし）や、@keyframes の中の var() を使わない
-    const star4 = r => `M0 ${-r} L${r * .3} ${-r * .3} L${r} 0 L${r * .3} ${r * .3} L0 ${r} L${-r * .3} ${r * .3} L${-r} 0 L${-r * .3} ${-r * .3} Z`;
-    const leaving = curtain === 'leaving';
-    const sparks = leaving ? Array.from({length:18}, (_, i) => { const x = 124 + ((i * 41) % 160), y = 212 + ((i * 29) % 120), d = ((i * 0.13) % 1.3).toFixed(2), r = 6 + (i % 3) * 3;
-      return `<g transform="translate(${x} ${y})"><path class="ns spk" style="animation-delay:${d}s" d="${star4(r)}" fill="#fff6c8"/></g>`; }).join('') : '';
-    const rise = leaving ? Array.from({length:22}, (_, i) => { const x = 128 + ((i * 37) % 150), y = 236 + ((i * 53) % 80), d = (1.3 + (i % 7) * 0.22).toFixed(2);
-      return `<g transform="translate(${x} ${y})"><path class="ns rise r${i % 5}" style="animation-delay:${d}s" d="${star4(i % 3 ? 4.5 : 6.5)}" fill="#fff6c8"/></g>`; }).join('') : '';
-    const pair = (cls) => `<image class="wave l" href="${charImg('esper')}" x="110" y="198" width="100" height="150" preserveAspectRatio="xMidYMax meet"/>
-      <image class="wave r" href="${charImg('mimi')}" x="208" y="196" width="84" height="150" preserveAspectRatio="xMidYMax meet"/>`;
-    const toStars = leaving ? `<g clip-path="url(#svWin)"><g class="friendsGlow" filter="url(#svGlow)">${pair()}</g>${sparks}${rise}</g>` : '';
-    const friends = win ? `<g clip-path="url(#svWin)" class="${curtain === 'opening' ? 'friendsIn' : leaving ? 'friendsOut' : ''}">${pair()}</g>` : '';
-    // カーテン：開いた形を描き、閉じているときは横に広げる（ひだの線は太さを変えない）
-    const folds = side => [0.3, 0.55, 0.8].map(k => { const x = side < 0 ? 76 + 26 * k : 324 - 26 * k; return `<path d="M${x} 74 Q${x + side * 3} 210 ${x - side * 2} 350" fill="none" stroke="#b8405a" stroke-width="1.6" vector-effect="non-scaling-stroke"/>`; }).join('');
-    const cState = curtain === 'closed' ? 'closed' : curtain === 'opening' ? 'opening' : '';
-    const curtainSvg = `<g class="curtain l ${cState}"><path d="M100 70 Q112 200 92 352 L76 352 L76 70 Z" fill="#e2687e" vector-effect="non-scaling-stroke"/>${folds(-1)}</g>
-      <g class="curtain r ${cState}"><path d="M300 70 Q288 200 308 352 L324 352 L324 70 Z" fill="#e2687e" vector-effect="non-scaling-stroke"/>${folds(1)}</g>`;
-    return `<svg class="sbgart" viewBox="0 0 400 800" preserveAspectRatio="xMidYMin slice" aria-hidden="true">
-      <defs><filter id="brOl" x="-15%" y="-15%" width="130%" height="130%" color-interpolation-filters="sRGB"><feMorphology in="SourceAlpha" operator="dilate" radius="2" result="d"/><feFlood flood-color="#1d1414"/><feComposite in2="d" operator="in" result="o"/><feMerge><feMergeNode in="o"/><feMergeNode in="SourceGraphic"/></feMerge></filter><linearGradient id="svWall" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3a2f5e"/><stop offset=".55" stop-color="#5a4472"/><stop offset="1" stop-color="#6e4f6a"/></linearGradient>
-        <linearGradient id="svSky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#14184a"/><stop offset="1" stop-color="#3a3f8a"/></linearGradient>
-        <radialGradient id="svLamp" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="rgba(255,214,120,.55)"/><stop offset="1" stop-color="rgba(255,214,120,0)"/></radialGradient>
-        <clipPath id="svWin"><rect x="112" y="96" width="176" height="196"/></clipPath>
-        <filter id="svGlow" x="-20%" y="-20%" width="140%" height="140%" color-interpolation-filters="sRGB"><feColorMatrix type="matrix" values="0 0 0 0 1  0 0 0 0 .97  0 0 0 0 .82  0 0 0 1 0"/><feGaussianBlur stdDeviation="2.5"/></filter>
-        <pattern id="svPaper" width="40" height="40" patternUnits="userSpaceOnUse"><circle class="ns" cx="10" cy="10" r="2" fill="rgba(255,255,255,.07)"/><circle class="ns" cx="30" cy="30" r="2" fill="rgba(255,255,255,.07)"/></pattern></defs>
-      <rect class="ns" width="400" height="800" fill="url(#svWall)"/><rect class="ns" width="400" height="800" fill="url(#svPaper)"/>
-      <rect y="560" width="400" height="240" fill="#7a4a2a"/>${[580,610,640,670,700,730].map((y, i) => `<path d="M0 ${y} H400${[0,1,2,3].map(k => ` M${(k*110 + (i%2)*55) % 400} ${y} V${y+30}`).join('')}" fill="none" stroke="#1d1414" stroke-width="2"/>`).join('')}
-      <g filter="url(#brOl)"><rect x="104" y="88" width="192" height="212" rx="8" fill="#8a5a32"/></g>
-      <rect class="ns" x="112" y="96" width="176" height="196" fill="url(#svSky)"/>
-      <circle cx="252" cy="134" r="18" fill="#fff4c0"/><circle class="ns" cx="260" cy="128" r="16" fill="url(#svSky)"/>
-      ${stars}
-      <path d="M112 270 Q160 252 200 266 Q240 280 288 262 V292 H112 Z" fill="#c87850" opacity=".85"/>
-      ${friends}${toStars}
-      <path d="M200 96 V292 M112 194 H288" fill="none" stroke="#1d1414" stroke-width="10"/><path d="M200 96 V292 M112 194 H288" fill="none" stroke="#8a5a32" stroke-width="6"/>
-      <g filter="url(#brOl)"><rect x="96" y="292" width="208" height="14" rx="4" fill="#a8743c"/><rect x="70" y="60" width="260" height="10" rx="5" fill="#a8743c"/></g>
-      <g filter="url(#brOl)">${curtainSvg}</g>
-      <g filter="url(#brOl)"><rect x="8" y="200" width="96" height="340" rx="4" fill="#8a5a32"/><rect x="14" y="206" width="84" height="328" fill="#6a3e22"/>
-      ${[0,1,2].map(r => `<rect x="14" y="${310 + r*92}" width="84" height="6" fill="#8a5a32"/>`).join('')}
-      ${books}</g>
-      <ellipse class="ns" cx="350" cy="350" rx="90" ry="80" fill="url(#svLamp)"/>
-      <g filter="url(#brOl)"><rect x="236" y="392" width="164" height="14" rx="3" fill="#a8743c"/><rect x="246" y="406" width="10" height="160" fill="#8a5a32"/><rect x="384" y="406" width="10" height="160" fill="#8a5a32"/>
-      <path d="M350 392 V350" fill="none" stroke="#1d1414" stroke-width="4"/><path d="M326 352 L374 352 L362 318 L338 318 Z" fill="#ffd96a"/><ellipse cx="350" cy="392" rx="16" ry="4" fill="#5a3a1a"/>
-      <rect x="262" y="374" width="58" height="18" rx="3" fill="#3f6fb0"/><rect x="266" y="370" width="50" height="6" fill="#f6ecd8"/></g>
-      ${mark ? `<g class="deskmark" transform="translate(286 300) rotate(-12)">${bookmarkSVG(40).replace('<svg ', '<svg x="0" y="0" height="100" ')}</g>` : ''}
-    </svg>`;
+  /* 自分の部屋（導入 room〜 と帰還 bedroom〜 で同じ絵）。story/room.js の IWRoom で描く
+     curtain：'closed'（レースのカーテンが閉じている）／'opening'（いま開く）／'open'／'leaving'（窓の住人が星になって帰る） */
+  function speakersOf(sc){ const o = []; ((sc && sc.lines) || []).forEach(l => { if(l[0] && !o.includes(l[0])) o.push(l[0]); }); return o; }
+  // 正式なイラスト（story/art/manifest.js）があれば、その画像を使う
+  const artItem = id => ((window.IW_ART || {}).items || {})[id] || '';
+  function mementoArt(id){
+    if(!id) return '';
+    if(artItem(id)) return `<image href="${esc(artItem(id))}" x="-45" y="-45" width="90" height="90"/>`;   // 画像の記念の品は、そのまま机に置く（光の輪は付けない）
+    if(id === 'old_bookmark') return `<circle class="halo" cx="0" cy="0" r="30" fill="rgba(255,236,150,.35)"/>${bookmarkSVG(30).replace('<svg ', '<svg x="-15" y="-38" height="76" ')}`;
+    const it = defs().items[id] || {};
+    return `<circle class="halo" cx="0" cy="0" r="26" fill="rgba(255,236,150,.38)"/><text x="0" y="11" text-anchor="middle" font-size="30">${esc(it.icon || '★')}</text>`;
   }
-  window.IWStoryArt = (bg, c) => sceneArt(bg, c);   // 確認用
+  function sceneArt(bg, curtain, sc, pageNo){
+    // 正式なイラストの背景（story/art/manifest.js の scenes）。focus＝小さいスマホでも見せたい物の下の端、keep＝切りたくない物の上の端（400×800 の目安の座標）
+    const SA = ((window.IW_ART || {}).scenes || {})[bg];
+    if(SA && SA.far) return `<svg class="sbgart simg" viewBox="0 0 400 800" preserveAspectRatio="xMidYMin slice" aria-hidden="true" data-focus="${+SA.focus || 0}" data-keep="${+SA.keep || 0}" data-floor="${+SA.floor || 0}" data-ground="${+SA.ground || 0}" data-fill="${esc(SA.fill || '')}">
+      <image href="${esc(SA.far)}" x="0" y="0" width="400" height="800" preserveAspectRatio="none"/>${SA.mid ? `<image href="${esc(SA.mid)}" x="0" y="0" width="400" height="800" preserveAspectRatio="none"/>` : ''}${SA.near ? `<image href="${esc(SA.near)}" x="0" y="0" width="400" height="800" preserveAspectRatio="none"/>` : ''}</svg>`;
+    if(window.IWScenes && window.IWScenes.has(bg)) return window.IWScenes.art(bg);
+    if(!window.IWRoom || !/^(bedroom|room)/.test(bg)) return '';
+    const o = {img: charImg};
+    if(/^room/.test(bg)){
+      o.lace = 'closed';
+      o.book = bg === 'room' ? 'closed' : bg === 'room_book' ? (pageNo === 0 ? 'opening' : 'open') : 'glow';
+      return window.IWRoom.art(o);
+    }
+    o.book = 'closed';
+    o.lace = curtain || (bg === 'bedroom_window' ? 'open' : 'closed');
+    if(o.lace === 'leaving'){ o.lace = 'open'; o.leaving = true; }
+    if(bg === 'bedroom_window'){ o.friends = speakersOf(sc); if(!o.friends.length) o.friends = ['esper', 'mimi']; }
+    if(bg === 'bedroom_bookmark') o.memento = mementoArt('old_bookmark');
+    if(bg === 'bedroom_memento') o.memento = mementoArt(sc && sc.item && sc.item[0]);
+    return window.IWRoom.art(o);
+  }
+  window.IWStoryArt = sceneArt;
   function face(k){ return `<span class="sface"><img src="${charImg(k)}" alt=""></span>`; }
   function render(){
     const sc = scene(), pages = P.pages, pg = pages[P.line] || {who:'', text:''};
@@ -713,12 +809,14 @@
     const srcLine = sc.lines[pg.src] || [], jaText = srcLine[1] && typeof srcLine[1] === 'object' ? (srcLine[1].ja || '') : String(srcLine[1] || pg.text);
     const titleCard = finale && !who && Array.from(jaText).length <= 22 && P.line >= pages.length - 2;   // 長さは日本語の文で判断（言語で変わらない）
     const cardHtml = () => { const tx = pg.text, m = Array.from(tx).length > 12 && tx.match(/^(.+?[、,])\s*(.+)$/); return m ? esc(m[1]) + '<br>' + esc(m[2]) : esc(tx); };
-    const scBg = /^[a-z_]+$/.test(sc.bg) ? sc.bg : 'meadow', inRoom = /^bedroom/.test(scBg);
+    const scBg = /^[a-z_]+$/.test(sc.bg) ? sc.bg : 'meadow', inRoom = /^(bedroom|room)/.test(scBg);
     let foot;
     if(choices.length) foot = `<div class="schoices" role="group" aria-label="${esc(t('whatDo'))}"><p class="sask">${esc(t('whatDo'))}</p>${choices.map(c => `<button class="sbtn choice" data-act="choose" data-i="${sc.choices.indexOf(c)}">${esc(fill(T(c.text)))}</button>`).join('')}</div>`;
     else if(ending) foot = `<div class="sar"><a class="sbtn main pink" href="${esc(arLink(sc.ar))}" target="_blank" rel="noopener" data-act="ar">${esc(fill(T(sc.arLabel) || t('arDefault')))}</a>
       <small>${esc(t('arNote'))}</small><button class="sbtn link" data-act="next">${esc(t('backToMap'))}</button></div>`;
-    else foot = `<button class="sbtn main snextbtn" data-act="next">${esc(t(last && !sc.next ? (finale ? 'backToMap' : 'close') : 'next'))} <span aria-hidden="true">▶</span></button>`;
+    else if(finale && last) foot = `<button class="sbtn sfinmap snextbtn" data-act="next">${esc(t('seeMap'))}</button>`;   // 帰還のあとは余韻を優先：地図へは小さく
+    else if(scBg === 'room' && last) foot = `<button class="sbtn main snextbtn sopenbook" data-act="next">📖 ${esc(t('openBook'))}</button>`;
+    else foot = `<button class="sbtn main snextbtn" data-act="next">${esc(t(last && !sc.next && P.b.facility !== 'prologue' ? 'close' : 'next'))} <span aria-hidden="true">▶</span></button>`;
     const dots = pages.length > 1 ? `<span class="sdots" aria-label="${P.line + 1} / ${pages.length}">${pages.map((_, i) => `<i class="${i === P.line ? 'on' : ''}"></i>`).join('')}</span>` : '<span></span>';
     let curtain = '';
     if(scBg === 'bedroom_window'){
@@ -728,11 +826,25 @@
       else curtain = pg.src === sc.lines.length - 1 ? 'leaving' : 'open';   // 最後の行（星明かりの中へ消えていく）
       if(pg.src === 0 && !P.knocked){ P.knocked = true; setTimeout(() => SFX.play('knock'), 450); }
     }
-    set(`<div class="sscene bg-${esc(scBg)}" ${bg}>${sceneArt(scBg, curtain)}
-      <div class="sstop"><button class="sbtn ghost" data-act="leave">‹ ${esc(t('toMap'))}</button><span class="sbarr">${langBtn()}${soundBtn()}</span></div>
+    // 部屋の導入（room〜）：絵本から現れた住人を部屋に立たせる（話し手が変わっても、現れた住人はそのまま）
+    const inPro = /^room/.test(scBg);
+    let cast = '';
+    if(inPro && scBg !== 'room' && scBg !== 'room_book'){
+      P.cast = P.cast || [];
+      speakersOf(sc).forEach(k => { if(!P.cast.includes(k)) P.cast.push(k); });
+      let st2 = '';
+      if(scBg === 'room_appear' && !P.emerged){ if(pages.length > 1 && P.line === 0) st2 = 'inbook'; else { st2 = 'emerge'; P.emerged = true; } }
+      else if(scBg === 'room_enter' && who) st2 = 'reach';
+      const sparks = st2 === 'emerge' ? Array.from({length:12}, (_, i) => `<i class="rspark" style="--x:${(30 + (i * 37) % 40)}%;--y:${(20 + (i * 53) % 70)}%;animation-delay:${(i * .09).toFixed(2)}s"></i>`).join('') : '';
+      cast = P.cast.length ? `<div class="sroomcast ${st2}" aria-hidden="true">${P.cast.slice(0, 3).map(k => `<img src="${charImg(k)}" alt="">`).join('')}${sparks}</div>` : '';
+    }
+    set(`<div class="sscene bg-${esc(scBg)}" ${bg}>${clockFx(scrapFx(windFx(boardFx(waterFx(sceneArt(scBg, curtain, sc, P.line), scBg, sc, pg), scBg, sc, pg), scBg), scBg, sc, pg), scBg, sc, pg)}
+      <div class="sstop">${P.b.facility === 'prologue' ? '<span></span>' : `<button class="sbtn ghost" data-act="leave">‹ ${esc(t('toMap'))}</button>`}<span class="sbarr">${langBtn()}${soundBtn()}</span></div>
       ${fac && !inRoom ? `<span class="sfac">${esc(T(fac.name))}</span>` : ''}
-      ${who && scBg !== 'bedroom_window' ? `<img class="sactor" src="${charImg(who)}" alt="" aria-hidden="true">` : ''}
-      ${scBg === 'bedroom_bookmark' && pg.src === 1 && !titleCard ? `<div class="sprop">${bookmarkSVG(150)}</div>` : ''}
+      ${cast}
+      ${who && scBg !== 'bedroom_window' && !inPro ? `<img class="sactor" src="${charImg(who)}" alt="" aria-hidden="true">` : ''}
+      ${scBg === 'bedroom_bookmark' && pg.src === 1 && !titleCard ? `<div class="sprop">${artItem('old_bookmark') ? `<img class="smemo img" src="${esc(artItem('old_bookmark'))}" alt="">` : bookmarkSVG(150)}</div>` : ''}
+      ${scBg === 'bedroom_memento' && pg.src === 0 && sc.item && sc.item[0] && !titleCard ? `<div class="sprop">${artItem(sc.item[0]) ? `<img class="smemo img" src="${esc(artItem(sc.item[0]))}" alt="">` : sc.item[0] === 'old_bookmark' ? bookmarkSVG(150) : `<span class="smemo">${esc((defs().items[sc.item[0]] || {}).icon || '★')}</span>`}</div>` : ''}
       ${titleCard ? `<div class="sfinale${P.line === pages.length - 1 ? ' last' : ''}"><span>${cardHtml()}</span></div>` : ''}
       <article class="sbook ${who ? '' : 'narr'}${titleCard ? ' quiet' : ''}" aria-live="polite">
         ${who ? `<header class="sspeaker">${face(who)}<b>${esc(cname(who))}</b></header>` : ''}
@@ -740,6 +852,7 @@
         <div class="snav">${P.line > 0 ? `<button class="sbtn link sprev" data-act="prev">◀ ${esc(t('prev'))}</button>` : '<span></span>'}${dots}</div>
         ${foot}
       </article></div>`);
+    fitRoom();
     SFX.voice(pg.voice);
     // 「鐘」が「鳴る」ページで鐘の音（日本語の文で判断するので、どの言語でも鳴る）。同じページでは1回だけ
     const sfxKey = P.id + ':' + P.line;
@@ -756,9 +869,129 @@
     document.body.appendChild(c); SFX.play('ending');
     setTimeout(() => c.remove(), 3600);
   }
+  /* 水面の演出（manifest の scenes.<背景>.water ＝ 水面のだ円 [左, 上, 右, 下]）。シナリオの日本語の文で判断するので、どの言語でも同じ場面で出る
+     ・「水面」「光」「灯」を含む行から：水面に小さな光が灯る（その場面のあいだ残る）
+     ・「水面」「文字」「浮か」を含む行：かすれた文字が浮かぶ（文字は次の行の「」の中。表示中の言語の文）
+     ・「文字」「消え」を含む行：浮かんだ文字が消えていく */
+  function waterFx(svg, bg, sc, pg){
+    const W = (((window.IW_ART || {}).scenes || {})[bg] || {}).water; if(!W || !svg) return svg;
+    const ja = i => { const l = sc.lines[i]; return l ? (typeof l[1] === 'object' ? (l[1].ja || '') : String(l[1] || '')) : ''; };
+    const quote = i => { const l = sc.lines[i]; if(!l) return ''; const m = fill(T(l[1])).match(/[「“"『]([^」”"』]+)[」”"』]/); return m ? m[1] : ''; };
+    const cx = (W[0] + W[2]) / 2, cy = (W[1] + W[3]) / 2, rx = (W[2] - W[0]) / 2, ry = (W[3] - W[1]) / 2;
+    let fx = '';
+    let lit = -1; for(let i = 0; i <= pg.src; i++){ const t = ja(i); if(/水面/.test(t) && /光/.test(t) && /灯/.test(t)){ lit = i; break; } }
+    if(lit >= 0) fx += `<g class="wlight${lit === pg.src ? ' new' : ''}"><ellipse class="ns" cx="${cx}" cy="${cy}" rx="${rx * 1.05}" ry="${ry * 1.2}" fill="url(#wGlow)"/><ellipse class="ns" cx="${cx}" cy="${cy}" rx="${rx * .45}" ry="${ry * .45}" fill="url(#wGlow)"/><circle class="ns wcore" cx="${cx}" cy="${cy}" r="${ry * .22}" fill="#fffef2"/>${[[-.5,-.15],[.45,.1],[-.2,.25],[.25,-.3]].map(([dx, dy], i) => `<circle class="ns wspk" style="animation-delay:${(i * .45).toFixed(2)}s" cx="${(cx + dx * rx).toFixed(1)}" cy="${(cy + dy * ry).toFixed(1)}" r="1.4" fill="#fffbe0"/>`).join('')}</g>`;
+    const now = ja(pg.src);
+    let txt = '', cls = '';
+    if(/水面/.test(now) && /文字/.test(now) && /浮か/.test(now)){ txt = quote(pg.src + 1) || quote(pg.src); cls = 'in'; }
+    else if(/文字/.test(now) && /消え/.test(now)){ txt = quote(pg.src); cls = 'out'; }
+    if(txt){
+      const est = Array.from(txt).reduce((a, c) => a + (/[\u3000-\u9fff\uff00-\uffef]/.test(c) ? 1 : .55), 0) * 11, fit = est > rx * 1.7 ? ` textLength="${(rx * 1.7).toFixed(0)}" lengthAdjust="spacingAndGlyphs"` : '';
+      fx += `<text class="wtext ${cls}" x="${cx}" y="${cy + 3}" text-anchor="middle" font-size="11" font-weight="700"${fit}>${esc(txt)}</text>`;
+    }
+    if(!fx) return svg;
+    return svg.replace('</svg>', `<defs><radialGradient id="wGlow"><stop offset="0" stop-color="rgba(255,252,225,1)"/><stop offset=".35" stop-color="rgba(255,245,190,.7)"/><stop offset=".7" stop-color="rgba(190,245,255,.35)"/><stop offset="1" stop-color="rgba(200,245,255,0)"/></radialGradient></defs>${fx}</svg>`);
+  }
+  /* 貼り紙の演出（manifest の scenes.<背景>.board ＝ 紙を貼る範囲 [左, 上, 右, 下]）。
+     「紙」「貼」を含む行から、その行の「」の中の言葉（表示中の言語）を書いた紙がボードに貼られ、その場面のあいだ残る */
+  function boardFx(svg, bg, sc, pg){
+    const B = (((window.IW_ART || {}).scenes || {})[bg] || {}).board; if(!B || !svg) return svg;
+    const ja = i => { const l = sc.lines[i]; return l ? (typeof l[1] === 'object' ? (l[1].ja || '') : String(l[1] || '')) : ''; };
+    let at = -1; for(let i = 0; i <= pg.src; i++){ const t = ja(i); if(/紙/.test(t) && /貼/.test(t)){ at = i; break; } }
+    if(at < 0) return svg;
+    const l = sc.lines[at], m = fill(T(l[1])).match(/[「“"『]([^」”"』]+)[」”"』]/), txt = m ? m[1] : '';
+    if(!txt) return svg;
+    const w = B[2] - B[0], h = B[3] - B[1], cx = (B[0] + B[2]) / 2, cy = (B[1] + B[3]) / 2;
+    const pw = w * .9, ph = Math.min(h * .78, pw * 1.1);
+    const wide = c => /[\u3000-\u9fff\uff00-\uffef]/.test(c) ? 1 : .56;
+    const len = t => Array.from(t).reduce((a, c) => a + wide(c), 0);
+    // 文を2行までに分ける（読点・空白で。なければ半分で）
+    let rows = [txt];
+    if(len(txt) * 7 > pw * .86){
+      const cut = txt.search(/[、，,]\s*|\s+/) > 0 ? txt.search(/[、，,]\s*|\s+/) : Math.ceil(txt.length / 2);
+      const sep = (txt.slice(cut).match(/^[、，,]?\s*/) || [''])[0];
+      rows = [txt.slice(0, cut + (/^[、，,]/.test(sep) ? 1 : 0)).trim(), txt.slice(cut + sep.length).trim()].filter(Boolean);
+    }
+    const fs = Math.min(8, (pw * .86) / Math.max(...rows.map(len)), (ph * .7) / rows.length / 1.25);
+    const y0 = cy + 4 - (rows.length - 1) * fs * .62;
+    const text = rows.map((r, i) => `<text x="${cx}" y="${(y0 + i * fs * 1.25).toFixed(1)}" text-anchor="middle" font-size="${fs.toFixed(1)}" font-weight="700" fill="#3a2418">${esc(r)}</text>`).join('');
+    const note = `<g transform="rotate(-3 ${cx} ${cy})"><g class="bnote${at === pg.src ? ' new' : ''}"><rect class="ns" x="${(cx - pw / 2).toFixed(1)}" y="${(cy - ph / 2).toFixed(1)}" width="${pw.toFixed(1)}" height="${ph.toFixed(1)}" rx="1.5" fill="#fffaf0" stroke="#c8b08a" stroke-width=".6"/>
+      <circle class="ns" cx="${cx}" cy="${(cy - ph / 2 + 3).toFixed(1)}" r="2" fill="#d9534a"/>${text}</g></g>`;
+    return svg.replace('</svg>', note + '</svg>');
+  }
+  /* 風の演出（manifest の scenes.<背景>.wind）：葉と花びらが少しだけ横に流れる。文章の枠にかからない画面の上のほうだけ・少なめ・小さめ */
+  function windFx(svg, bg){
+    const C = ((window.IW_ART || {}).scenes || {})[bg] || {}; if(!C.wind || !svg) return svg;
+    const leaf = (c) => `<path class="ns" d="M0 -3 Q3.4 0 0 3 Q-3.4 0 0 -3 Z" fill="${c}"/>`, petal = c => `<ellipse class="ns" rx="2.2" ry="1.4" fill="${c}"/>`;
+    const items = [[70,'#9ccf4a',0,9],[150,'#f6f0d8',1,11],[230,'#c8e060',0,10],[110,'#f4b8c8',1,12],[300,'#a8d050',0,9.5],[190,'#fff6e0',1,11.5]];
+    const g = items.map(([y, c, k, dur], i) => `<g transform="translate(-10 ${y})"><g class="wnd w${i % 3}" style="animation-duration:${dur}s;animation-delay:-${(i * 1.7).toFixed(1)}s">${k ? petal(c) : leaf(c)}</g></g>`).join('');
+    return svg.replace('</svg>', `<g class="wind" aria-hidden="true">${g}</g></svg>`);
+  }
+  /* 紙切れが風に乗って飛んでくる演出（manifest の scenes.<背景>.scrap ＝ {from:[x,y], to:[x,y]}）。
+     「紙」「飛ん」を含む行で飛んできて、そのあとの場面のあいだ止まっている。紙の言葉は次の行の『』「」“”の中（表示中の言語）。読むまでは文字を出さない */
+  function scrapFx(svg, bg, sc, pg){
+    const C = (((window.IW_ART || {}).scenes || {})[bg] || {}).scrap; if(!C || !svg) return svg;
+    const ja = i => { const l = sc.lines[i]; return l ? (typeof l[1] === 'object' ? (l[1].ja || '') : String(l[1] || '')) : ''; };
+    let at = -1; for(let i = 0; i <= pg.src; i++){ const t = ja(i); if(/紙/.test(t) && /飛ん/.test(t)){ at = i; break; } }
+    if(at < 0) return svg;
+    let word = '';
+    if(pg.src > at){ const l = sc.lines[at + 1]; const m = l ? fill(T(l[1])).match(/[『「“"]([^』」”"]+)[』」”"]/) : null; word = m ? m[1].replace(/[。.、,！!？?]+$/, '') : ''; }
+    const [tx, ty] = C.to, fs = word ? Math.min(7, 26 / Math.max(1, Array.from(word).reduce((a, c) => a + (/[\u3000-\u9fff\uff00-\uffef]/.test(c) ? 1 : .55), 0))) : 0;
+    const paper = `<g transform="rotate(-8)"><path class="ns" d="M-15 -9 L13 -10 L15 -2 L12 9 L-14 10 L-13 1 Z" fill="#fbf3dc" stroke="#c8b08a" stroke-width=".5"/>
+      ${word ? `<text class="ns" y="${(fs * .35).toFixed(1)}" text-anchor="middle" font-size="${fs.toFixed(1)}" font-weight="700" fill="#5a3a1a">${esc(word)}</text>` : ''}</g>`;
+    // 飛んでくる動きは SVG の animateTransform で（iPhone の Safari では、CSS の keyframes の中の var() が SVG で効かないため）
+    const fx = C.from[0] - tx, fy = C.from[1] - ty;
+    const fly = at === pg.src ? `<animateTransform attributeName="transform" type="translate" dur="2.6s" begin="0.3s" fill="freeze" calcMode="spline" keyTimes="0;.45;.75;1" keySplines=".35 .1 .3 1;.35 .1 .3 1;.35 .1 .3 1" values="${fx} ${fy};${(fx * .55).toFixed(0)} ${(fy * .3 - 40).toFixed(0)};${(fx * .15).toFixed(0)} -14;0 0"/>
+      <animateTransform attributeName="transform" type="rotate" additive="sum" dur="2.6s" begin="0.3s" fill="freeze" keyTimes="0;.45;.75;1" values="30;-25;15;0"/>` : '';
+    return svg.replace('</svg>', `<g transform="translate(${tx} ${ty})"><g class="scrap${fly ? ' fly' : ''}"${fly ? ` transform="translate(${fx} ${fy})"` : ''}>${fly}${paper}</g></g></svg>`);
+  }
+  /* 時計台の演出（manifest の scenes.<背景>.hands・bell）。シナリオの日本語の文で判断するので、どの言語でも同じ場面で出る
+     ・針：文字盤にいつも止まった針を重ねる。「針」と「動き／動い」を含む行で、長針が一瞬だけ進んで、また元の位置で止まる
+     ・鐘：地の文で「鐘」と「鳴らし」を含む行（誰かが鐘を鳴らした行）で、鐘が小さく揺れて、やわらかな金色の光が広がる
+     動きは SVG の SMIL で（iPhone の Safari のため）。動きを減らす設定の端末では、動かさない */
+  const calmMotion = () => { try { return matchMedia('(prefers-reduced-motion: reduce)').matches; } catch(e){ return false; } };
+  function clockFx(svg, bg, sc, pg){
+    const C = ((window.IW_ART || {}).scenes || {})[bg] || {}; if(!svg || (!C.hands && !C.bell)) return svg;
+    const ja = i => { const l = sc.lines[i]; return l ? (typeof l[1] === 'object' ? (l[1].ja || '') : String(l[1] || '')) : ''; };
+    const line = sc.lines[pg.src] || [], now = ja(pg.src), narr = !line[0], calm = calmMotion();
+    let under = '', over = '';
+    if(C.bell){
+      const [px, py] = C.bell.pivot, ring = narr && /鐘/.test(now) && /鳴らし/.test(now) && !calm;
+      if(ring){
+        // 鐘を形どおりに切り抜いて、支点を中心に小さく揺らす（±1.6度から少しずつ小さく）。その上に金色の光
+        const swing = `<animateTransform attributeName="transform" type="rotate" dur="2.6s" begin="0.25s" fill="freeze" calcMode="spline" keyTimes="0;.18;.42;.66;.86;1" keySplines=".4 0 .6 1;.4 0 .6 1;.4 0 .6 1;.4 0 .6 1;.4 0 .6 1" values="0 ${px} ${py};1.6 ${px} ${py};-1.2 ${px} ${py};.7 ${px} ${py};-.3 ${px} ${py};0 ${px} ${py}"/>`;
+        under += `<defs><clipPath id="cBell"><polygon points="${C.bell.shape}"/></clipPath>
+          <radialGradient id="cGold"><stop offset="0" stop-color="rgba(255,236,170,.75)"/><stop offset=".45" stop-color="rgba(255,214,120,.32)"/><stop offset="1" stop-color="rgba(255,205,110,0)"/></radialGradient></defs>
+          <g class="cbell">${swing}<image href="${esc(C.far)}" x="0" y="0" width="400" height="800" preserveAspectRatio="none" clip-path="url(#cBell)"/></g>`;
+        // 光：鐘のあたりから部屋いっぱいにふわっと広がって、ゆっくり薄れる（ほんのり残る）
+        const cy = py + 85;
+        over += `<g class="cglow" aria-hidden="true"><circle class="ns" cx="${px}" cy="${cy}" r="40" fill="url(#cGold)" opacity="0">
+            <animate attributeName="r" dur="3.2s" begin="0.35s" fill="freeze" calcMode="spline" keyTimes="0;1" keySplines=".2 .6 .3 1" values="40;430"/>
+            <animate attributeName="opacity" dur="3.2s" begin="0.35s" fill="freeze" keyTimes="0;.18;1" values="0;.9;.28"/></circle>
+          <circle class="ns" cx="${px}" cy="${cy}" r="58" fill="url(#cGold)" opacity="0"><animate attributeName="opacity" dur="2.4s" begin="0.3s" fill="freeze" keyTimes="0;.2;1" values="0;.85;.35"/></circle></g>`;
+      }
+    }
+    if(C.hands){
+      const [cx, cy] = C.hands.at, [hl, ml] = C.hands.len || [34, 54];
+      const [hh, mm] = String(C.hands.time || '10:00').split(':').map(Number);
+      const aH = ((hh % 12) + mm / 60) * 30, aM = mm * 6;
+      let twitch = false; if(/針/.test(now) && /動[きい]/.test(now) && !/動かな/.test(now) && !calm) twitch = true;
+      // 針の形（12時の向きで描いて、回す）。鉄の黒っぽい色で、文字盤の真ちゅうのスポークと見分けられるように
+      const hour = `<path class="ns" d="M${cx - 2.6} ${cy + 9} L${cx - 2.4} ${cy - hl + 12} L${cx - 6} ${cy - hl + 7} L${cx} ${cy - hl} L${cx + 6} ${cy - hl + 7} L${cx + 2.4} ${cy - hl + 12} L${cx + 2.6} ${cy + 9} Z" fill="#2c2018"/>`;
+      const min = `<path class="ns" d="M${cx - 1.8} ${cy + 13} L${cx - 1.4} ${cy - ml + 9} L${cx - 4} ${cy - ml + 9} L${cx} ${cy - ml} L${cx + 4} ${cy - ml + 9} L${cx + 1.4} ${cy - ml + 9} L${cx + 1.8} ${cy + 13} Z" fill="#2c2018"/>`;
+      const shade = d => d.replace(/fill="#2c2018"/, 'fill="rgba(40,24,10,.28)"');
+      const tick = twitch ? `<animateTransform attributeName="transform" type="rotate" additive="sum" dur="1.5s" begin="0.7s" fill="freeze" keyTimes="0;.06;.12;.55;.7;1" values="0 ${cx} ${cy};7 ${cx} ${cy};5.5 ${cx} ${cy};5.5 ${cx} ${cy};0 ${cx} ${cy};0 ${cx} ${cy}"/>` : '';
+      over += `<g class="chands" aria-hidden="true">
+        <g transform="translate(1.6 2.2)"><g transform="rotate(${aH} ${cx} ${cy})">${shade(hour)}</g><g transform="rotate(${aM} ${cx} ${cy})"><g>${tick}${shade(min)}</g></g></g>
+        <g transform="rotate(${aH} ${cx} ${cy})">${hour}</g><g transform="rotate(${aM} ${cx} ${cy})"><g>${tick}${min}</g></g>
+        <circle class="ns" cx="${cx}" cy="${cy}" r="4.2" fill="#b8892e"/><circle class="ns" cx="${cx}" cy="${cy}" r="1.8" fill="#2c2018"/></g>`;
+    }
+    return svg.replace('</svg>', under + over + '</svg>');
+  }
   function arLink(m){ const u = new URL(AR_URL, location.href); u.searchParams.set('ar', m); return u.href; }
   function next(){
     const sc = scene(); if(!sc) return;
+    if(timeUp()) return;
     if(P.line < P.pages.length - 1){ P.line++; SFX.play('page'); return render(); }
     if(sc.next && P.b.scenes[sc.next]){
       const nx = P.b.scenes[sc.next];
@@ -766,7 +999,16 @@
       if(/^bedroom/.test(nx.bg || '') && !/^bedroom/.test(sc.bg || '')) return lightTransition(() => { P.id = sc.next; enterScene(); });
       P.id = sc.next; return enterScene();
     }
+    if(P.b.facility === 'prologue') return prologueDone();
     finish();
+  }
+  /* 導入のおしまい：住人と一緒に絵本の中へ（光に包まれる）→ 必ずレンガ村に着いて、作品の intro へ */
+  function prologueDone(){
+    P = null; SFX.stopSamples();
+    lightTransition(() => {
+      L.state.introSeen[runKey()] = true; save();
+      if(L.intro) play(L.intro); else showMap();
+    });
   }
   function lightTransition(mid){
     const c = document.createElement('div'); c.className = 'slightout'; c.setAttribute('aria-hidden', 'true');
@@ -777,6 +1019,7 @@
   }
   function choose(i){
     const sc = scene(), c = sc.choices[i]; if(!c) return;
+    if(timeUp()) return;
     const got = addAll(c.add, c.flag, c.item, 'choice:' + P.id); if(got.length) setTimeout(() => itemPop(got), 300);   // 同じ分かれ道で選び直しても1回だけ
     push({type:'choice', scene:P.id, choice:c.id, text:typeof c.text === 'object' ? (c.text.ja || T(c.text)) : c.text});   // 集計は日本語の文で（言語で分かれない）
     if(c.next && P.b.scenes[c.next]){ P.id = c.next; enterScene(); } else finish();
@@ -785,8 +1028,7 @@
     const b = P && P.b, pend = P && P.pend; P = null;
     commitPoints(b, pend);   // 初めて読み終えたときだけポイントを受け取る（done をつける前に判断）
     if(b && b.facility !== 'intro'){
-      const dk = (L.day ? L.day.event : '') + ':' + b.facility;
-      if(!L.state.done[dk]) L.state.done[dk] = L.today;
+      markDone(b.facility);
       push({type:'done', facility:b.facility, route:b.route});
     }
     // 待たせずに、すぐ地図へ戻る（読み終えた印は手元で先につける）
@@ -843,7 +1085,7 @@
   document.addEventListener('click', async e => {
     const b = e.target.closest('[data-act]'); if(!b) return;
     const a = b.dataset.act;
-    if(a === 'ar'){ const dk = P && P.b ? (L.day ? L.day.event : '') + ':' + P.b.facility : ''; if(P && P.b && P.b.facility !== 'intro' && !L.state.done[dk]){ L.state.done[dk] = L.today; push({type:'done', facility:P.b.facility, route:P.b.route}); syncSoon(); } return; }   // リンクはそのまま新しいタブで開く
+    if(a === 'ar'){ if(P && P.b && P.b.facility !== 'intro' && !run().done[P.b.facility]){ markDone(P.b.facility); push({type:'done', facility:P.b.facility, route:P.b.route}); syncSoon(); } return; }   // リンクはそのまま新しいタブで開く
     e.preventDefault();
     if(a === 'lang') return showLangPicker();
     if(a === 'setlang') return applyLang(b.dataset.lang);
@@ -851,6 +1093,8 @@
     if(a === 'register') return showRegister();
     if(a === 'restore') return showRestore();
     if(a === 'retry') return start();
+    if(a === 'gate'){ SFX.stopSamples(); return showGate(); }
+    if(a === 'tomap') return showMap();
     if(a === 'card') return showCard();
     if(a === 'item') return itemDetail(b.dataset.id);
     if(a === 'itemclose'){ const v = $('svItem'); if(v) v.remove(); return; }

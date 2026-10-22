@@ -5,13 +5,14 @@ const fs = require('fs'), path = require('path'), http = require('http'), vm = r
 const PORT = +process.argv[2] || 8790;
 
 const isDateStr = v => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}( \d{2}:\d{2}:\d{2})?$/.test(v);
-const toCell = v => isDateStr(v) ? new Date(v.length === 10 ? v + 'T00:00:00' : v.replace(' ', 'T')) : v;   // スプレッドシートと同じく、日付らしい文字は日付になる
+const toCell = v => (typeof v === 'string' && v[0] === "'") ? v.slice(1) : isDateStr(v) ? new Date(v.length === 10 ? v + 'T00:00:00' : v.replace(' ', 'T')) : v;   // スプレッドシートと同じく、日付らしい文字は日付になる
 class Range {
   constructor(sh, r, c, nr, nc){ Object.assign(this, {sh, r, c, nr, nc}); }
   getValues(){ const o = []; for(let i = 0; i < this.nr; i++){ const row = this.sh.data[this.r - 1 + i] || []; const x = []; for(let j = 0; j < this.nc; j++){ const v = row[this.c - 1 + j]; x.push(v === undefined ? '' : v); } o.push(x); } return o; }
   getValue(){ return this.getValues()[0][0]; }
   setValues(v){ for(let i = 0; i < this.nr; i++){ const row = this.sh.data[this.r - 1 + i] || (this.sh.data[this.r - 1 + i] = []); for(let j = 0; j < this.nc; j++) row[this.c - 1 + j] = toCell(v[i][j]); } return this; }
   setValue(v){ return this.setValues([[v]]); }
+  clearContent(){ for(let i = 0; i < this.nr; i++){ const row = this.sh.data[this.r - 1 + i]; if(row) for(let j = 0; j < this.nc; j++) row[this.c - 1 + j] = ''; } return this; }
   setFontWeight(){ return this; } setBackground(){ return this; }
 }
 class Sheet {
@@ -46,22 +47,34 @@ const ctx = {
   PropertiesService: {getScriptProperties: () => ({getProperty: k => props[k] || null, setProperty: (k, v) => { props[k] = v; }, deleteProperty: k => { delete props[k]; }})},
   CacheService: {getScriptCache: () => ({get: k => cache[k] === undefined ? null : cache[k], put: (k, v) => { cache[k] = v; }, remove: k => { delete cache[k]; }, getAll: ks => Object.fromEntries(ks.filter(k => cache[k] !== undefined).map(k => [k, cache[k]])), putAll: o => { Object.assign(cache, o); }})},
   LockService: {getScriptLock: () => ({waitLock(){}, releaseLock(){}})},
+  // 管理サイトのログイン確認（Google の tokeninfo）の代わり：テスト用の ID トークン「dev:メールアドレス」だけを通す。
+  // 本物の Google はこの形のトークンを受け付けないので、本番でこの抜け道は使えない
+  UrlFetchApp: {fetch: url => {
+    const m = String(url).match(/^https:\/\/oauth2\.googleapis\.com\/tokeninfo\?id_token=(.*)$/), tok = m ? decodeURIComponent(m[1]) : '';
+    const dev = tok.match(/^dev:(.+@.+)$/);
+    const body = dev ? {aud: 'test-client.apps.googleusercontent.com', iss: 'https://accounts.google.com', email: dev[1], email_verified: 'true', exp: String(Math.floor(Date.now() / 1000) + 3600)} : {error: 'invalid_token'};
+    return {getResponseCode: () => dev ? 200 : 400, getContentText: () => JSON.stringify(body)};
+  }},
+  Session: {getEffectiveUser: () => ({getEmail: () => 'owner@example.com'})},
   ContentService: {MimeType: {JSON: 'json'}, createTextOutput: s => ({s, setMimeType(){ return this; }})}
 };
 vm.createContext(ctx);
 vm.runInContext(fs.readFileSync(path.join(__dirname, '../../gas/Code.gs'), 'utf8'), ctx, {filename: 'Code.gs'});
 ctx.setup();
 // 各リクエストごとに、GAS と同じく実行のたびの変数をリセット
-const reset = () => vm.runInContext('_ss = null; _content = null;', ctx);
+const reset = () => vm.runInContext('_ss = null; _content = null; _sched = null;', ctx);
 
 http.createServer((req, res) => {
   const u = new URL(req.url, 'http://x');
   const send = (o, code) => { res.writeHead(code || 200, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}); res.end(JSON.stringify(o)); };
   if(u.pathname === '/__date'){ const d = u.searchParams.get('d'); if(d) props.TEST_DATE = d; else delete props.TEST_DATE; return send({ok: true, date: d}); }
+  if(u.pathname === '/__time'){ const t = u.searchParams.get('t'); if(t) props.TEST_TIME = t; else delete props.TEST_TIME; return send({ok: true, time: t}); }
+  if(u.pathname === '/__prop'){ const k = u.searchParams.get('k'), v = u.searchParams.get('v'); if(v === null) delete props[k]; else props[k] = v; return send({ok: true}); }
+  if(u.pathname === '/__run'){ reset(); ctx[u.searchParams.get('f')](); return send({ok: true}); }
   if(u.pathname === '/__dump'){ return send(Object.fromEntries(book.sheets.map(s => [s.name, s.data.map(r => r.map(v => v instanceof Date ? fmt(v, 'Asia/Tokyo', 'yyyy-MM-dd HH:mm:ss') : v))]))); }
   if(u.pathname === '/__append'){   // テスト用：シートに行を足す ?sheet=名前&row=JSON配列
     const sh = book.getSheetByName(u.searchParams.get('sheet')); if(!sh) return send({ok: false});
-    sh.appendRow(JSON.parse(u.searchParams.get('row'))); Object.keys(cache).forEach(k => delete cache[k]); return send({ok: true});
+    sh.appendRow(JSON.parse(u.searchParams.get('row'))); delete cache.content_v1; delete cache.sched_v1; return send({ok: true});
   }
   if(u.pathname === '/__clearcache'){ Object.keys(cache).forEach(k => delete cache[k]); return send({ok: true}); }
   if(req.method === 'OPTIONS'){ res.writeHead(405); return res.end(); }   // 本物の GAS も事前確認（OPTIONS）には応じない

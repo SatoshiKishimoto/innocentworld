@@ -23,8 +23,9 @@ var TZ = 'Asia/Tokyo';
 var SHEETS = {
   // ---- 物語の中身（運営・芽美が編集） ----
   events:     {name: 'イベント',   head: ['event_id', 'イベント名', '公開開始日', '公開終了日', 'メモ', 'イベント名（ひらがな）', 'イベント名（English）']},
-  days:       {name: '開催日',     head: ['event_id', '開催日', '表示名', '何日目', '表示名（ひらがな）', '表示名（English）']},
-  words:      {name: 'ことば',     head: ['開催日', '施設ID', '正解（複数は｜で区切る。日本語・ひらがな・英語などを並べてよい）', '正解したときのメッセージ', 'メッセージ（ひらがな）', 'メッセージ（English）']},
+  // ---- 上演スケジュール（管理サイトから編集。制作シートからは写さない） ----
+  days:       {name: '開催日',     head: ['event_id', '開催日', '表示名', '何日目', '表示名（ひらがな）', '表示名（English）', '公開開始時刻（空欄は0:00）', '公開終了時刻（空欄は24:00）', '終了後の猶予（分・空欄は60）', '状態（公開／中止）', '更新日時', '更新者']},
+  words:      {name: 'ことば',     head: ['開催日', '施設ID', '正解（複数は｜で区切る。日本語・ひらがな・英語などを並べてよい）', '正解したときのメッセージ', 'メッセージ（ひらがな）', 'メッセージ（English）', 'event_id（空欄はその日の全作品に共通）']},
   facilities: {name: '施設',       head: ['event_id', '施設ID', '名前', '説明', '地図X(0-100)', '地図Y(0-100)', '屋根の色', '壁の色', '形(house/windmill/plaza)', '地図に出る条件', '条件を満たす前のヒント', '並び順', '名前（ひらがな）', '名前（English）', '説明（ひらがな）', '説明（English）', 'ヒント（ひらがな）', 'ヒント（English）', '入れる条件（満たすまで地図には出るが入れない）']},
   routes:     {name: '物語の入口', head: ['event_id', '施設ID（introは開催日の最初）', '優先順', '条件', '最初の場面ID', '公開開始日', '公開終了日', 'メモ']},
   scenes:     {name: '場面',       head: ['event_id', '場面ID', '背景', '次の場面ID', 'もらえるアイテム', '記録する', 'ポイント', 'AR(parade/xmas/fireworks)', 'ARボタンの文字', 'メモ', 'ARボタンの文字（ひらがな）', 'ARボタンの文字（English）']},
@@ -38,11 +39,14 @@ var SHEETS = {
   residents:  {name: '住民',       head: ['住民番号', 'トークンハッシュ', '登録項目(JSON)', '登録日時', '最終来訪日時', '状態']},
   recovery:   {name: '復元コード', head: ['住民番号', '復元コードハッシュ', '発行日時', '状態']},
   visits:     {name: '参加履歴',   head: ['住民番号', 'event_id', '開催日', '入場日時']},
-  unlocks:    {name: '解放記録',   head: ['住民番号', '開催日', '施設ID', '解放日時']},
+  unlocks:    {name: '解放記録',   head: ['住民番号', '開催日', '施設ID', '解放日時', 'event_id']},
   progress:   {name: '進行',       head: ['住民番号', 'event_id', '開催日', '施設ID', '最初の場面ID', '状態', '日時']},
   picks:      {name: '選択',       head: ['住民番号', 'event_id', '開催日', '場面ID', '選択肢ID', '選択肢の文', '日時']},
   states:     {name: '状態',       head: ['住民番号', 'もちもの・ポイント・記録(JSON)', '更新日時']},
-  stats:      {name: '集計',       head: ['項目', '値']}
+  stats:      {name: '集計',       head: ['項目', '値']},
+  // ---- 管理サイト ----
+  admins:     {name: '管理者',     head: ['Googleアカウント（メールアドレス）', '名前', '権限（owner／editor／viewer）', '状態（有効／停止）', '追加日時', 'メモ']},
+  adminlog:   {name: '管理ログ',   head: ['日時', '管理者', '操作', '開催日', 'event_id', '内容']}
 };
 
 /* ================= 入口（ウェブアプリ） ================= */
@@ -62,7 +66,9 @@ function out(obj){
 function handle(req){
   try{
     var a = req.action;
+    if(/^admin/.test(String(a || ''))) return adminHandle(req);   // 管理サイト（認証は adminHandle の中で必ず行う）
     if(a === 'config') return apiConfig(req);
+    if(a === 'publicSchedule') return {ok: true, today: today(), upcoming: upcomingFrom(today()), works: publicWorks()};   // 公式サイト向け：開催予定（ことばは含めない）
     if(a === 'register') return apiRegister(req);
     if(a === 'restore') return apiRestore(req);
     var me = auth(req);
@@ -88,6 +94,19 @@ function today(){
   if(t && /^\d{4}-\d{2}-\d{2}$/.test(t)) return t;
   return Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd');
 }
+/** 今の時刻（分）。リハーサル用：スクリプトプロパティ TEST_TIME=10:30 */
+function nowMin(){
+  var t = PropertiesService.getScriptProperties().getProperty('TEST_TIME');
+  var v = (t && /^\d{1,2}:\d{2}$/.test(t)) ? t : Utilities.formatDate(new Date(), TZ, 'HH:mm');
+  return toMin(v);
+}
+function toMin(hm){ var m = String(hm || '').match(/^(\d{1,2}):(\d{2})/); return m ? Number(m[1]) * 60 + Number(m[2]) : -1; }
+/** 時刻のセル（文字 '10:00' でも、時刻として入ったセルでも）を 'HH:mm' に */
+function hm(v){
+  if(v instanceof Date) return Utilities.formatDate(v, TZ, 'HH:mm');
+  var m = str(v).replace(/^'/, '').replace('：', ':').match(/^(\d{1,2}):(\d{2})/);
+  return m ? ('0' + m[1]).slice(-2) + ':' + m[2] : '';
+}
 function nowStr(){ return Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd HH:mm:ss'); }
 function dt(v){ return v instanceof Date ? Utilities.formatDate(v, TZ, 'yyyy-MM-dd HH:mm:ss') : str(v); }
 function ymd(v){
@@ -97,22 +116,82 @@ function ymd(v){
     var n = Number(v);
     if(n > 30000 && n < 80000) return Utilities.formatDate(new Date(Date.UTC(1899, 11, 30) + n * 86400000), 'UTC', 'yyyy-MM-dd');
   }
-  var s = String(v || '').trim().replace(/\//g, '-');
+  var s = String(v || '').trim().replace(/^'/, '').replace(/\//g, '-');
   var m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
   return m ? m[1] + '-' + ('0' + m[2]).slice(-2) + '-' + ('0' + m[3]).slice(-2) : '';
 }
 function inPeriod(d, from, to){ from = ymd(from); to = ymd(to); return (!from || d >= from) && (!to || d <= to); }
-/** 今日の開催情報（開催日でなければ null） */
-function dayInfo(d){
-  var days = content().days, events = content().events;
-  for(var i = 0; i < days.length; i++){
-    if(days[i].date !== d) continue;
-    var ev = events.filter(function(x){ return x.id === days[i].event; })[0];
-    if(!ev || !inPeriod(d, ev.from, ev.to)) continue;
-    return {event: days[i].event, eventName: ev.name, date: d, label: days[i].label, dayNo: days[i].dayNo};
-  }
-  return null;
+/* ================= 上演スケジュール（開催日 × 作品） =================
+   「開催日」シートの1行＝1回の上演（その日にその作品を公開する）。同じ日に複数の作品を並べてよい。
+   ・入口のひみつのことばで、どの作品に入るかが決まる（同時に進められるのは1作品。入口に戻れば切りかえられる）
+   ・公開開始〜終了：新しく入場できる。終了後の猶予（初期値60分）：入場ずみの人だけ続きを遊べる。猶予のあとは操作を受け付けない
+   ・状態が「中止」の上演は、なかったものとして扱う（行は消さない）
+   ・物語の進み具合（読了・記録）は「作品ID＠開催日」ごとに分ける（同じ作品の再公開は、はじめからになる） */
+var _sched = null;
+function schedule(){
+  if(_sched) return _sched;
+  var cache = CacheService.getScriptCache(), hit = cache.get('sched_v1');
+  if(hit){ try{ return (_sched = JSON.parse(hit)); }catch(e){} }
+  var shows = rows('days').map(function(r, i){
+    var ev = str(r[0]), d = ymd(r[1]); if(!ev || !d) return null;
+    var g = str(r[8]) === '' ? 60 : Math.max(0, Number(r[8]) || 0);
+    return {event: ev, date: d, label: tri(r[2], r[4], r[5]), dayNo: Number(r[3]) || 0, start: hm(r[6]) || '00:00', end: hm(r[7]) || '24:00', grace: g,
+      status: /中止|cancel/i.test(str(r[9])) ? 'cancelled' : 'active', row: i + 2};
+  }).filter(Boolean).sort(function(a, b){ return a.date < b.date ? -1 : a.date > b.date ? 1 : (toMin(a.start) - toMin(b.start)); });
+  var words = rows('words').map(function(r){
+    var d = ymd(r[0]), f = str(r[1]); if(!d || !f) return null;
+    return {date: d, facility: f, answers: splitList(r[2]), message: tri(r[3], r[4], r[5]), event: str(r[6])};
+  }).filter(Boolean);
+  _sched = {shows: shows, words: words};
+  try{ cache.put('sched_v1', JSON.stringify(_sched), 120); }catch(e){}
+  return _sched;
 }
+function clearSchedule(){ _sched = null; CacheService.getScriptCache().remove('sched_v1'); }
+function eventOf(id){ return content().events.filter(function(x){ return x.id === id; })[0] || null; }
+/** その日に公開する上演（中止をのぞく。作品がイベントシートにないものものぞく） */
+function showsOn(d){
+  return schedule().shows.filter(function(s){ return s.date === d && s.status === 'active' && eventOf(s.event); });
+}
+function showOf(d, ev){ return showsOn(d).filter(function(s){ return s.event === ev; })[0] || null; }
+/** 上演の今の段階：before（開始前）／open（公開中）／grace（終了後の猶予）／over（おしまい） */
+function phase(s, d){
+  var today_ = today();
+  if(s.date < today_) return 'over';
+  if(s.date > today_) return 'before';
+  var n = nowMin(), a = toMin(s.start), b = toMin(s.end);
+  if(n < a) return 'before';
+  if(n < b) return 'open';
+  if(n < b + s.grace) return 'grace';
+  return 'over';
+}
+function graceUntil(s){ var m = toMin(s.end) + s.grace; return ('0' + Math.floor(m / 60)).slice(-2) + ':' + ('0' + (m % 60)).slice(-2); }
+function runKey(ev, d){ return ev + '@' + d; }
+/** 物語に渡す、上演の情報（ひみつのことばは含めない） */
+function infoOf(s){
+  var ev = eventOf(s.event);
+  return {event: s.event, eventName: ev ? ev.name : s.event, date: s.date, label: s.label, dayNo: s.dayNo, key: runKey(s.event, s.date),
+    start: s.start, end: s.end, until: graceUntil(s), phase: phase(s)};
+}
+/** 閉村日・入口に出す「公開する作品」 */
+function publicShow(s){ var i = infoOf(s); return {event: i.event, name: i.eventName, label: i.label, date: i.date, start: i.start, end: i.end, phase: i.phase}; }
+/** 公式サイト向け：これから上演する作品の一覧（名前だけ） */
+function publicWorks(){
+  var seen = {}, out = [];
+  upcomingFrom(today()).forEach(function(x){ x.works.forEach(function(w){ if(!seen[w.event]){ seen[w.event] = 1; out.push({event: w.event, name: w.name}); } }); });
+  return out;
+}
+function upcomingFrom(d){
+  var by = {}, order = [];
+  schedule().shows.forEach(function(s){
+    if(s.status !== 'active' || !eventOf(s.event)) return;
+    if(s.date < d || (s.date === d && phase(s) === 'over')) return;
+    if(!by[s.date]){ by[s.date] = []; order.push(s.date); }
+    by[s.date].push(publicShow(s));
+  });
+  return order.slice(0, 6).map(function(x){ return {date: x, label: by[x][0].label, works: by[x]}; });
+}
+/** 古い呼び方との互換：その日の最初の上演 */
+function dayInfo(d){ var l = showsOn(d); return l.length ? infoOf(l[0]) : null; }
 
 /* ================= シートの読み書き ================= */
 var _ss = null;
@@ -154,7 +233,6 @@ function clearCache(){ CacheService.getScriptCache().remove('content_v1'); }
 function buildContent(){
   var C = {};
   C.events = rows('events').filter(function(r){ return str(r[0]); }).map(function(r){ return {id: str(r[0]), name: tri(r[1], r[5], r[6]), from: ymd(r[2]), to: ymd(r[3])}; });
-  C.days = rows('days').filter(function(r){ return str(r[0]) && ymd(r[1]); }).map(function(r){ return {event: str(r[0]), date: ymd(r[1]), label: tri(r[2], r[4], r[5]), dayNo: Number(r[3]) || 0}; });
   C.items = {}; rows('items').forEach(function(r){ if(str(r[0])) C.items[str(r[0])] = {name: tri(r[1], r[4], r[5]), icon: str(r[2]), desc: tri(r[3], r[6], r[7])}; });
   C.points = {}; C.pointByName = {};
   rows('points').forEach(function(r){ if(str(r[0])){ C.points[str(r[0])] = tri(r[1], r[2], r[3]); C.pointByName[str(r[1])] = str(r[0]); } });
@@ -240,7 +318,10 @@ function itemId(nameOrId, C){
 }
 
 /** そのイベントで読み終えた施設の数（前のイベントの読了は数えない。物語の最初 intro は施設に含めない） */
-function doneIn(st, ev){ var n = 0, p = ev + ':'; for(var k in st.done) if(k.indexOf(p) === 0) n++; return n; }
+/* 物語の進み具合は「作品ID＠開催日」（ctx.key）ごと：st.runs[key] = {flags, items, done}。
+   アイテムとポイントは住民票に通算で残る（st.items / st.points）。条件の「アイテム:」は、この上演の中で手に入れたかで判定する */
+function runOf(st, key){ var r = (st.runs && st.runs[key]) || {}; return {flags: r.flags || {}, items: r.items || {}, done: r.done || {}}; }
+function doneIn(run){ return Object.keys(run.done).length; }
 /** 条件の判定（スマホ側の story.js にも同じ判定があります） */
 function check(c, st, ctx){
   if(!c) return true;
@@ -251,16 +332,15 @@ function check(c, st, ctx){
   if(c.prevEvent && !ctx.prevEvent) return false;
   if(c.returningThis === true && !ctx.returningThis) return false;
   if(c.returningThis === false && ctx.returningThis) return false;
-  var i;
-  if(c.flags) for(i = 0; i < c.flags.length; i++) if(!st.flags[c.flags[i]]) return false;
-  if(c.notFlags) for(i = 0; i < c.notFlags.length; i++) if(st.flags[c.notFlags[i]]) return false;
-  if(c.items) for(i = 0; i < c.items.length; i++) if(!st.items[c.items[i]]) return false;
+  var i, run = runOf(st, ctx.key);
+  if(c.flags) for(i = 0; i < c.flags.length; i++) if(!run.flags[c.flags[i]]) return false;
+  if(c.notFlags) for(i = 0; i < c.notFlags.length; i++) if(run.flags[c.notFlags[i]]) return false;
+  if(c.items) for(i = 0; i < c.items.length; i++) if(!run.items[c.items[i]]) return false;
   if(c.points) for(var k in c.points) if((st.points[k] || 0) < c.points[k]) return false;
-  if(c.done) for(i = 0; i < c.done.length; i++) if(!st.done[ctx.event + ':' + c.done[i]]) return false;
-  if(c.doneCount && doneIn(st, ctx.event) < c.doneCount) return false;
+  if(c.done) for(i = 0; i < c.done.length; i++) if(!run.done[c.done[i]]) return false;
+  if(c.doneCount && doneIn(run) < c.doneCount) return false;
   return true;
 }
-
 /* ================= 認証（トークン・復元コード） ================= */
 function salt(){
   var p = PropertiesService.getScriptProperties(), s = p.getProperty('SALT');
@@ -300,21 +380,31 @@ function auth(req){
 }
 
 /* ================= 住民の状態 ================= */
-function emptyState(){ return {points: {}, flags: {}, items: {}, done: {}, introSeen: {}}; }
+function emptyState(){ return {points: {}, flags: {}, items: {}, done: {}, introSeen: {}, runs: {}}; }
 function loadState(rid){
   var all = rows('states');
   for(var i = all.length - 1; i >= 0; i--) if(all[i][0] === rid){ try{ return normState(JSON.parse(all[i][1])); }catch(e){ break; } }
   return emptyState();
 }
-function normState(s){ var e = emptyState(); s = s || {}; for(var k in e) e[k] = (s[k] && typeof s[k] === 'object') ? s[k] : e[k]; return e; }
+/** 古い形（作品ごとの done「作品:施設」）を、上演ごとの runs に写す。元の done は消さない（ポイントの二重取り防止にも使う） */
+function normState(s){
+  var e = emptyState(); s = s || {};
+  for(var k in e) e[k] = (s[k] && typeof s[k] === 'object') ? s[k] : e[k];
+  for(var dk in e.done){
+    var m = dk.match(/^(.+):([^:]+)$/), d = ymd(e.done[dk]); if(!m || !d) continue;
+    var key = runKey(m[1], d), r = e.runs[key] || (e.runs[key] = {flags: {}, items: {}, done: {}});
+    r.done = r.done || {}; if(!r.done[m[2]]) r.done[m[2]] = d;
+  }
+  return e;
+}
 function saveState(rid, st){
   var s = sh('states'), all = rows('states'), json = JSON.stringify(normState(st));
   for(var i = 0; i < all.length; i++) if(all[i][0] === rid){ s.getRange(i + 2, 2, 1, 2).setValues([[json, nowStr()]]); return; }
   s.appendRow([rid, json, nowStr()]);
 }
-/** スマホに貯まっていた記録（選択・読了）と状態を受け取る */
+/** スマホに貯まっていた記録（選択・読了）と状態を受け取る（公開が終わったあとでも、記録は受け取って残す） */
 function applySync(me, req){
-  var d = today(), info = dayInfo(d), ev = info ? info.event : '';
+  var d = today();
   withLock(function(){
     if(req.state) saveState(me.rid, req.state);
     // 同じ記録が2回以上届いても1回だけ書く（電波が悪いときの送り直しや、同時に出た通信で重なるため）
@@ -324,7 +414,8 @@ function applySync(me, req){
     evs.forEach(function(x, i){
       if(seen[keys[i]] || fresh[keys[i]]) return;
       fresh[keys[i]] = '1';
-      var at = str(x.at) || nowStr(), dd = ymd(x.date) || d, e2 = str(x.event) || ev;
+      var at = str(x.at) || nowStr(), dd = ymd(x.date) || d, e2 = str(x.event);
+      if(!e2){ var cs = currentShow(me.rid, dd); e2 = cs ? cs.event : ''; }
       if(x.type === 'choice') append('picks', [me.rid, e2, dd, str(x.scene), str(x.choice), str(typeof x.text === 'object' ? x.text.ja : x.text).slice(0, 200), at]);
       if(x.type === 'start' || x.type === 'done') append('progress', [me.rid, e2, dd, str(x.facility), str(x.route), x.type === 'done' ? '読み終えた' : '読んだ', at]);
     });
@@ -336,15 +427,31 @@ function visitInfo(rid, d, ev){
   return {
     returning: v.some(function(r){ return ymd(r[2]) && ymd(r[2]) < d; }),
     returningThis: v.some(function(r){ return str(r[1]) === ev && ymd(r[2]) && ymd(r[2]) < d; }),
-    prevEvent: v.some(function(r){ return str(r[1]) && str(r[1]) !== ev; }),
-    visitedToday: v.some(function(r){ return ymd(r[2]) === d; }),
-    dates: v.map(function(r){ return ymd(r[2]); })
+    prevEvent: v.some(function(r){ return str(r[1]) && str(r[1]) !== ev && ymd(r[2]) < d; }),
+    visitedToday: v.some(function(r){ return ymd(r[2]) === d && (!ev || str(r[1]) === ev); }),
+    dates: v.map(function(r){ return ymd(r[2]); }).filter(function(x, i, a){ return x && a.indexOf(x) === i; })
   };
 }
-function unlockedToday(rid, d){
+/** 解放記録：[住民番号, 開催日, 施設ID（entrance＝入口）, 日時, event_id]。
+   event_id が空の行は、作品が1つだけだった日の古い記録（その日の上演が1つならそれとみなす） */
+function unlockRows(rid, d){
+  var one = showsOn(d).length === 1 ? showsOn(d)[0].event : '';
+  return rows('unlocks').filter(function(r){ return r[0] === rid && ymd(r[1]) === d; })
+    .map(function(r){ return {facility: str(r[2]), event: str(r[4]) || one}; });
+}
+/** いま進めている作品＝その日の最後に入口を通った作品（中止になった上演はのぞく） */
+function currentShow(rid, d){
+  var u = unlockRows(rid, d).filter(function(x){ return x.facility === 'entrance' && x.event; });
+  for(var i = u.length - 1; i >= 0; i--){ var s = showOf(d, u[i].event); if(s) return s; }
+  return null;
+}
+function unlockedToday(rid, d, ev){
   var u = {entrance: false, fac: {}};
-  rows('unlocks').forEach(function(r){ if(r[0] === rid && ymd(r[1]) === d){ if(r[2] === 'entrance') u.entrance = true; else u.fac[str(r[2])] = true; } });
+  unlockRows(rid, d).forEach(function(x){ if(x.event !== ev) return; if(x.facility === 'entrance') u.entrance = true; else u.fac[x.facility] = true; });
   return u;
+}
+function enteredEvents(rid, d){
+  var o = {}; unlockRows(rid, d).forEach(function(x){ if(x.facility === 'entrance' && x.event) o[x.event] = true; }); return o;
 }
 
 /* ================= API ================= */
@@ -353,9 +460,8 @@ function publicDefs(){
   return {items: C.items, points: C.points, characters: C.characters, charactersEn: C.charactersEn || {}, regfields: C.regfields};
 }
 function apiConfig(){
-  var d = today(), info = dayInfo(d), C = content();
-  var upcoming = C.days.filter(function(x){ return x.date >= d; }).slice(0, 6).map(function(x){ return {date: x.date, label: x.label}; });   // label は3言語
-  return {ok: true, today: d, day: info, upcoming: upcoming, defs: publicDefs()};
+  var d = today(), l = showsOn(d), C = content();
+  return {ok: true, today: d, day: l.length ? infoOf(l[0]) : null, shows: l.map(publicShow), upcoming: upcomingFrom(d), defs: publicDefs()};
 }
 
 function apiRegister(req){
@@ -425,74 +531,86 @@ function apiDelete(me){
 
 /** 起動時：住民票・今日の開催情報・解放状況・地図 */
 function apiBoot(me, req){
-  var d = today(), info = dayInfo(d), st = loadState(me.rid);
-  var res = {ok: true, today: d, day: info, resident: {rid: me.rid, fields: me.fields, createdAt: me.createdAt}, state: st, defs: publicDefs()};
+  var d = today(), st = loadState(me.rid), l = showsOn(d);
+  var res = {ok: true, today: d, shows: l.map(publicShow), upcoming: upcomingFrom(d), resident: {rid: me.rid, fields: me.fields, createdAt: me.createdAt}, state: st, defs: publicDefs()};
   sh('residents').getRange(me.row, 5).setValue(nowStr());
-  if(!info){
-    var C = content();
-    res.upcoming = C.days.filter(function(x){ return x.date >= d; }).slice(0, 6).map(function(x){ return {date: x.date, label: x.label}; });
-    res.visits = visitInfo(me.rid, d, '').dates;
-    return res;
-  }
-  var vi = visitInfo(me.rid, d, info.event), un = unlockedToday(me.rid, d);
+  var cur = currentShow(me.rid, d);
+  res.day = cur ? infoOf(cur) : null;
+  if(!cur){ res.visits = visitInfo(me.rid, d, '').dates; res.unlocked = null; return res; }
+  var info = res.day, vi = visitInfo(me.rid, d, info.event), un = unlockedToday(me.rid, d, info.event);
   res.visits = vi.dates; res.returning = vi.returning; res.returningThis = vi.returningThis; res.prevEvent = vi.prevEvent;
   res.unlocked = un;
+  if(info.phase === 'over'){ res.ended = true; return res; }
   if(un.entrance) res.map = mapFor(info, st, vi, un);
   return res;
 }
 
-function ctxFor(info, vi){ return {event: info.event, dayNo: info.dayNo, returning: vi.returning, returningThis: vi.returningThis, prevEvent: vi.prevEvent}; }
+function ctxFor(info, vi){ return {event: info.event, key: info.key, dayNo: info.dayNo, returning: vi.returning, returningThis: vi.returningThis, prevEvent: vi.prevEvent}; }
 function mapFor(info, st, vi, un){
-  var ctx = ctxFor(info, vi);
+  var ctx = ctxFor(info, vi), run = runOf(st, info.key);
   return content().facilities.filter(function(f){ return f.event === info.event; }).map(function(f){
     var shown = check(f.show, st, ctx), canEnter = check(f.open, st, ctx);
     return {id: f.id, name: f.name, sub: f.sub, x: f.x, y: f.y, roof: f.roof, wall: f.wall, type: f.type,
-      status: !shown ? 'hidden' : !canEnter ? 'blocked' : !un.fac[f.id] ? 'locked' : st.done[info.event + ':' + f.id] ? 'done' : 'open',
+      status: !shown ? 'hidden' : !canEnter ? 'blocked' : !un.fac[f.id] ? 'locked' : run.done[f.id] ? 'done' : 'open',
       hint: shown && canEnter ? '' : f.hint};
   });
 }
 
-/** 入口のひみつのことば */
+/** 入口のひみつのことば：ことばで作品が決まる。
+   公開中の上演に入れる。終了後の猶予のあいだは、その日すでに入ったことのある作品にだけ戻れる */
 function apiEntrance(me, req){
-  var d = today(), info = dayInfo(d);
-  if(!info) return {ok: false, error: 'closed'};
-  var un = unlockedToday(me.rid, d), msg = '';
-  if(!un.entrance){
-    var w = wordFor(d, 'entrance');
-    if(!w) return {ok: false, error: 'no_word'};
-    var lim = limited(me.rid, 'entrance'); if(lim) return lim;
-    if(!matchWord(req.word, w.answers)){ fail(me.rid, 'entrance'); return {ok: false, error: 'wrong'}; }
-    msg = w.message;
-    withLock(function(){
-      if(!unlockedToday(me.rid, d).entrance) append('unlocks', [me.rid, d, 'entrance', nowStr()]);
-      if(!visitInfo(me.rid, d, info.event).visitedToday) append('visits', [me.rid, info.event, d, nowStr()]);
-    });
-    un.entrance = true;
+  var d = today(), l = showsOn(d);
+  if(!l.length) return {ok: false, error: 'closed'};
+  var lim = limited(me.rid, 'entrance'); if(lim) return lim;
+  var entered = enteredEvents(me.rid, d), hit = null, early = null, late = null, any = false;
+  l.forEach(function(s){
+    var w = wordFor(d, 'entrance', s.event); if(!w) return;
+    any = true;
+    if(!matchWord(req.word, w.answers)) return;
+    var ph = phase(s);
+    if(ph === 'open' || (ph === 'grace' && entered[s.event])){ if(!hit) hit = {s: s, w: w}; }
+    else if(ph === 'before'){ if(!early) early = s; }
+    else late = s;
+  });
+  if(!hit){
+    if(!any) return {ok: false, error: 'no_word'};
+    if(early) return {ok: false, error: 'not_yet', start: early.start};
+    if(late) return {ok: false, error: 'ended'};
+    fail(me.rid, 'entrance'); return {ok: false, error: 'wrong'};
   }
-  var st = loadState(me.rid), vi = visitInfo(me.rid, d, info.event), ctx = ctxFor(info, vi);
-  var intro = pickRoute(info, 'intro', st, ctx, d);
-  return {ok: true, message: msg, returning: vi.returning, returningThis: vi.returningThis, prevEvent: vi.prevEvent, visits: vi.dates, unlocked: un,
+  var s = hit.s, info = infoOf(s);
+  withLock(function(){
+    append('unlocks', [me.rid, d, 'entrance', nowStr(), s.event]);       // 入るたびに記録＝いま進めている作品
+    if(!visitInfo(me.rid, d, s.event).visitedToday) append('visits', [me.rid, s.event, d, nowStr()]);
+  });
+  var st = loadState(me.rid), vi = visitInfo(me.rid, d, s.event), ctx = ctxFor(info, vi), un = unlockedToday(me.rid, d, s.event);
+  var intro = pickRoute(info, 'intro', st, ctx, d), pro = pickRoute(info, 'prologue', st, ctx, d);
+  return {ok: true, message: hit.w.message, prologue: pro ? bundle(info.event, pro, 'prologue') : null, day: info, shows: l.map(publicShow), resumed: !!entered[s.event],
+    returning: vi.returning, returningThis: vi.returningThis, prevEvent: vi.prevEvent, visits: vi.dates, unlocked: un,
     map: mapFor(info, st, vi, un), intro: intro ? bundle(info.event, intro, 'intro') : null};
 }
 
-/** 施設のひみつのことば（今日すでに解放済みなら、ことばは不要） */
+/** 施設のひみつのことば（いま進めている作品の言葉だけで判定。今日すでに解放済みなら、ことばは不要） */
 function apiFacility(me, req){
-  var d = today(), info = dayInfo(d), fid = str(req.facility);
-  if(!info) return {ok: false, error: 'closed'};
-  var un = unlockedToday(me.rid, d);
+  var d = today(), fid = str(req.facility), cur = currentShow(me.rid, d);
+  if(!showsOn(d).length) return {ok: false, error: 'closed'};
+  if(!cur) return {ok: false, error: 'entrance_first'};
+  var info = infoOf(cur);
+  if(info.phase === 'over') return {ok: false, error: 'ended'};
+  var un = unlockedToday(me.rid, d, cur.event);
   if(!un.entrance) return {ok: false, error: 'entrance_first'};
-  var fac = content().facilities.filter(function(f){ return f.event === info.event && f.id === fid; })[0];
+  var fac = content().facilities.filter(function(f){ return f.event === cur.event && f.id === fid; })[0];
   if(!fac) return {ok: false, error: 'no_facility'};
-  var st = loadState(me.rid), vi = visitInfo(me.rid, d, info.event), ctx = ctxFor(info, vi), msg = '';
+  var st = loadState(me.rid), vi = visitInfo(me.rid, d, cur.event), ctx = ctxFor(info, vi), msg = '';
   if(!check(fac.show, st, ctx)) return {ok: false, error: 'hidden', hint: fac.hint};
   if(!check(fac.open, st, ctx)) return {ok: false, error: 'blocked', hint: fac.hint};
   if(!un.fac[fid]){
-    var w = wordFor(d, fid);
+    var w = wordFor(d, fid, cur.event);
     if(!w) return {ok: false, error: 'no_word'};
     var lim = limited(me.rid, fid); if(lim) return lim;
     if(!matchWord(req.word, w.answers)){ fail(me.rid, fid); return {ok: false, error: 'wrong'}; }
     msg = w.message;
-    withLock(function(){ if(!unlockedToday(me.rid, d).fac[fid]) append('unlocks', [me.rid, d, fid, nowStr()]); });
+    withLock(function(){ if(!unlockedToday(me.rid, d, cur.event).fac[fid]) append('unlocks', [me.rid, d, fid, nowStr(), cur.event]); });
     un.fac[fid] = true;
   }
   var r = pickRoute(info, fid, st, ctx, d);
@@ -519,10 +637,11 @@ function bundle(ev, route, fid){
 }
 
 /* ---------- ひみつのことば ---------- */
-function wordFor(d, fid){
-  var all = rows('words');
-  for(var i = 0; i < all.length; i++) if(ymd(all[i][0]) === d && str(all[i][1]) === fid) return {answers: splitList(all[i][2]), message: tri(all[i][3], all[i][4], all[i][5])};
-  return null;
+/** その日・その作品・その場所のことば（作品の指定がある行を先に。event_id が空の行は、その日の全作品に共通） */
+function wordFor(d, fid, ev){
+  var W = schedule().words.filter(function(w){ return w.date === d && w.facility === fid; });
+  var w = W.filter(function(x){ return x.event && x.event === ev; })[0] || W.filter(function(x){ return !x.event; })[0];
+  return w ? {answers: w.answers, message: w.message} : null;
 }
 function norm(s){
   s = String(s || '');
@@ -546,6 +665,270 @@ function fail(rid, fid){
   c.put(k, String(Number(c.get(k) || 0) + 1), 300);
 }
 
+
+/* ================= 管理サイト（主催者専用） =================
+   ・ログインは Google アカウント：管理サイトで Google にログイン → 受け取った ID トークンを、ここで Google に確かめてもらう
+     （受け取り先がこのサイト用のクライアントID か／メールが確認済みか／期限内か）
+   ・「管理者」シートに載っていて状態が「有効」のアカウントだけが入れる。権限は owner ＞ editor ＞ viewer
+       owner：すべて＋管理者の追加・停止　editor：上演の登録・変更・中止　viewer：見るだけ
+   ・ログインに成功すると管理用の合言葉（6時間有効）を渡す。管理の操作は毎回この合言葉と「管理者」シートを確かめる
+     （管理者を停止すると、その場で使えなくなる）
+   ・スクリプトプロパティ ADMIN_CLIENT_ID に、Google Cloud で作った「ウェブ アプリケーション」のクライアントID を入れておく */
+var ADMIN_TTL = 21600;   // 6時間（キャッシュの上限）
+var ROLE_RANK = {viewer: 1, editor: 2, owner: 3};
+
+function adminHandle(req){
+  var a = String(req.action);
+  if(a === 'adminLogin') return adminLogin(req);
+  var me = adminAuth(req);
+  if(!me) return {ok: false, error: 'admin_auth'};
+  var need = {adminMe: 'viewer', adminLogout: 'viewer', adminOverview: 'viewer', adminDay: 'viewer', adminStats: 'viewer', adminLog: 'viewer',
+    adminSave: 'editor', adminStatus: 'editor', adminRemove: 'editor', adminAdmins: 'owner', adminSaveAdmin: 'owner'}[a];
+  if(!need) return {ok: false, error: 'unknown_action'};
+  if(ROLE_RANK[me.role] < ROLE_RANK[need]) return {ok: false, error: 'forbidden'};
+  if(a === 'adminMe') return {ok: true, me: me};
+  if(a === 'adminLogout'){ CacheService.getScriptCache().remove('adm|' + hash('a|' + str(req.adminToken))); return {ok: true}; }
+  if(a === 'adminOverview') return adminOverview(me);
+  if(a === 'adminDay') return adminDay(me, req);
+  if(a === 'adminStats') return adminStats(me, req);
+  if(a === 'adminLog') return adminLog(me, req);
+  if(a === 'adminSave') return adminSave(me, req);
+  if(a === 'adminStatus') return adminStatus(me, req);
+  if(a === 'adminRemove') return adminRemove(me, req);
+  if(a === 'adminAdmins') return adminAdmins(me);
+  if(a === 'adminSaveAdmin') return adminSaveAdmin(me, req);
+}
+
+/* ---------- ログイン ---------- */
+function adminLogin(req){
+  var cid = PropertiesService.getScriptProperties().getProperty('ADMIN_CLIENT_ID');
+  if(!cid) return {ok: false, error: 'admin_not_ready'};
+  var cache = CacheService.getScriptCache(), n = Number(cache.get('alfail') || 0);
+  if(n >= 30) return {ok: false, error: 'busy'};                     // 総当たり対策（全体で10分に30回まで）
+  var info = verifyIdToken(str(req.idToken), cid);
+  if(!info){ cache.put('alfail', String(n + 1), 600); return {ok: false, error: 'admin_denied'}; }
+  var a = adminByEmail(info.email);
+  if(!a){ cache.put('alfail', String(n + 1), 600); adminWriteLog(info.email, 'ログイン拒否（管理者ではない）', '', '', ''); return {ok: false, error: 'admin_denied', email: info.email}; }
+  var token = newToken();
+  cache.put('adm|' + hash('a|' + token), JSON.stringify({email: a.email}), ADMIN_TTL);
+  adminWriteLog(a.email, 'ログイン', '', '', '');
+  return {ok: true, token: token, expiresIn: ADMIN_TTL, me: a};
+}
+/** Google に ID トークンを確かめてもらう（署名・期限は Google 側で確認される） */
+function verifyIdToken(idToken, cid){
+  if(!idToken || idToken.length > 4096) return null;
+  try{
+    var r = UrlFetchApp.fetch('https://oauth2.googleapis.com/tokeninfo?id_token=' + encodeURIComponent(idToken), {muteHttpExceptions: true});
+    if(r.getResponseCode() !== 200) return null;
+    var p = JSON.parse(r.getContentText());
+    if(p.aud !== cid) return null;
+    if(p.iss !== 'accounts.google.com' && p.iss !== 'https://accounts.google.com') return null;
+    if(!(p.email_verified === true || p.email_verified === 'true')) return null;
+    if(!(Number(p.exp) * 1000 > Date.now())) return null;
+    return {email: String(p.email || '').toLowerCase(), name: p.name || ''};
+  }catch(e){ return null; }
+}
+function adminList(){
+  return rows('admins').map(function(r, i){
+    var role = str(r[2]).toLowerCase();
+    return {email: str(r[0]).toLowerCase(), name: str(r[1]), role: ROLE_RANK[role] ? role : 'viewer', active: !/停止|stop|off|false/i.test(str(r[3])), added: dt(r[4]), memo: str(r[5]), row: i + 2};
+  }).filter(function(a){ return a.email; });
+}
+function adminByEmail(email){
+  email = String(email || '').toLowerCase();
+  var a = adminList().filter(function(x){ return x.email === email && x.active; })[0];
+  return a ? {email: a.email, name: a.name, role: a.role} : null;
+}
+function adminAuth(req){
+  var t = str(req.adminToken); if(!t) return null;
+  var hit = CacheService.getScriptCache().get('adm|' + hash('a|' + t)); if(!hit) return null;
+  try{ return adminByEmail(JSON.parse(hit).email); }catch(e){ return null; }
+}
+function adminWriteLog(email, op, d, ev, detail){
+  try{ append('adminlog', [nowStr(), email, op, d ? "'" + d : '', ev || '', typeof detail === 'string' ? detail : JSON.stringify(detail)]); }catch(e){}
+}
+
+/* ---------- 見る ---------- */
+function adminOverview(me){
+  var C = content(), S = schedule(), d = today();
+  var count = {}; Object.keys(C.scenes).forEach(function(k){ var ev = k.split('/')[0]; count[ev] = (count[ev] || 0) + 1; });
+  var works = C.events.map(function(e){
+    return {id: e.id, name: e.name, scenes: count[e.id] || 0,
+      facilities: C.facilities.filter(function(f){ return f.event === e.id; }).map(function(f){ return {id: f.id, name: f.name, roof: f.roof}; }),
+      dates: S.shows.filter(function(s){ return s.event === e.id; }).map(function(s){ return {date: s.date, status: s.status}; })};
+  });
+  var shows = S.shows.map(function(s){ return adminShow(s, d); });
+  var P = PropertiesService.getScriptProperties(), n = nowMin();
+  return {ok: true, me: me, today: d, now: ('0' + Math.floor(n / 60)).slice(-2) + ':' + ('0' + (n % 60)).slice(-2), works: works, shows: shows,
+    test: {date: P.getProperty('TEST_DATE') || '', time: P.getProperty('TEST_TIME') || ''}};   // リハーサル用の日付・時刻が残っていたら知らせる
+}
+function adminShow(s, d){
+  var ev = eventOf(s.event);
+  return {event: s.event, name: ev ? ev.name : s.event, missing: !ev, date: s.date, label: s.label, dayNo: s.dayNo, start: s.start, end: s.end, grace: s.grace, until: graceUntil(s),
+    status: s.status, phase: s.status === 'active' ? phase(s) : 'cancelled'};
+}
+/** その日の上演と、ことば（管理者にだけ返す） */
+function adminDay(me, req){
+  var d = ymd(req.date); if(!d) return {ok: false, error: 'bad_date'};
+  var S = schedule(), list = S.shows.filter(function(s){ return s.date === d; });
+  var W = S.words.filter(function(w){ return w.date === d; });
+  var shared = W.filter(function(w){ return !w.event; }).map(function(w){ return {facility: w.facility, answers: w.answers.join('｜'), message: w.message}; });
+  return {ok: true, date: d, shared: shared, shows: list.map(function(s){
+    var o = adminShow(s, today()), mine = W.filter(function(w){ return w.event === s.event; });
+    var ent = mine.filter(function(w){ return w.facility === 'entrance'; })[0];
+    o.entrance = ent ? {answers: ent.answers.join('｜'), message: ent.message} : null;
+    o.facilities = {}; mine.forEach(function(w){ if(w.facility !== 'entrance') o.facilities[w.facility] = {answers: w.answers.join('｜'), message: w.message}; });
+    o.visitors = visitorsOf(d, s.event);
+    return o;
+  })};
+}
+function visitorsOf(d, ev){ return rows('visits').filter(function(r){ return ymd(r[2]) === d && str(r[1]) === ev; }).length; }
+/** 開催日と作品ごとの参加状況（人数だけ。住民の名前は出さない） */
+function adminStats(me, req){
+  var d = ymd(req.date), ev = str(req.event); if(!d || !ev) return {ok: false, error: 'bad_request'};
+  var people = {}, facs = {}, ends = {};
+  rows('visits').forEach(function(r){ if(ymd(r[2]) === d && str(r[1]) === ev) people[r[0]] = 1; });
+  rows('progress').forEach(function(r){
+    if(ymd(r[2]) !== d || str(r[1]) !== ev) return;
+    var f = str(r[3]); facs[f] = facs[f] || {read: {}, done: {}};
+    facs[f][str(r[5]) === '読み終えた' ? 'done' : 'read'][r[0]] = 1;
+  });
+  var unl = {}; rows('unlocks').forEach(function(r){ if(ymd(r[1]) === d && (str(r[4]) === ev || !str(r[4])) && str(r[2]) !== 'entrance'){ var f = str(r[2]); unl[f] = unl[f] || {}; unl[f][r[0]] = 1; } });
+  var out = content().facilities.filter(function(f){ return f.event === ev; }).map(function(f){
+    var x = facs[f.id] || {read: {}, done: {}};
+    return {id: f.id, name: f.name, opened: Object.keys(unl[f.id] || {}).length, read: Object.keys(x.read).length, done: Object.keys(x.done).length};
+  });
+  return {ok: true, date: d, event: ev, visitors: Object.keys(people).length, facilities: out};
+}
+function adminLog(me, req){
+  var all = rows('adminlog'), n = Math.min(300, Number(req.limit) || 100);
+  return {ok: true, log: all.slice(-n).reverse().map(function(r){ return {at: dt(r[0]), who: str(r[1]), op: str(r[2]), date: ymd(r[3]), event: str(r[4]), detail: str(r[5])}; })};
+}
+function adminAdmins(me){
+  return {ok: true, admins: adminList().map(function(a){ return {email: a.email, name: a.name, role: a.role, active: a.active, added: a.added, memo: a.memo}; })};
+}
+
+/* ---------- 登録・変更 ---------- */
+function cleanTri(o, max){
+  o = o || {}; if(typeof o === 'string') o = {ja: o};
+  return {ja: str(o.ja).slice(0, max), kana: str(o.kana).slice(0, max), en: str(o.en).slice(0, max)};
+}
+function cleanAnswers(v){ return splitList(String(v || '').slice(0, 400)).slice(0, 20).map(function(x){ return x.slice(0, 40); }); }
+/** 上演を登録・変更する。同じ「開催日＋作品」があれば上書き。日付を変えるときは origDate（参加者がいる上演の日付は変えられない） */
+function adminSave(me, req){
+  var d = ymd(req.date), ev = str(req.event), orig = ymd(req.origDate) || d;
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(d)) return {ok: false, error: 'bad_date'};
+  if(!eventOf(ev)) return {ok: false, error: 'no_event'};
+  var start = hm(req.start) || '00:00', end = str(req.end) === '24:00' ? '24:00' : (hm(req.end) || '24:00');
+  if(toMin(start) >= toMin(end)) return {ok: false, error: 'bad_time'};
+  var grace = str(req.grace) === '' ? 60 : Math.round(Number(req.grace));
+  if(!(grace >= 0 && grace <= 600)) return {ok: false, error: 'bad_grace'};
+  var label = cleanTri(req.label, 30), dayNo = Math.max(0, Math.min(99, Math.round(Number(req.dayNo) || 0)));
+  var ent = req.entrance || {}, entAns = cleanAnswers(ent.answers);
+  if(!entAns.length) return {ok: false, error: 'need_entrance'};
+  var facIds = {}; content().facilities.forEach(function(f){ if(f.event === ev) facIds[f.id] = true; });
+  var facs = {}; Object.keys(req.facilities || {}).forEach(function(fid){
+    if(!facIds[fid]) return;
+    var f = req.facilities[fid] || {}, ans = cleanAnswers(f.answers);
+    if(ans.length) facs[fid] = {answers: ans, message: cleanTri(f.message, 200)};
+  });
+  return withLock(function(){
+    clearSchedule();
+    var S = schedule();
+    var same = S.shows.filter(function(s){ return s.date === orig && s.event === ev; })[0] || null;
+    if(orig !== d){
+      if(!same) return {ok: false, error: 'not_found'};
+      if(visitorsOf(orig, ev) > 0) return {ok: false, error: 'has_visitors'};
+      if(S.shows.some(function(s){ return s.date === d && s.event === ev; })) return {ok: false, error: 'duplicate'};
+    }
+    // 同じ日に公開する別の作品と、入口のことばが重なっていないか（ことばで作品を決めるため）
+    var mine = {}; entAns.forEach(function(x){ mine[norm(x)] = 1; });
+    var clash = S.shows.filter(function(s){ return s.date === d && s.event !== ev && s.status === 'active'; }).filter(function(s){
+      var w = S.words.filter(function(x){ return x.date === d && x.facility === 'entrance' && (x.event === s.event || !x.event); })[0];
+      return w && w.answers.some(function(x){ return mine[norm(x)]; });
+    })[0];
+    if(clash) return {ok: false, error: 'word_clash', with: (eventOf(clash.event) || {}).name || clash.event};
+    var row = ["'" + d, label.ja, dayNo || '', label.kana, label.en, "'" + start, "'" + end, grace, same ? (same.status === 'cancelled' ? '中止' : '公開') : '公開', "'" + nowStr(), me.email];
+    if(same) sh('days').getRange(same.row, 1, 1, 12).setValues([[ev].concat(row)]);
+    else append('days', [ev].concat(row));
+    // ことば：この上演（元の日付）の行を書き直す。その日の作品がこれ1つなら、作品指定なし（共通）の古い行もこの作品の行にまとめる
+    var only = S.shows.filter(function(s){ return s.date === orig && s.event !== ev; }).length === 0;
+    var add = [["'" + d, 'entrance', entAns.join('｜'), cleanTri(ent.message, 200).ja, cleanTri(ent.message, 200).kana, cleanTri(ent.message, 200).en, ev]];
+    Object.keys(facs).forEach(function(fid){ add.push(["'" + d, fid, facs[fid].answers.join('｜'), facs[fid].message.ja, facs[fid].message.kana, facs[fid].message.en, ev]); });
+    rewriteRows('words', function(r){ var rd = ymd(r[0]), re = str(r[6]); return !(rd === orig && (re === ev || (!re && only))); }, add);
+    clearSchedule();
+    adminWriteLog(me.email, same ? (orig !== d ? '上演の日付を変更（' + orig + '→' + d + '）' : '上演を変更') : '上演を登録', d, ev,
+      {label: label.ja, dayNo: dayNo, start: start, end: end, grace: grace, facilities: Object.keys(facs)});   // ことばそのものは記録に残さない
+    return {ok: true};
+  });
+}
+/** 中止・再開 */
+function adminStatus(me, req){
+  var d = ymd(req.date), ev = str(req.event), cancel = !!req.cancel;
+  return withLock(function(){
+    clearSchedule();
+    var s = schedule().shows.filter(function(x){ return x.date === d && x.event === ev; })[0];
+    if(!s) return {ok: false, error: 'not_found'};
+    sh('days').getRange(s.row, 10, 1, 3).setValues([[cancel ? '中止' : '公開', "'" + nowStr(), me.email]]);
+    clearSchedule();
+    adminWriteLog(me.email, cancel ? '上演を中止' : '上演を再開', d, ev, '');
+    return {ok: true};
+  });
+}
+/** 削除（参加者がまだいない上演だけ。参加者がいる上演は「中止」にする） */
+function adminRemove(me, req){
+  var d = ymd(req.date), ev = str(req.event);
+  return withLock(function(){
+    clearSchedule();
+    var s = schedule().shows.filter(function(x){ return x.date === d && x.event === ev; })[0];
+    if(!s) return {ok: false, error: 'not_found'};
+    if(visitorsOf(d, ev) > 0) return {ok: false, error: 'has_visitors'};
+    var only = schedule().shows.filter(function(x){ return x.date === d && x.event !== ev; }).length === 0;
+    rewriteRows('days', function(r){ return !(ymd(r[1]) === d && str(r[0]) === ev); }, []);
+    rewriteRows('words', function(r){ var re = str(r[6]); return !(ymd(r[0]) === d && (re === ev || (!re && only))); }, []);
+    clearSchedule();
+    adminWriteLog(me.email, '上演を削除', d, ev, '');
+    return {ok: true};
+  });
+}
+/** 管理者の追加・変更（owner だけ。自分自身を停止したり owner でなくしたりはできない） */
+function adminSaveAdmin(me, req){
+  var email = str(req.email).toLowerCase(), role = str(req.role).toLowerCase(), active = req.active !== false;
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return {ok: false, error: 'bad_email'};
+  if(!ROLE_RANK[role]) return {ok: false, error: 'bad_role'};
+  if(email === me.email && (role !== 'owner' || !active)) return {ok: false, error: 'self'};
+  return withLock(function(){
+    var a = adminList().filter(function(x){ return x.email === email; })[0];
+    var row = [email, str(req.name).slice(0, 40), role, active ? '有効' : '停止', a ? a.added : "'" + nowStr(), str(req.memo).slice(0, 100)];
+    if(a) sh('admins').getRange(a.row, 1, 1, 6).setValues([row]); else append('admins', row);
+    adminWriteLog(me.email, a ? '管理者を変更' : '管理者を追加', '', '', {email: email, role: role, active: active});
+    return {ok: true};
+  });
+}
+/** シートの中身（2行目から）を、条件に合う行だけ残して書き直す（行の削除の代わり。見出しと列の並びはそのまま） */
+function rewriteRows(key, keep, add){
+  var s = sh(key), n = SHEETS[key].head.length, all = rows(key);
+  var out = all.filter(function(r){ return r.some(function(v){ return str(v) !== ''; }) && keep(r); }).map(function(r){
+    return r.map(function(v, i){
+      if(!(v instanceof Date)) return v;
+      var dc = {days: [1], words: [0]}[key] || [], tc = {days: [6, 7]}[key] || [];   // 日付・時刻は文字のまま書き戻す
+      return "'" + (dc.indexOf(i) >= 0 ? ymd(v) : tc.indexOf(i) >= 0 ? hm(v) : dt(v));
+    });
+  }).concat((add || []).map(function(r){ r = r.slice(0, n); while(r.length < n) r.push(''); return r; }));
+  if(all.length) s.getRange(2, 1, all.length, n).clearContent();
+  if(out.length) s.getRange(2, 1, out.length, n).setValues(out);
+}
+
+/** 管理サイトの準備（最初に1回だけ実行）：シートの見出しをそろえ、この関数を実行した Google アカウントを owner として登録 */
+function setupAdmin(){
+  setup();
+  var me = String(Session.getEffectiveUser().getEmail() || '').toLowerCase();
+  if(me && !adminList().some(function(a){ return a.email === me; })) append('admins', [me, '', 'owner', '有効', "'" + nowStr(), 'setupAdmin で登録']);
+  var cid = PropertiesService.getScriptProperties().getProperty('ADMIN_CLIENT_ID');
+  console.log('管理者：' + adminList().map(function(a){ return a.email + '（' + a.role + (a.active ? '' : '・停止') + '）'; }).join('、'));
+  console.log(cid ? 'ADMIN_CLIENT_ID は設定ずみです。' : '※ スクリプトプロパティ ADMIN_CLIENT_ID がまだありません（docs/admin-setup.md を見てください）');
+}
+
 /* ================= 初期設定（最初に1回だけ実行） ================= */
 function setup(){
   var book = ss();
@@ -557,6 +940,10 @@ function setup(){
       s.getRange(1, 1, 1, def.head.length).setValues([def.head]);
       s.setFrozenRows(1);
       if(s.getRange(1, 1, 1, def.head.length).setFontWeight) s.getRange(1, 1, 1, def.head.length).setFontWeight('bold').setBackground('#fde9d9');
+    } else {
+      // 列が増えたとき：見出しの空いているところにだけ、新しい見出しを書く（中身には触らない）
+      var cur = s.getRange(1, 1, 1, def.head.length).getValues()[0];
+      for(var j = 0; j < def.head.length; j++) if(!str(cur[j])) s.getRange(1, j + 1).setValue(def.head[j]);
     }
   });
   if(rows('events').length === 0) seedSample();
@@ -564,7 +951,7 @@ function setup(){
   var def = book.getSheetByName('シート1') || book.getSheetByName('Sheet1');
   if(def && def.getLastRow() === 0 && book.getSheets().length > 1) book.deleteSheet(def);
   salt();
-  clearCache();
+  clearCache(); clearSchedule();
 }
 
 function setupStats(){
