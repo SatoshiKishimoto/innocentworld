@@ -490,3 +490,43 @@ html.iwtone .sroomcast img{filter:saturate(.86) sepia(.08) brightness(1.02) cont
 /* 森の紙切れ：橋の向こうから、ひらひらと飛んできて止まる */
 .sbgart .scrap.fly{animation:scrapin .4s ease-out .3s both}
 @keyframes scrapin{from{opacity:0}to{opacity:1}}
+
+/* ===== PC・タブレットの横長画面、スマホの横向き：中央に縦長（9:16）の絵本画面を置き、左右は北欧テキスタイル風の壁紙と装丁 =====
+   スマホの縦向き（横幅が高さの0.8倍より狭い画面）には当たらないので、今の表示・演出は変わらない。
+   画面いっぱいに出していた物語・部屋・お知らせ・演出は、すべて中央の絵本画面（--bw の幅）の中に出す */
+@media (min-aspect-ratio: 4/5){
+  :root{--bw:min(100vw, 56.25vh); --bw:min(100vw, 56.25dvh); --bl:calc((100vw - var(--bw)) / 2)}
+  html{scrollbar-width:none;background:#24305a url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Cg fill='none' stroke-linecap='round'%3E%3Cg transform='translate(60 60)'%3E%3Cg fill='%23e9d6ac' opacity='.22'%3E%3Cellipse rx='5' ry='13' cy='-12'/%3E%3Cellipse rx='5' ry='13' cy='12'/%3E%3Cellipse rx='13' ry='5' cx='-12'/%3E%3Cellipse rx='13' ry='5' cx='12'/%3E%3Cellipse rx='4' ry='10' cy='-10' transform='rotate(45)'/%3E%3Cellipse rx='4' ry='10' cy='10' transform='rotate(45)'/%3E%3Cellipse rx='4' ry='10' cy='-10' transform='rotate(-45)'/%3E%3Cellipse rx='4' ry='10' cy='10' transform='rotate(-45)'/%3E%3C/g%3E%3Ccircle r='5' fill='%23c45a3f' opacity='.55'/%3E%3Ccircle r='2' fill='%23f3e2c0' opacity='.7'/%3E%3C/g%3E%3Cg stroke='%237fa36a' stroke-width='2' opacity='.35'%3E%3Cpath d='M18 18 q8 6 0 16 q-8-10 0-16z' fill='%237fa36a'/%3E%3Cpath d='M102 102 q8 6 0 16 q-8-10 0-16z' fill='%237fa36a' transform='translate(0 -14)'/%3E%3Cpath d='M102 18 q-8 6 0 16 q8-10 0-16z' fill='%237fa36a'/%3E%3Cpath d='M18 102 q-8 6 0 16 q8-10 0-16z' fill='%237fa36a' transform='translate(0 -14)'/%3E%3C/g%3E%3Cg fill='%23d9b45a' opacity='.28'%3E%3Cpath d='M60 0 l5 6 -5 6 -5-6z'/%3E%3Cpath d='M60 108 l5 6 -5 6 -5-6z'/%3E%3Cpath d='M0 60 l6-5 6 5 -6 5z'/%3E%3Cpath d='M108 60 l6-5 6 5 -6 5z'/%3E%3C/g%3E%3Cg fill='%239fb4e8' opacity='.22'%3E%3Ccircle cx='0' cy='0' r='3'/%3E%3Ccircle cx='120' cy='0' r='3'/%3E%3Ccircle cx='0' cy='120' r='3'/%3E%3Ccircle cx='120' cy='120' r='3'/%3E%3Ccircle cx='30' cy='60' r='2'/%3E%3Ccircle cx='90' cy='60' r='2'/%3E%3Ccircle cx='60' cy='30' r='2'/%3E%3Ccircle cx='60' cy='90' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E") center top / 120px 120px repeat}
+  html::-webkit-scrollbar{display:none}
+  body{background:none;min-height:100vh;min-height:100dvh}
+  /* 装丁：絵本の両側の織りテープ（赤・クリーム・紺）と木の縁、外側に影 */
+  body::before{content:"";position:fixed;top:0;bottom:0;left:calc(var(--bl) - 14px);width:calc(var(--bw) + 28px);z-index:0;pointer-events:none;
+    background:
+      linear-gradient(90deg,#5b3a1e 0 3px,#f3e2c0 3px 5px,transparent 5px calc(100% - 5px),#f3e2c0 calc(100% - 5px) calc(100% - 3px),#5b3a1e calc(100% - 3px)),
+      repeating-linear-gradient(180deg,#b5523b 0 7px,#f3e2c0 7px 10px,#2c3e7a 10px 17px,#f3e2c0 17px 20px);
+    box-shadow:0 0 0 1px rgba(0,0,0,.35),0 0 60px rgba(0,0,0,.55)}
+  #app{position:relative;z-index:1;max-width:none;width:var(--bw);background:linear-gradient(180deg,var(--sky) 0%,#e6f2ff 38%,var(--cream) 100%)}
+  .sscene,.sroompage,.sroompage > .sbgart,.smodal,.scele,.sloading,.sitempop,.sending,.sitemview,.slightout{left:var(--bl);right:auto;width:var(--bw)}
+  /* 画面の幅（vw）で大きさを決めていた所を、絵本画面の幅に */
+  .shero h1{font-size:clamp(24px, calc(var(--bw) * .085), 40px)}
+  .sactor{max-width:calc(var(--bw) * .86)}
+  .stext{font-size:clamp(15px, calc(var(--bw) * .048), 20px)}
+  html[data-lang="kana"] .stext{font-size:clamp(16px, calc(var(--bw) * .052), 21px)}
+  .stoast{max-width:min(calc(var(--bw) * .9), 420px)}
+  .scele p{max-width:calc(var(--bw) * .86)}
+  .sipcard{max-width:calc(var(--bw) * .84)}
+  .sfinale span{font-size:clamp(17px, calc(var(--bw) * .056), 30px)}
+  .sfinale.last span{font-size:clamp(28px, calc(var(--bw) * .11), 52px)}
+  .sroomcast img{max-width:calc(var(--bw) * .44)}
+  .sprop .smemo.img{width:min(calc(var(--bw) * .52), 220px)}
+}
+/* スマホの横向き：縦長の絵本画面のまま、左の余白に「縦向きがおすすめ」の案内（さわれる所には重ねない） */
+@media (min-aspect-ratio: 4/5) and (orientation: landscape) and (max-height: 500px){
+  /* 横向きは高さが足りず 9:16 だと幅が約220pxまで細くなり、ボタンや文字が折り返して崩れるため、幅は最低320px（小さいスマホ縦向きと同じ）を確保 */
+  :root{--bw:max(320px, min(100vw, 56.25vh)); --bw:max(320px, min(100vw, 56.25dvh))}
+  body::after{content:"📱 縦向きにすると 見やすくなります";position:fixed;z-index:1;left:8px;top:50%;transform:translateY(-50%);
+    width:calc(var(--bl) - 40px);max-width:240px;box-sizing:border-box;padding:10px 12px;border-radius:14px;background:rgba(243,226,192,.92);color:#24305a;
+    font-size:13px;font-weight:800;line-height:1.5;text-align:center;pointer-events:none;box-shadow:0 6px 18px rgba(0,0,0,.3)}
+  html[data-lang="kana"] body::after{content:"📱 スマホは たてむきに すると みやすいよ"}
+  html[data-lang="en"] body::after{content:"📱 Turn your phone upright for the best view"}
+}
