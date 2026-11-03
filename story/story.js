@@ -155,7 +155,7 @@
   function toast(msg){ let t = $('svToast'); if(!t){ t = document.createElement('div'); t.id = 'svToast'; t.className = 'stoast'; t.setAttribute('role', 'status'); document.body.appendChild(t); }
     t.textContent = msg; t.hidden = false; clearTimeout(toast._t); toast._t = setTimeout(() => t.hidden = true, 3800); }
   function modal(html, again){ MODAL = again || null; let m = $('svModal'); if(!m){ m = document.createElement('div'); m.id = 'svModal'; m.className = 'smodal'; document.body.appendChild(m); } m.innerHTML = html; m.hidden = false; }
-  function closeModal(){ MODAL = null; const m = $('svModal'); if(m){ m.hidden = true; m.innerHTML = ''; } }
+  function closeModal(){ MODAL = null; const m = $('svModal'); if(m){ m.hidden = true; m.innerHTML = ''; } overlayClosed(); }
   function shake(el){ el.classList.remove('sshake'); void el.offsetWidth; el.classList.add('sshake'); SFX.play('wrong'); }
   /* ---------- 効果音（音はおまけ。音がなくても内容はすべて文字と動きで分かる） ----------
      将来の音声：セリフに音声ファイルがあれば SFX.voice(url) で再生（「セリフ」シートの音声列） */
@@ -233,7 +233,7 @@
       ${T(it.desc) ? `<p class="sivdesc">${esc(fill(T(it.desc)))}</p>` : ''}
       ${when ? `<p class="sivwhen">${esc(t('itemGot', when))}</p>` : ''}
       <button type="button" class="sbtn main" data-act="itemclose">${esc(t('close'))}</button></div>`;
-    c.addEventListener('click', e => { if(e.target === c) c.remove(); });
+    c.addEventListener('click', e => { if(e.target === c){ c.remove(); overlayClosed(); } });
     document.body.appendChild(c); SFX.play('page');
     setTimeout(() => { const b = c.querySelector('[data-act=itemclose]'); if(b) b.focus(); }, 50);
   }
@@ -241,12 +241,38 @@
   function itemPop(ids){
     if(!ids || !ids.length) return;
     const c = document.createElement('div'); c.className = 'sitempop'; c.setAttribute('role', 'status');
-    c.innerHTML = ids.map(i => { const it = defs().items[i] || {name:i}; return `<div class="sipcard"><span class="sipicon">${esc(it.icon || '★')}</span><b>${esc(T(it.name))}</b><em>${esc(t('gotItem'))}</em>${T(it.desc) ? `<small>${esc(T(it.desc))}</small>` : ''}</div>`; }).join('')
+    c.innerHTML = ids.map(i => { const it = defs().items[i] || {name:i}; return `<div class="sipcard"><span class="sipicon">${artItem(i) ? `<img src="${esc(artItem(i))}" alt="">` : esc(it.icon || '★')}</span><b>${esc(T(it.name))}</b><em>${esc(t('gotItem'))}</em>${T(it.desc) ? `<small>${esc(T(it.desc))}</small>` : ''}</div>`; }).join('')
       + `<p class="siptap">${esc(t('tapClose'))}</p>` + Array.from({length:14}, (_, k) => `<i style="--a:${k*360/14}deg;--d:${(k%3)*0.08}s"></i>`).join('');
-    c.addEventListener('click', () => c.remove());
+    // 閉じるのは、もちもの画面が出てからの「あらためてのタップ」だけ（B）。
+    //  ・押し始めがもちもの画面の出る前だったタップ（「つぎへ」を押している途中で出た）は、閉じる操作にしない
+    //  ・連打のつづき（前のタップから TAP_GAP 秒以内のタップ）も閉じる操作にしない。手を止めてからのタップ・キーボードの操作はすぐ閉じる
+    const shown = performance.now(); let down = null;
+    const close = () => { if(!c.isConnected) return; c.remove(); overlayClosed(); };
+    c.addEventListener('pointerdown', () => { down = tapAt.last >= shown && tapAt.last - tapAt.prev >= TAP_GAP ? 'ok' : 'skip'; });
+    c.addEventListener('click', e => {
+      if(e.detail === 0){ close(); return; }                          // キーボードなど（ポインターなし）
+      const ok = down === 'ok' && tapAt.last >= shown; down = null;
+      if(ok) close();
+    });
     document.body.appendChild(c); SFX.play('item');
-    setTimeout(() => c.remove(), 3200);
+    setTimeout(close, 3200);
   }
+  // タップの時刻（もちもの画面の誤操作防止）：直前とその前の押し始め
+  const TAP_GAP = 400, tapAt = {last: -1e9, prev: -1e9};
+  document.addEventListener('pointerdown', () => { tapAt.prev = tapAt.last; tapAt.last = performance.now(); }, {capture: true, passive: true});
+  // 地図の上に重なる表示（もちもの画面・住民票などの窓・もちものの説明）。開いているあいだは地図を描き直さず、閉じたときに最新の状態で描き直す（A）
+  const overlayOpen = () => !!document.querySelector('.smodal:not([hidden]), .sitempop, .sitemview');
+  let mapStale = false, mapNews = false, bootSeq = 0, mapClosedSeen = null;   // mapClosedSeen：前に地図を描いたとき、閉じていた場所（hidden / blocked）
+  function overlayClosed(){
+    setTimeout(() => {
+      if(overlayOpen()) return;                                   // まだほかの表示が開いている
+      if(VIEW !== showMap){ mapStale = false; return; }           // 地図以外の画面：次に地図を出すときに、最新の状態で描く
+      if(mapStale){ mapStale = false; const y = window.scrollY; showMap(); window.scrollTo(0, y); }   // 知らせは showMap の終わりで
+      else mapNewsNow();
+    }, 0);
+  }
+  // 「新しい場所がひらいた」の知らせ：地図が最新の状態で表示されていて、何も重なっていないときに1回だけ
+  function mapNewsNow(){ if(!mapNews || VIEW !== showMap || overlayOpen() || mapStale) return; mapNews = false; SFX.play('correct'); toast(t('newPlace')); }
   function celebrate(msg){
     const c = document.createElement('div'); c.className = 'scele';
     c.innerHTML = `<p>${esc(msg)}</p>` + Array.from({length:26}, (_, i) => `<i style="--x:${(Math.random()*100).toFixed(1)}%;--d:${(Math.random()*0.5).toFixed(2)}s;--c:${['#ffd000','#e23d72','#1e5aff','#10c050','#ff8a1a'][i%5]}"></i>`).join('');
@@ -267,8 +293,10 @@
     return `<div class="slangs">${Object.keys(I.langs).map(k => `<button class="slangcard ${k === LANG ? 'on' : ''}" data-act="setlang" data-lang="${k}">
       <b>${esc(I.langs[k].label)}</b><span>${esc(I.langs[k].sub)}</span></button>`).join('')}</div>`;
   }
+  // はじめての人：ことば選び・住民登録のあいだに、入口とプロローグの部屋の絵を1枚ずつ読み込んでおく（低速回線でも、部屋で長く待たないように）
+  const roomEarly = () => artQueue(artUrls('room').concat(artUrls('room_book')));
   function showLangFirst(){
-    VIEW = showLangFirst;
+    VIEW = showLangFirst; roomEarly();
     set(`<div class="spage sfirst"><div class="shero"><p class="skicker">INNOCENT WORLD</p><div class="sbig-icon">🌐</div>
       <h2>ことばを えらんでください<br><small>Choose your language</small></h2></div>${langChoices()}</div>`);
   }
@@ -317,7 +345,11 @@
     if(!L.day && !(L.shows || []).length) return showClosed();
     if(!L.day || !L.unlocked || !L.unlocked.entrance) return showGate();
     // 作品×開催日ごとに1回：部屋で絵本をひらく導入 → レンガ村に到着 → intro（導入のない作品は共通の導入）
-    if(!L.state.introSeen[runKey()]) return play(L.prologue || defaultPrologue());
+    if(!L.state.introSeen[runKey()]){
+      if(route.pro) return;   // 準備を待っているあいだに、もう一度呼ばれても二重に始めない
+      const pb = L.prologue || defaultPrologue(); route.pro = true;
+      return artGo(storyArt(pb), () => { route.pro = false; if(!P) play(pb); }, charReady(charUrls((pb.scenes || {})[pb.start])));
+    }
     showMap();
   }
   function showError(j, retry){
@@ -333,7 +365,7 @@
     return false;
   }
   async function showWelcome(msgKey){
-    VIEW = () => showWelcome(msgKey);
+    VIEW = () => showWelcome(msgKey); roomEarly();
     set(topbar('', {noCard:true}) + `<div class="spage">
       <div class="shero"><p class="skicker">INNOCENT WORLD</p><h1>${esc(t('appTitle'))}</h1>
         <p>${t('welcomeLead')}</p></div>
@@ -435,7 +467,7 @@
     const shows = L.shows || [], cur = L.day && L.unlocked && L.unlocked.entrance ? L.day : null;
     set(`<div class="sroompage">${window.IWRoom ? window.IWRoom.art({book:'locked', lace:'closed', img:charImg}) : ''}
       ${topbar('')}
-      <div class="sroomhero"><p class="skicker">${esc(fmtDate(L.today))}</p></div>
+      <div class="sroomhero"></div>
       <div class="sroomfoot">
         ${shows.length > 1 || (shows.length === 1 && shows[0].phase !== 'open') ? `<div class="sroomworks"><b class="sh">${esc(t('todayWorks'))}</b><ul class="sworks">${shows.map(w => workLine(w, true)).join('')}</ul></div>` : ''}
         ${cur ? `<div class="sroomnow"><span>${esc(t('nowPlaying'))}：<b>『${esc(T(cur.eventName))}』</b></span><button class="sbtn ghost" data-act="tomap">${esc(t('backMap'))}</button></div>` : ''}
@@ -460,7 +492,8 @@
         L.intro = j.intro || null; L.prologue = j.prologue || null; save();
         // 留め金が外れる
         const art = document.querySelector('.sroompage > .sbgart');
-        if(art && window.IWRoom) art.outerHTML = window.IWRoom.art({book:'unlocking', lace:'closed', img:charImg});
+        // 部屋の絵は作り直さず、同じ絵（部屋・カーテン・本）はそのまま使う（留め金の動きは新しい指定で動く。背景が一瞬消えないように）
+        if(art && window.IWRoom){ const keep = artKeep(); art.outerHTML = window.IWRoom.art({book:'unlocking', lace:'closed', img:charImg}); artReuse(keep); }
         fitRoom();
         e.target.classList.add('sunlocked');
         celebrate(fill(T(j.message) || t('entered')));
@@ -469,18 +502,56 @@
     });
   }
   /* 小さいスマホでは、部屋の絵本が文章の枠に隠れないよう、部屋の絵を少し上にずらす（絵本の下の端を、枠の上に出す） */
+  /* 選択肢の画面の構図（manifest の choice。試作）へ、となりの行から移るときだけ、背景を短く（0.6秒）なめらかに寄せる／戻す（カメラが寄るように）。
+     ほかの場面・言語の切りかえ・場面のはじめ・動きを減らす設定では動かさない（今までどおり、すぐその位置） */
+  const ART_MS = 600;
+  const artTS = svg => { const t = svg.style.transform || '', m = t.match(/translate\(([-\d.]+)px,\s*([-\d.]+)px\)\s*scale\(([-\d.]+)\)/), y = t.match(/translateY\(([-\d.]+)px\)/);
+    return m ? {x: +m[1], y: +m[2], k: +m[3]} : {x: 0, y: y ? +y[1] : 0, k: 1}; };
   function fitRoom(){
+    fitRoomAt();
+    const svg = document.querySelector('.sscene > .simg');
+    if(!svg || !P){ if(P) P.artLast = null; return; }
+    const cur = Object.assign(artTS(svg), {id: P.id, line: P.line, comp: !!(svg.dataset.choice && document.querySelector('.sscene .schoices'))});
+    const prev = P.artLast; P.artLast = cur;
+    if(!prev || prev.id !== cur.id || Math.abs(prev.line - cur.line) !== 1 || !(prev.comp || cur.comp) || calmMotion()) return;
+    if(prev.x === cur.x && prev.y === cur.y && prev.k === cur.k) return;
+    // 前の行の位置から、この行の位置へ。絵の下の端が途中で見えないよう、絵の枠は絵の下の端まで伸ばしておく
+    // 大きさは変形（拡大・ずらし）の影響を受けない offsetWidth / offsetHeight で測る。絵の倍率（横幅で決まる）は変えずに、枠だけ絵の下の端まで伸ばす
+    const s0 = Math.max(svg.offsetWidth / 400, svg.offsetHeight / 800);
+    svg.style.height = Math.max(svg.offsetHeight, 800 * s0).toFixed(0) + 'px';
+    svg.style.transformOrigin = '0 0'; svg.style.transition = 'none';
+    svg.style.transform = `translate(${prev.x}px, ${prev.y}px) scale(${prev.k})`;
+    void svg.getBoundingClientRect();
+    svg.style.transition = `transform ${ART_MS}ms cubic-bezier(.4, 0, .2, 1)`;
+    svg.style.transform = `translate(${cur.x}px, ${cur.y}px) scale(${cur.k})`;
+    const done = () => { svg.style.transition = ''; };
+    svg.addEventListener('transitionend', done, {once: true}); setTimeout(done, ART_MS + 200);
+  }
+  function fitRoomAt(){
     const svg = document.querySelector('.sscene > .sroom, .sroompage > .sroom, .sscene > .simg'), box = document.querySelector('.sscene > .sbook, .sroompage .slockcard');
     if(!svg || !box) return;
-    svg.style.transform = '';
+    svg.style.transform = ''; svg.style.height = ''; svg.style.transformOrigin = ''; svg.style.transition = '';
     if(svg.dataset.fill) svg.parentNode.style.background = svg.dataset.fill;   // 絵を上にずらしたときに下に見える地の色（小道の色など）
     const r = svg.getBoundingClientRect(), s = Math.max(r.width / 400, r.height / 800), img = svg.classList.contains('simg');
-    let focus, limit;
+    let focus, limit, cap = r.height * .3;   // 絵をずらす量の上限（画面の高さの30%）
     if(img){
+      // 選択肢の画面の構図（manifest の choice。試作：井戸）：選択肢で話題になる物（水面）を会話の枠のすぐ上に出す。
+      // 枠が高いときは絵を少し大きくして、絵の下の端が画面の下まで届くようにする（絵の外の地の色を出さない）。横は物を at の位置に寄せ、住人は actor の位置に立つ
+      if(svg.dataset.choice && document.querySelector('.sscene .schoices')){
+        const C = JSON.parse(svg.dataset.choice), W = r.width, H = r.height, bt = boxRect(box).top - r.top - 8, ox = (W - 400 * s) / 2;
+        const k = Math.max(1, (H - bt) / (s * (800 - C.focus[1])));
+        let ty = bt - k * s * C.focus[1]; ty = Math.max(H - k * s * 800, Math.min(0, ty));
+        let tx = W * C.at - k * (ox + s * C.focus[0]); tx = Math.min(-k * ox, Math.max(W - k * (ox + 400 * s), tx));
+        svg.style.height = (800 * s).toFixed(0) + 'px'; svg.style.transformOrigin = '0 0';
+        svg.style.transform = `translate(${tx.toFixed(1)}px, ${ty.toFixed(1)}px) scale(${k.toFixed(4)})`;
+        return;
+      }
       // 外の場面：見せたい物（門の足元・噴水）が文章の枠の上に出るように。切りたくない物（時計の文字盤）は上のボタンの下に残す
       focus = +svg.dataset.focus; if(!focus) return;
       const keep = +svg.dataset.keep, bar = document.querySelector('.sscene > .sstop');
-      limit = keep ? -(keep * s - (bar ? bar.getBoundingClientRect().bottom : 48) - 4) : -r.height * .3;
+      // 切りたくない物がない場面（井戸・村の入口など）は、見せたい物が隠れるときだけ、画面の高さの45%までずらしてよい（高さの低い画面のため）
+      if(!keep) cap = r.height * .45;
+      limit = keep ? -(keep * s - (bar ? bar.getBoundingClientRect().bottom : 48) - 4) : -cap;
       // 立ち絵が出る場面では、立ち絵の足もとが「床の線」（井戸のふちの上など）より下に来ないようにする（水面の上に浮いて見えないように）
       const floor = +svg.dataset.floor, actor = document.querySelector('.sscene > .sactor');
       if(floor && actor){ const ab = actor.getBoundingClientRect().bottom; limit = Math.max(limit, ab - 6 - (r.top + floor * s)); }
@@ -488,15 +559,59 @@
       const ground = +svg.dataset.ground;
       if(ground && actor){ const ab = actor.getBoundingClientRect().bottom, want = ab + 4 - (r.top + ground * s);
         if(want < 0){ svg.style.transform = `translateY(${Math.max(-r.height * .3, limit, want).toFixed(0)}px)`; return; } }
+      // しおりが落ちる行（とその後）：着地する机の上を文章の枠の上に出す。高さの低い画面では、絵を画面の高さの45%までずらしてよい
+      // （絵の下に足りない分は、同じ絵の下地が見える。文章の枠の後ろなのでほとんど見えない）
+      const bm = +svg.dataset.bm;
+      if(bm){ focus = Math.max(focus, bm); cap = r.height * .45; limit = Math.min(limit, -cap); }
     } else {
       focus = (((window.IW_ART || {}).room || {}).bookBottom) || 450;     // 400×800 の目安の座標で、絵本の下の端
       // 窓のアーチの上は切らない（上のボタンの下に少し見える位置まで）。そのぶん絵本の下の端が枠に少しかかるのはよい
       const win = ((window.IW_ART || {}).room || {}).window; limit = win ? -(win[1] * s - 6) : -r.height * .3;
+      // 高さの低い画面（小さい iPhone・アプリ内ブラウザなど）：入口の留め金の画面とプロローグの部屋では、窓のアーチを残すと絵本が文章の枠に隠れるときは、絵本を優先する
+      // （アーチの上は上のボタンの後ろに入ってよい。部屋の絵は下に余りがあるので、ずらすのは画面の高さの35%まで）
+      // 帰還の部屋（bedroom・bedroom_window：窓の外の住人が主役）の場面では、今までどおり窓のアーチを残す
+      // 帰還の最後（机の上のしおり・記念の品：bedroom_bookmark / bedroom_memento）は、しおりが主役なので絵本（とその上の品）を優先する
+      const bookFirst = !/\bbg-bedroom(_window)?\b/.test(svg.parentNode.className || '');
+      // 絵本の下の端が少しかかるだけ（24px まで）なら今までどおり（375×667 などの配置は変えない）。大きく隠れるときだけ絵本を優先する
+      if(bookFirst && box.getBoundingClientRect().top - 8 - (r.top + focus * s) < limit - 24){ cap = r.height * .35; limit = -cap; }
     }
-    const shift = Math.max(-r.height * .3, limit, Math.min(0, box.getBoundingClientRect().top - 8 - (r.top + focus * s)));
+    const shift = Math.max(-cap, limit, Math.min(0, box.getBoundingClientRect().top - 8 - (r.top + focus * s)));
     if(shift < 0) svg.style.transform = `translateY(${shift.toFixed(0)}px)`;
+    // 外の場面の絵を上にずらしたときは、絵の枠を下に伸ばして、絵の下の部分を見せる（画面の下に旧式の地の色の帯が出ないように）
+    if(img && shift < 0 && r.width / 400 >= r.height / 800) svg.style.height = `${Math.min(r.height - shift, 800 * r.width / 400).toFixed(0)}px`;
   }
   window.addEventListener('resize', () => { if(document.querySelector('.sroom')) fitRoom(); });
+  /* 選択肢の画面（D）：問いかけと選択肢で会話の枠が高くなり、住人の顔が枠に隠れるときだけ、立ち絵を小さくして顔を枠の上に出す。
+     顔の位置は立ち絵の高さに対する割合（上から）。ふつうのセリフの画面では何もしない（毎回もとに戻してから判断する）。
+     まず施設名の札の下に置く。顔が小さくなりすぎるときは、札を隠して上のボタンのすぐ下まで上げる。それでも小さすぎるときだけ、立ち絵を出さない */
+  const FACE_BAND = {mimi: [.28, .62], mock: [.38, .68], hal: [.12, .48], luke: [.16, .48]}, FACE_MIN = 44;
+  function fitChoiceActor(){
+    const sc = document.querySelector('.sscene'), a = sc && sc.querySelector(':scope > .sactor'), box = sc && sc.querySelector(':scope > .sbook');
+    if(!sc) return;
+    sc.classList.remove('schoiceactor');
+    if(!a || !box) return;
+    a.style.top = ''; a.style.height = ''; a.style.visibility = ''; a.style.left = '';
+    if(!sc.querySelector('.schoices')) return;
+    // 選択肢の画面の構図（manifest の choice。試作）：住人を横に寄せて、話題の物（井戸の水面）と重ならないようにする
+    const art = sc.querySelector(':scope > .simg'); let CH = null; try{ CH = art && art.dataset.choice ? JSON.parse(art.dataset.choice) : null; }catch(e){}
+    // 横に寄せるとき、立ち絵が画面の右の端からはみ出さないようにする（立ち絵の高さが決まってから）
+    const place = () => { if(!CH || !CH.actor) return; const vw = sc.clientWidth, h = a.offsetHeight, w = h * ((a.naturalWidth && a.naturalHeight) ? a.naturalWidth / a.naturalHeight : .6); a.style.left = Math.min(vw * CH.actor, vw - w / 2 - 6).toFixed(0) + 'px'; };
+    place();
+    const who = ((a.getAttribute('src') || '').match(/([A-Za-z0-9_-]+)\.png/) || [])[1] || '';
+    const [fa, fb] = FACE_BAND[who] || [.06, .45];
+    // 位置は登場の動き（少し下から浮かび上がる）に左右されないよう、offsetTop で測る
+    const st = sc.getBoundingClientRect().top, r = {top: st + a.offsetTop, height: a.offsetHeight}, boxTop = boxRect(box).top;
+    if(r.top + r.height * fb <= boxTop - 6) return place();   // そのままで顔が見える
+    const bar = sc.querySelector(':scope > .sstop'), fac = sc.querySelector(':scope > .sfac');
+    const barBottom = bar ? st + bar.offsetTop + bar.offsetHeight : 48, facBottom = fac && getComputedStyle(fac).visibility !== 'hidden' ? st + fac.offsetTop + fac.offsetHeight : barBottom;
+    const fit = top => Math.min(r.height, (boxTop - 6 - top) / fb);
+    let top = facBottom + 2, h = fit(top);
+    if(h * (fb - fa) < FACE_MIN && fac){ top = barBottom + 4; h = fit(top); sc.classList.add('schoiceactor'); }
+    if(h * (fb - fa) < FACE_MIN * .8){ sc.classList.remove('schoiceactor'); a.style.visibility = 'hidden'; return; }
+    a.style.top = top.toFixed(0) + 'px'; a.style.height = h.toFixed(0) + 'px';
+    place();
+  }
+  window.addEventListener('resize', () => { if(document.querySelector('.sscene .schoices')) fitChoiceActor(); });
   function lockRattle(){ const c = document.querySelector('.sroom .rclasp'); if(!c) return; c.classList.remove('rattle'); void c.getBoundingClientRect(); c.classList.add('rattle'); }
   /* 共通の短い導入（作品に prologue がないとき）：エスパーが絵本から現れる */
   function defaultPrologue(){
@@ -578,21 +693,30 @@
     const c = [[-12,-8],[0,-8],[12,-8],[-12,4],[0,4],[12,4]];
     return `<g transform="translate(${x},${y})" filter="url(#svOl)"><rect x="-22" y="-17" width="44" height="32" rx="8" fill="#008830"/>${c.map(([a, b]) => `<circle cx="${a}" cy="${b}" r="7" fill="#00a844" stroke="#003a10" stroke-width="1.2"/><circle cx="${a - 2}" cy="${b - 2}" r="2.5" fill="#58d854"/>`).join('')}</g>`;
   }
+  /* 地図の絵（story/art/manifest.js の map）。背景と施設の絵を重ね、札・状態の印・タップ範囲はアプリが描く。
+     絵が1枚でも読めなかったら、今までの描画の地図に戻す（mapArtBroken）。座標は 1600×2000 の px（地図の 400×500 の4倍） */
+  let mapArtBroken = false;
+  function mapArt(){ const M = (window.IW_ART || {}).map; return !mapArtBroken && M && M.bg && M.fac ? M : null; }
   function showMap(){
     VIEW = showMap; SFX.stopSamples();   // 物語の鐘の音は、地図に戻ったら止める
     if(window.IWCheckUpdate) setTimeout(window.IWCheckUpdate, 400);   // 地図に戻ったら新しい版を確かめる
-    const facs = L.map || [];
+    const facs = L.map || [], M = mapArt();
     const pins = facs.map(f => {
-      const x = Math.max(8, Math.min(92, f.x)) * 4, y = Math.max(8, Math.min(90, f.y)) * 5;
+      const A = M && M.fac[f.id] && M.fac[f.id].img ? M.fac[f.id] : null;
+      const x = Math.max(8, Math.min(92, f.x)) * 4, y = Math.max(8, Math.min(90, f.y)) * 5 + (A ? (+A.dy || 0) / 4 : 0);
+      // 絵があれば施設の絵（状態は印だけで伝え、絵はいつも明るいまま）と、透明なタップ範囲。なければ今までの建物
+      const look = st => A ? `<image class="mapart" href="${esc(A.img)}" x="${-A.at[0] / 4}" y="${-A.at[1] / 4}" width="${A.w / 4}" height="${A.h / 4}" pointer-events="none"/>
+        <rect class="sphit" x="${-A.half / 4}" y="${-A.top / 4}" width="${A.half / 2}" height="${(A.top + 100) / 4}" fill="rgba(0,0,0,0)" pointer-events="all"/>`
+        : `<ellipse cx="0" cy="30" rx="34" ry="7" fill="rgba(60,30,10,.18)"/>${building(f)}`;
       if(f.status === 'blocked') return `<g transform="translate(${x},${y})" class="spin blocked" data-act="hiddenfac" data-id="${esc(f.id)}" role="button" tabindex="0" aria-label="${esc(T(f.name))}（${esc(t('blockedLabel'))}）">
-        <ellipse cx="0" cy="30" rx="34" ry="7" fill="rgba(60,30,10,.18)"/>${building(f)}
+        ${look('blocked')}
         ${pinLabel(f, '#b8a898')}
         <g transform="translate(32,-30)"><circle r="13" fill="#b8a898" stroke="#fff" stroke-width="2"/><text y="4.5" text-anchor="middle" font-size="11" font-weight="800" fill="#fff">…</text></g></g>`;
       if(f.status === 'hidden') return `<g transform="translate(${x},${y})" class="spin ghost" data-act="hiddenfac" data-id="${esc(f.id)}" role="button" tabindex="0" aria-label="${esc(t('hiddenPlace'))}">
         <circle r="24" fill="rgba(255,255,255,.6)" stroke="#fff" stroke-width="2.5" stroke-dasharray="5 4"/><text y="8" text-anchor="middle" font-size="24" font-weight="800" fill="#8a7a9a">?</text></g>`;
       const st = f.status, badge = st === 'locked' ? '🔒' : st === 'done' ? '✓' : 'NEW', bc = st === 'done' ? '#10a040' : st === 'open' ? '#e23d72' : '#5a6390';
       return `<g transform="translate(${x},${y})" class="spin ${st}" data-act="fac" data-id="${esc(f.id)}" role="button" tabindex="0" aria-label="${esc(T(f.name))}（${esc(t(st === 'locked' ? 'legendLocked' : st === 'done' ? 'legendDone' : 'legendOpen'))}）">
-        <ellipse cx="0" cy="30" rx="34" ry="7" fill="rgba(60,30,10,.18)"/>${building(f)}
+        ${look(st)}
         ${pinLabel(f, f.roof)}
         <g transform="translate(32,-30)"><g class="badge"><circle r="13" fill="${bc}" stroke="#fff" stroke-width="2"/><text y="4.5" text-anchor="middle" font-size="${st === 'open' ? 8.5 : 12}" font-weight="800" fill="#fff">${badge}</text></g></g></g>`;
     }).join('');
@@ -604,6 +728,7 @@
         <defs><filter id="svOl" x="-15%" y="-15%" width="130%" height="130%" color-interpolation-filters="sRGB"><feMorphology in="SourceAlpha" operator="dilate" radius="2.2" result="d"/><feFlood flood-color="#1d1414"/><feComposite in2="d" operator="in" result="o"/><feMerge><feMergeNode in="o"/><feMergeNode in="SourceGraphic"/></feMerge></filter><pattern id="svPave" width="32" height="16" patternUnits="userSpaceOnUse"><rect width="32" height="16" fill="#c8501c"/><rect x="1" y="1" width="14" height="6" fill="#dc6a32"/><rect x="17" y="9" width="14" height="6" fill="#b04014"/><path d="M0 0H32M0 8H32M0 16H32M16 0V8M8 8V16M24 8V16" stroke="#3a0c04" stroke-width="1.2"/></pattern>
         <pattern id="svLane" width="20" height="10" patternUnits="userSpaceOnUse"><rect width="20" height="10" fill="#f8b878"/><path d="M0 0H20M0 5H20M5 0V5M15 5V10" stroke="#a84820" stroke-width="1"/></pattern>
         <pattern id="svWater" width="40" height="12" patternUnits="userSpaceOnUse"><rect width="40" height="12" fill="#3cbcfc"/><path d="M4 4 q5 -3 10 0 M24 9 q5 -3 10 0" stroke="#e0f8fc" stroke-width="1.6" fill="none" stroke-linecap="round"/></pattern></defs>
+        ${M ? `<image class="mapart" href="${esc(M.bg)}" x="0" y="0" width="400" height="500" preserveAspectRatio="none"/>` : `
         <rect width="400" height="500" fill="url(#svPave)"/>
         ${mapCanals()}
         <path d="${roads(facs)}" stroke="#1d1414" stroke-width="30" fill="none" stroke-linecap="round"/>
@@ -611,16 +736,36 @@
         ${mapBridges()}
         ${facs.filter(f => f.status !== 'hidden' && f.type !== 'plaza').map(f => lawn(Math.max(8, Math.min(92, f.x)) * 4, Math.max(8, Math.min(90, f.y)) * 5)).join('')}
         ${[[36,190],[364,200],[150,150],[250,150],[364,420],[36,470],[290,470],[110,470]].filter(([x, y]) => offWater(x, y) && facs.every(f => Math.hypot(Math.max(8, Math.min(92, f.x)) * 4 - x, Math.max(8, Math.min(90, f.y)) * 5 + 10 - y) > 66)).map(([x, y]) => hedge(x, y)).join('')}
+        `}
         ${pins}
       </svg></div>
       <div class="slegend"><span><i style="background:#5a6390"></i>${esc(t('legendLocked'))}</span><span><i style="background:#e23d72"></i>${esc(t('legendOpen'))}</span><span><i style="background:#10a040"></i>${esc(t('legendDone'))}</span></div>
-      <div class="scard"><b class="sh">${esc(t('items'))}</b>${its.length ? `<ul class="sitems">${its.map(k => `<li><button type="button" data-act="item" data-id="${esc(k)}" aria-label="${esc(T(defs().items[k].name))}（${esc(t('itemDetail'))}）"><span>${esc(defs().items[k].icon || '★')}</span>${esc(T(defs().items[k].name))}</button></li>`).join('')}</ul>` : `<p class="snote" style="text-align:left">${esc(t('noItems'))}</p>`}</div>
+      <div class="scard"><b class="sh">${esc(t('items'))}</b>${its.length ? `<ul class="sitems">${its.map(k => `<li><button type="button" data-act="item" data-id="${esc(k)}" aria-label="${esc(T(defs().items[k].name))}（${esc(t('itemDetail'))}）"><span>${artItem(k) ? `<img class="sitemimg" src="${esc(artItem(k))}" alt="">` : esc(defs().items[k].icon || '★')}</span>${esc(T(defs().items[k].name))}</button></li>`).join('')}</ul>` : `<p class="snote" style="text-align:left">${esc(t('noItems'))}</p>`}</div>
       <p class="snote">${t('mapNote')}</p></div>`);
+    if(M) document.querySelectorAll('.smap image.mapart').forEach(im => im.addEventListener('error', () => {
+      if(mapArtBroken) return; mapArtBroken = true; if(VIEW === showMap){ const y = window.scrollY; showMap(); window.scrollTo(0, y); }
+    }, {once:true}));
+    // 前に描いたとき閉じていた場所が、今回ひらいて描かれたら「新しい場所」（どの通信で地図が新しくなっても同じ。初めて描くときは知らせない）
+    const closedNow = facs.filter(f => f.status === 'blocked' || f.status === 'hidden').map(f => f.id);
+    if(mapClosedSeen && facs.some(f => mapClosedSeen.includes(f.id) && !closedNow.includes(f.id))) mapNews = true;
+    mapClosedSeen = closedNow;
+    mapStale = false; mapNewsNow();
+    artWarm();
   }
 
   /* ---------- 施設のひみつのことば ---------- */
+  // 施設に入る処理（通信 → 背景の絵の準備 → 物語の開始）のあいだは、ほかの入場を受け付けない。
+  // 地図のまま絵の準備を待つので、そのあいだに別の施設や同じ施設を押しても、物語が2つ続けて始まらないように。
+  // 入場ごとに識別番号（facCur）を持ち、どの終わり方（開始・ことば違い・物語なし・通信の失敗）でも必ず解除する。
+  // 通信のあとの絵の準備が facMax()（25秒）を超えたら、その入場は無効にして（あとから準備が終わっても物語は始めない）、「準備中」を消して操作できるようにする。
+  // 通信そのものは api の時間切れ（1回25秒・1回だけやり直す）で必ず終わり、そのあいだは「通信しています」で地図は押せない
+  const facMax = () => ART_WAIT + 5000;   // ART_WAIT はこのあとで決めるので、使うときに計算する
+  let facWait = 0, facSeq = 0, facCur = null;
+  function facStart(){ const ent = {id: ++facSeq, t: 0, dead: false, hide: null}; facCur = ent; facWait = ent.id; return ent; }
+  function facFree(ent){ if(!ent || facCur !== ent) return; clearTimeout(ent.t); facCur = null; facWait = 0; }
+  function facWatch(ent){ ent.t = setTimeout(() => { if(facCur !== ent) return; ent.dead = true; if(ent.hide) ent.hide(); facFree(ent); toast(errText({code: 'network'})); }, facMax()); }
   function openFac(id){
-    const f = (L.map || []).find(x => x.id === id); if(!f) return;
+    const f = (L.map || []).find(x => x.id === id); if(!f || facWait) return;
     if(f.status !== 'locked') return fetchStory(f, '');
     const keep = $('svFac') ? $('svFac').w.value : '';
     modal(`<div class="sdlg" role="dialog" aria-label="${esc(T(f.name))}"><div class="sdlghead" style="--c:${esc(f.roof)}"><b>${esc(T(f.name))}</b><span>${esc(T(f.sub))}</span></div>
@@ -630,32 +775,155 @@
     const form = $('svFac'); setTimeout(() => form.w.focus(), 60);
     form.addEventListener('submit', async e => {
       e.preventDefault();
-      const w = form.w.value.trim(); if(!w) return;
+      const w = form.w.value.trim(); if(!w || facWait) return;   // 「ひらく」を続けて押しても、2回送らない
       await fetchStory(f, w, form);
     });
   }
   async function fetchStory(f, word, form){
     // 今日すでにひらいた施設も、最新の物語をサーバーから受け取る（シートを直したら反映される）。
     // 通信できないときだけ、手元の控えで読む
+    if(facWait) return;
+    const ent = facStart();
     try{
       const j = await api('facility', {facility:f.id, word});
-      if(!j.ok){ if(form) shake(form); if(j.error === 'entrance_first'){ closeModal(); return start(); } return toast(errText(j)); }
+      if(facCur !== ent) return;   // この入場が無効になっていたら、届いた結果は使わない
+      if(!j.ok){ facFree(ent); if(form) shake(form); if(j.error === 'entrance_first'){ closeModal(); return start(); } return toast(errText(j)); }
       closeModal();
       if(j.map) L.map = j.map;
-      if(!j.story){ save(); showMap(); return toast(t('noStory')); }
+      if(!j.story){ facFree(ent); save(); showMap(); return toast(t('noStory')); }
       L.stories[f.id] = j.story; save();
-      if(word){ celebrate(fill(T(j.message) || t('facOpened', T(f.name)))); setTimeout(() => play(j.story), 900); }
-      else play(j.story);
+      // その物語の最初の場面の背景と住人の絵を、読み込み・展開し終えてから最初の画面を出す（地図のまま待つ。遅いときは「準備中」を出す）
+      const st0 = (j.story.scenes || {})[j.story.start];
+      if(word) celebrate(fill(T(j.message) || t('facOpened', T(f.name))));
+      facWatch(ent);
+      artGo(storyArt(j.story), () => { if(facCur !== ent) return; facFree(ent); play(j.story); }, Promise.all([charReady(charUrls(st0)), word ? new Promise(r => setTimeout(r, 900)) : null]), ent).catch(() => facFree(ent));
     }catch(err){
+      if(facCur !== ent) return;
+      facFree(ent);
       if(!word && L.stories[f.id]){ closeModal(); return play(L.stories[f.id]); }
       toast(errText(err));
     }
+  }
+
+  /* ---------- 背景の絵を消さないための工夫 ----------
+     ・artKeep / artReuse：行や場面が変わっても、同じ絵（href・位置・大きさが同じ image）は前の画面のものを移して使う。
+       属性（class など）は新しい画面のものに合わせるので、窓・カーテン・住人などの動きは今までどおり新しい画面の指定で動く
+     ・artReady：これから出す背景の絵を読み込んで展開（decode）し終えるまで待つ（決めた時間を過ぎたら待つのをやめる）。
+       展開した絵は、その場面を出し終えるまでだけ持つ（メモリを使い続けない）
+     ・artWarm：地図にいるあいだに、入れる施設の背景を1枚ずつ、ほかの通信の邪魔をしないように読み込んでおく（展開した絵は持たない） */
+  const imgKey = im => ['href', 'x', 'y', 'width', 'height'].map(a => im.getAttribute(a)).join('|');
+  // その絵を読み込み終えているか（ブラウザが持っていれば、すぐに complete になる。新しく読み込むことはない）
+  const imgProbe = u => { const p = new Image(); p.src = u; return p; };
+  const imgDone = u => { const p = imgProbe(u); return p.complete && p.naturalWidth > 0; };
+  const pageImgs = u => [...document.querySelectorAll('.sscene > svg image, .sroompage > svg image')].filter(x => x.getAttribute('href') === u);
+  function artKeep(){
+    const m = new Map();
+    document.querySelectorAll('.sscene > svg image, .sroompage > svg image, svg.sartwarm image').forEach(im => { const k = imgKey(im); if(!m.has(k)) m.set(k, []); m.get(k).push(im); });
+    return m;
+  }
+  function artReuse(m){
+    if(!m || !m.size) return;
+    document.querySelectorAll('.sscene > svg image, .sroompage > svg image').forEach(ni => {
+      const l = m.get(imgKey(ni)); if(!l || !l.length) return;
+      const old = l.shift();
+      [...old.attributes].forEach(a => { if(!ni.hasAttribute(a.name)) old.removeAttribute(a.name); });
+      [...ni.attributes].forEach(a => { if(old.getAttribute(a.name) !== a.value) old.setAttribute(a.name, a.value); });   // 同じ値は設定し直さない（href を設定し直すと絵を読み込み直すため）
+      ni.replaceWith(old);
+    });
+  }
+  function artUrls(bg){
+    const A = window.IW_ART || {}, S = (A.scenes || {})[bg];
+    if(S) return [S.far, S.mid, S.near].filter(Boolean);
+    // 部屋：本は、閉じた本（room・bedroom）か、ひらいた本（room_ で始まる場面）のどちらか一方だけを使う（sceneArt と同じ）
+    if(/^(room|bedroom)/.test(bg || '')){ const R = A.room || {}, B = A.book || {}; return [R.base, R.laceLeft, R.laceRight, /^room_/.test(bg) ? B.open : B.closed].filter(Boolean); }
+    return [];
+  }
+  // まだ準備のいる絵（いまの画面にも、裏の見えない絵にも、描き終えたものがない絵）
+  const artNeeded = urls => (urls || []).filter(u => u && !(pageImgs(u).length && imgDone(u))
+    && ![...document.querySelectorAll('svg.sartwarm image')].some(x => x.getAttribute('href') === u && x.dataset.ok === '1'));
+  const storyArt = b => { const s = (b && b.scenes) || {}, st = s[b && b.start]; return st ? artUrls(st.bg) : []; };
+  const storyArtAll = b => Array.from(new Set(Object.values((b && b.scenes) || {}).flatMap(sc => artUrls(sc.bg))));
+  // これから出す背景の絵を、画面の裏の見えない絵（svg.sartwarm。場面の絵と同じ大きさ・同じ指定）として先に描いておく。
+  // 描き終えたら、場面を出すときに artReuse でその絵を場面へ移して使う（絵がすでに描かれているので、地の色が見えない）
+  const SVGNS = 'http://www.w3.org/2000/svg', artWant = new Set();
+  function artWarmSvg(){
+    let w = document.querySelector('svg.sartwarm');
+    if(!w){ w = document.createElementNS(SVGNS, 'svg'); w.setAttribute('class', 'sartwarm'); w.setAttribute('viewBox', '0 0 400 800'); w.setAttribute('preserveAspectRatio', 'xMidYMin slice'); w.setAttribute('aria-hidden', 'true'); document.body.appendChild(w); }
+    return w;
+  }
+  function artReady(urls, ms){
+    urls = Array.from(new Set((urls || []).filter(Boolean))); if(!urls.length) return Promise.resolve(true);
+    const w = artWarmSvg();
+    const one = u => new Promise(res => {
+      // すでに画面に出ていて読み込み終えた絵は、そのまま使い回せるので準備はいらない
+      let im = [...w.querySelectorAll('image')].find(x => x.getAttribute('href') === u);
+      if(im && im.dataset.ok === '1') return res();
+      // 画面に出ている絵（入口の部屋など）：読み込み終えていればそのまま使う。読み込み中なら、その読み込みが終わるのを待つ（同じ絵を二重に読み込まない）
+      if(!im && pageImgs(u).length){
+        const p = imgProbe(u); if(p.complete && p.naturalWidth > 0) return res();
+        const fin = () => requestAnimationFrame(() => requestAnimationFrame(() => res())); p.onload = fin; p.onerror = fin; return;
+      }
+      if(!im){ im = document.createElementNS(SVGNS, 'image'); im.setAttribute('x', '0'); im.setAttribute('y', '0'); im.setAttribute('width', '400'); im.setAttribute('height', '800'); im.setAttribute('preserveAspectRatio', 'none'); im.setAttribute('decoding', 'sync'); im.dataset.ok = '0'; w.appendChild(im); im.setAttribute('href', u); }
+      const done = ok => { if(ok) im.dataset.ok = '1'; requestAnimationFrame(() => requestAnimationFrame(() => res())); };   // 読み込んで、描き終えるまで
+      im.addEventListener('load', () => done(true), {once: true}); im.addEventListener('error', () => done(false), {once: true});
+    });
+    artBusy++; artQYield(urls);
+    urls.forEach(u => artWant.add(u));   // 場面を出し終えるまで、裏の絵を手放さない印（artUnwant で外す）
+    return Promise.race([Promise.all(urls.map(one)).then(() => true), new Promise(r => setTimeout(() => r(false), ms))]).finally(() => { artBusy = Math.max(0, artBusy - 1); });
+  }
+  const artUnwant = urls => (urls || []).forEach(u => artWant.delete(u));
+  // 場面を出し終えたら、使われなかった裏の絵は手放す（メモリを使い続けない。待っている絵は残す）
+  function artRelease(){ const h = charHeld; charHeld = []; setTimeout(() => { h.length = 0; }, 2500); setTimeout(() => { const w = document.querySelector('svg.sartwarm'); if(w) w.querySelectorAll('image').forEach(im => { if(!artWant.has(im.getAttribute('href'))) im.remove(); }); }, 2500); }
+  const ART_WAIT = 20000;   // 準備を待つのは最大 20 秒（低速回線でも止まらないように。過ぎたらそのまま出す）
+  let artBusy = 0;           // いま準備を待っている数（そのあいだ、先読みは止めて回線をゆずる）
+  // 絵の準備ができてから fn を行う。0.7 秒を過ぎたら「準備中」を出す（出したときだけ消す）
+  // ent（施設の入場）を渡したときは、その入場が無効になったら「準備中」を消し、準備が終わっても fn を行わない
+  function artGo(urls, fn, also, ent){
+    let shown = false; const hide = () => { if(shown){ shown = false; loading(false); } };
+    if(ent) ent.hide = hide;
+    const tm = setTimeout(() => { if(ent && ent.dead) return; shown = true; loading(true); }, 700);
+    return Promise.all([artReady(urls, ART_WAIT), also || null]).then(() => { clearTimeout(tm); hide(); if(!(ent && ent.dead)) fn(); artUnwant(urls); });
+  }
+  // 住人の絵（立ち絵・顔）：これから出す場面で話す住人の絵も、読み込んで展開しておく
+  const charUrls = sc => Array.from(new Set(((sc && sc.lines) || []).map(l => l[0]).filter(Boolean))).map(k => charImg(k));
+  let charHeld = [];
+  function charReady(urls){ return Promise.all((urls || []).map(u => { const im = new Image(); im.src = u; charHeld.push(im); return (im.decode ? im.decode() : new Promise(r => { im.onload = im.onerror = r; })).catch(() => {}); })); }
+  // 先読みの順番待ち：1枚ずつ、準備を待っているあいだは止める（いま必要な絵を先に）
+  const artQ = [], artQd = new Set(); let artQT = 0, artQCur = null;
+  // いま必要な絵の準備を始めたとき：読み込み中の先読みが別の絵なら中断して、回線をゆずる（中断した絵は順番待ちの最後へ）
+  function artQYield(urls){ if(artQCur && artQCur.ac && !(urls || []).includes(artQCur.u)) artQCur.ac.abort(); }
+  function artQueue(urls){ (urls || []).forEach(u => { if(u && !artQd.has(u) && !artQ.includes(u)) artQ.push(u); }); artQRun(); }
+  function artQRun(){
+    if(artQT) return;
+    artQT = setTimeout(function step(){
+      artQT = 0; if(!artQ.length) return;
+      if(artBusy){ artQT = setTimeout(step, 500); return; }
+      const u = artQ.shift(), ac = window.AbortController ? new AbortController() : null;
+      artQCur = {u, ac};
+      fetch(u, {priority: 'low', signal: ac ? ac.signal : undefined}).then(r => r.blob()).then(() => artQd.add(u), () => { if(!artQd.has(u) && !artQ.includes(u)) artQ.push(u); }).finally(() => { artQCur = null; artQT = setTimeout(step, 300); });
+    }, 600);
+  }
+  let artWarmT = 0;
+  // 入れる施設の背景（まだ読んでいない施設を先に）と、広場に入れるならエンディングの部屋
+  function artWarmList(){
+    const list = [], open = (L.map || []).filter(f => f.status !== 'hidden' && f.status !== 'blocked');
+    open.filter(f => f.status !== 'done').concat(open.filter(f => f.status === 'done')).forEach(f => artUrls(f.id).forEach(u => list.push(u)));
+    if(open.some(f => f.type === 'plaza')) artUrls('bedroom').forEach(u => list.push(u));
+    return list;
+  }
+  function artWarm(){
+    clearTimeout(artWarmT);
+    const list = artWarmList();
+    artWarmT = setTimeout(() => artQueue(list), 1500);   // 地図が出てから少し待って、1枚ずつ（順番待ち）
   }
 
   /* ---------- 物語（会話と選択肢） ---------- */
   let P = null;
   function play(bundle){
     P = {b:bundle, id:bundle.start, line:0, got:[]};
+    // この物語のほかの場面の背景と住人の絵も、うしろで（1枚ずつ）読み込んでおく
+    // そのあとは、ほかの施設の背景も（物語を読んでいるあいだに、つぎに入る施設の準備を進める）
+    artQueue(storyArtAll(bundle).concat(Object.values(bundle.scenes || {}).flatMap(sc => charUrls(sc))).concat(artWarmList()));
     if(bundle.facility !== 'intro' && bundle.facility !== 'prologue') push({type:'start', facility:bundle.facility, route:bundle.route});
     enterScene();
   }
@@ -776,8 +1044,8 @@
   function sceneArt(bg, curtain, sc, pageNo){
     // 正式なイラストの背景（story/art/manifest.js の scenes）。focus＝小さいスマホでも見せたい物の下の端、keep＝切りたくない物の上の端（400×800 の目安の座標）
     const SA = ((window.IW_ART || {}).scenes || {})[bg];
-    if(SA && SA.far) return `<svg class="sbgart simg" viewBox="0 0 400 800" preserveAspectRatio="xMidYMin slice" aria-hidden="true" data-focus="${+SA.focus || 0}" data-keep="${+SA.keep || 0}" data-floor="${+SA.floor || 0}" data-ground="${+SA.ground || 0}" data-fill="${esc(SA.fill || '')}">
-      <image href="${esc(SA.far)}" x="0" y="0" width="400" height="800" preserveAspectRatio="none"/>${SA.mid ? `<image href="${esc(SA.mid)}" x="0" y="0" width="400" height="800" preserveAspectRatio="none"/>` : ''}${SA.near ? `<image href="${esc(SA.near)}" x="0" y="0" width="400" height="800" preserveAspectRatio="none"/>` : ''}</svg>`;
+    if(SA && SA.far) return `<svg class="sbgart simg" viewBox="0 0 400 800" preserveAspectRatio="xMidYMin slice" aria-hidden="true" data-focus="${+SA.focus || 0}" data-keep="${+SA.keep || 0}" data-floor="${+SA.floor || 0}" data-ground="${+SA.ground || 0}" data-fill="${esc(SA.fill || '')}" data-choice="${SA.choice ? esc(JSON.stringify(SA.choice)) : ''}">
+      <image href="${esc(SA.far)}" x="0" y="0" width="400" height="800" preserveAspectRatio="none" decoding="sync"/>${SA.mid ? `<image href="${esc(SA.mid)}" x="0" y="0" width="400" height="800" preserveAspectRatio="none" decoding="sync"/>` : ''}${SA.near ? `<image href="${esc(SA.near)}" x="0" y="0" width="400" height="800" preserveAspectRatio="none" decoding="sync"/>` : ''}</svg>`;
     if(window.IWScenes && window.IWScenes.has(bg)) return window.IWScenes.art(bg);
     if(!window.IWRoom || !/^(bedroom|room)/.test(bg)) return '';
     const o = {img: charImg};
@@ -795,7 +1063,7 @@
     return window.IWRoom.art(o);
   }
   window.IWStoryArt = sceneArt;
-  function face(k){ return `<span class="sface"><img src="${charImg(k)}" alt=""></span>`; }
+  function face(k){ return `<span class="sface f-${esc(k)}"><img src="${charImg(k)}" alt=""></span>`; }
   function render(){
     const sc = scene(), pages = P.pages, pg = pages[P.line] || {who:'', text:''};
     const who = pg.who, last = P.line >= pages.length - 1;
@@ -836,13 +1104,19 @@
       if(scBg === 'room_appear' && !P.emerged){ if(pages.length > 1 && P.line === 0) st2 = 'inbook'; else { st2 = 'emerge'; P.emerged = true; } }
       else if(scBg === 'room_enter' && who) st2 = 'reach';
       const sparks = st2 === 'emerge' ? Array.from({length:12}, (_, i) => `<i class="rspark" style="--x:${(30 + (i * 37) % 40)}%;--y:${(20 + (i * 53) % 70)}%;animation-delay:${(i * .09).toFixed(2)}s"></i>`).join('') : '';
-      cast = P.cast.length ? `<div class="sroomcast ${st2}" aria-hidden="true">${P.cast.slice(0, 3).map(k => `<img src="${charImg(k)}" alt="">`).join('')}${sparks}</div>` : '';
+      cast = P.cast.length ? `<div class="sroomcast ${st2}${st2 === 'inbook' || st2 === 'emerge' ? ' swait' : ''}" aria-hidden="true">${P.cast.slice(0, 3).map(k => `<img src="${charImg(k)}" alt="">`).join('')}${sparks}</div>` : '';
     }
-    set(`<div class="sscene bg-${esc(scBg)}" ${bg}>${clockFx(scrapFx(windFx(boardFx(waterFx(sceneArt(scBg, curtain, sc, P.line), scBg, sc, pg), scBg, sc, pg), scBg), scBg, sc, pg), scBg, sc, pg)}
-      <div class="sstop">${P.b.facility === 'prologue' ? '<span></span>' : `<button class="sbtn ghost" data-act="leave">‹ ${esc(t('toMap'))}</button>`}<span class="sbarr">${langBtn()}${soundBtn()}</span></div>
+    const PS = paperState(pg);   // 帳面・手紙（場面IDと行で決まる）
+    // 正式な背景の絵の下地（manifest の under）：絵が描かれないときや、小さい画面で絵を上にずらしたときに、旧式の背景の模様ではなく同じ絵が見えるようにする
+    const SA0 = ((window.IW_ART || {}).scenes || {})[scBg], under = !bg && SA0 && SA0.far && SA0.under ? `style="background:#e9d8b8 url('${esc(SA0.far)}') 50% 0 / cover no-repeat"` : '';
+    // 同じ絵（場所と大きさが同じ image）は、作り直さずに前の画面のものを新しい画面へ移して使う（作り直すと、絵が描かれるまでの一瞬、地の色が見えるため）
+    const keepArt = artKeep();
+    set(`<div class="sscene bg-${esc(scBg)}${under ? ' hasart' : ''}" ${bg || under}>${bookmarkFx(clockFx(scrapFx(windFx(boardFx(waterFx(sceneArt(scBg, curtain, sc, P.line), scBg, sc, pg), scBg, sc, pg), scBg), scBg, sc, pg), scBg, sc, pg), scBg, sc, pg)}
+      <div class="sstop">${P.b.facility === 'prologue' || P.b.facility === 'intro' ? '<span></span>' : `<button class="sbtn ghost" data-act="leave">‹ ${esc(t('toMap'))}</button>`}<span class="sbarr">${langBtn()}${soundBtn()}</span></div>
       ${fac && !inRoom ? `<span class="sfac">${esc(T(fac.name))}</span>` : ''}
       ${cast}
-      ${who && scBg !== 'bedroom_window' && !inPro ? `<img class="sactor" src="${charImg(who)}" alt="" aria-hidden="true">` : ''}
+      ${paperHtml(PS)}
+      ${who && scBg !== 'bedroom_window' && !inPro && !(PS && PS.show) ? `<img class="sactor" src="${charImg(who)}" alt="" aria-hidden="true">` : ''}
       ${scBg === 'bedroom_bookmark' && pg.src === 1 && !titleCard ? `<div class="sprop">${artItem('old_bookmark') ? `<img class="smemo img" src="${esc(artItem('old_bookmark'))}" alt="">` : bookmarkSVG(150)}</div>` : ''}
       ${scBg === 'bedroom_memento' && pg.src === 0 && sc.item && sc.item[0] && !titleCard ? `<div class="sprop">${artItem(sc.item[0]) ? `<img class="smemo img" src="${esc(artItem(sc.item[0]))}" alt="">` : sc.item[0] === 'old_bookmark' ? bookmarkSVG(150) : `<span class="smemo">${esc((defs().items[sc.item[0]] || {}).icon || '★')}</span>`}</div>` : ''}
       ${titleCard ? `<div class="sfinale${P.line === pages.length - 1 ? ' last' : ''}"><span>${cardHtml()}</span></div>` : ''}
@@ -852,15 +1126,90 @@
         <div class="snav">${P.line > 0 ? `<button class="sbtn link sprev" data-act="prev">◀ ${esc(t('prev'))}</button>` : '<span></span>'}${dots}</div>
         ${foot}
       </article></div>`);
+    artReuse(keepArt);
+    fitChoiceActor();
     fitRoom();
+    if(PS) paperAfter(PS);
     SFX.voice(pg.voice);
     // 「鐘」が「鳴る」ページで鐘の音（日本語の文で判断するので、どの言語でも鳴る）。同じページでは1回だけ
     const sfxKey = P.id + ':' + P.line;
     if(P.sfxKey !== sfxKey){ P.sfxKey = sfxKey; SFX.stopSamples();   // 次のページに移ったら、鳴っている鐘は止める
       if(/鐘/.test(jaText) && /鳴/.test(jaText)) SFX.play(/一度/.test(jaText) ? 'bell' : 'chime'); }
-    if(last && P.got.length && !P.gotShown){ P.gotShown = true; setTimeout(() => itemPop(P.got), 250); }
+    // 大事な動き（しおりが落ちる・時計の針が動く・紙を貼る など）のあいだは「つぎへ」を止める。もちものの画面は1回だけで、その動きが終わってから出す
+    gateNext();
+    artRelease();
+    if(last && P.got.length && !P.gotShown){ P.gotShown = true; gotLater(P.got); }
     if(ending && !P.endShown){ P.endShown = true; endingFx(); }
     if(finale && last && !P.endShown){ P.endShown = true; endingFx(true); }
+  }
+  /* 物語の進行上大事な動き（class="swait" の CSS の動き、data-wait の SVG の動き）が終わるまで、「つぎへ」と選択肢を一時的に押せなくする。
+     ・終わりは実際の再生の完了で判断する（CSS は getAnimations().finished、SVG は endEvent）。くり返す動き（ずっと続く動き）は待たない
+     ・再生が止まった・画面が切りかわった場合も操作できなくならないよう、動きの長さ＋少しの時間で必ず戻す（最大 6 秒）
+     ・画面を描き直したら（つぎへ・もどる・言語の切りかえ）、前の待ちは無効にして、その画面の動きで判断し直す
+     ・動きを減らす設定では、動きがないので待たない */
+  function gateNext(){
+    if(!P) return;
+    const gen = P.gateGen = (P.gateGen || 0) + 1;
+    P.gate = null;
+    const sc = document.querySelector('.sscene'); if(!sc || calmMotion()) return;
+    const waits = []; let longest = 0;
+    const cssEnd = el => {   // getAnimations が使えない古いブラウザ用：CSS の動きの長さ（遅れ＋長さ）
+      const st = getComputedStyle(el), ds = st.animationDuration.split(','), dl = st.animationDelay.split(','), it = st.animationIterationCount.split(',');
+      return Math.max(0, ...ds.map((d, i) => it[i % it.length].trim() === 'infinite' ? 0 : (parseFloat(d) + parseFloat(dl[i % dl.length] || 0)) * 1000));
+    };
+    sc.querySelectorAll('.swait').forEach(el => {
+      if(el.getAnimations){
+        el.getAnimations({subtree:true}).forEach(a => {
+          const t = a.effect && a.effect.getComputedTiming ? a.effect.getComputedTiming() : null;
+          if(!t || !isFinite(t.endTime) || a.playState === 'finished') return;
+          longest = Math.max(longest, t.endTime - (a.currentTime || 0));
+          waits.push(a.finished.then(() => {}, () => {}));
+        });
+      } else { const e = cssEnd(el); if(e){ longest = Math.max(longest, e); waits.push(new Promise(r => setTimeout(r, e))); } }
+    });
+    sc.querySelectorAll('[data-wait]').forEach(an => {
+      const e = (parseFloat(an.getAttribute('begin')) || 0) * 1000 + (parseFloat(an.getAttribute('dur')) || 0) * 1000; if(!e) return;
+      longest = Math.max(longest, e);
+      waits.push(new Promise(r => an.addEventListener('endEvent', r, {once:true})));
+    });
+    if(!waits.length) return;
+    const btns = sc.querySelectorAll('[data-act=next], [data-act=choose]');
+    btns.forEach(b => { b.disabled = true; b.setAttribute('aria-busy', 'true'); b.classList.add('swaiting'); });
+    let open = false;
+    const release = () => { if(open) return; open = true; if(!P || P.gateGen !== gen) return; btns.forEach(b => { if(b.dataset.hold) return; b.disabled = false; b.removeAttribute('aria-busy'); b.classList.remove('swaiting'); }); };   // data-hold（もちもの画面待ち）のボタンはそのまま
+    Promise.all(waits).then(release);
+    setTimeout(release, Math.min(longest, 6000) + 500);   // 復旧：再生の完了が届かなくても、必ず押せるように戻す
+    // もちもの画面を出す合図（gotLater）：動きがすべて終わったとき。完了が届かなくても、同じ復旧の時間で必ず合図する
+    P.gate = {done: Promise.race([Promise.all(waits), new Promise(r => setTimeout(r, Math.min(longest, 6000) + 500))]), longest};
+  }
+  /* もちものの画面を出す時刻。しおりが落ちる行は落ちきってから。壁に紙を貼る行（.bnote.new）は、貼る動きが実際に終わってから、
+     紙と文字を読める時間（NOTE_READ）をおいて出す。そのあいだは「つぎへ」も止め、もちもの画面が出たら戻す（動きを減らす設定では、読む時間の1.5秒だけ）。
+     しおりの行などは今までどおり（途中で「つぎへ」を押したら、その場ですぐ出す）。動きの完了が届かなくても、決まった時間で必ず出して、必ず押せるように戻す */
+  const NOTE_READ = 1500;
+  function gotLater(ids){
+    const note = document.querySelector('.sscene .bnote.new'), chip = document.querySelector('.sscene .sgot');
+    // 紙を貼る行：貼る → 読む時間 → もちもの画面 が終わるまで、「つぎへ」と選択肢を止めておく（data-hold。gateNext の解除より優先）。もちもの画面が出たら戻す
+    const G = !note && !calmMotion() ? P.gate : null;   // 紙を貼る行以外で、大事な動きがある行（しおりが落ちる・時計の針が動く など）
+    const held = note || G ? [...document.querySelectorAll('.sscene [data-act=next], .sscene [data-act=choose]')] : [];
+    held.forEach(b => { b.disabled = true; b.dataset.hold = '1'; b.classList.add('swaiting'); b.setAttribute('aria-busy', 'true'); });
+    const unhold = () => held.forEach(b => { delete b.dataset.hold; b.disabled = false; b.classList.remove('swaiting'); b.removeAttribute('aria-busy'); });
+    const pop = () => { if(!P || !P.popT) return; clearTimeout(P.popT); P.popT = 0; unhold(); showChip(); itemPop(ids); };
+    // 会話の枠の中の「〜をもらった！」の札も、もちものの画面と同時に出す（紙より先に「もらった」が見えないように）。場所は空けておく（文字が動かない）
+    const showChip = () => { if(chip) chip.style.visibility = ''; };
+    if(!note && !G){ P.popT = setTimeout(() => { P && (P.popT = 0); itemPop(ids); }, 250); return; }
+    if(G){
+      // 動きが終わる → 少し間をおいて もちもの画面。そのあいだ「つぎへ」と「〜をもらった！」の札は出さない。完了が届かなくても必ず出す（復旧）
+      if(chip) chip.style.visibility = 'hidden';
+      P.popT = setTimeout(pop, Math.min(G.longest, 6000) + 900);
+      G.done.then(() => { if(P && P.popT){ clearTimeout(P.popT); P.popT = setTimeout(pop, 300); } });
+      return;
+    }
+    if(chip) chip.style.visibility = 'hidden';
+    const anims = calmMotion() || !note.getAnimations ? null : note.getAnimations({subtree:true}).filter(a => { const t = a.effect && a.effect.getComputedTiming ? a.effect.getComputedTiming() : null; return t && isFinite(t.endTime); });
+    const longest = anims ? Math.max(0, ...anims.map(a => a.effect.getComputedTiming().endTime - (a.currentTime || 0))) : (calmMotion() ? 0 : 1400);
+    P.popT = setTimeout(pop, Math.min(longest, 4000) + NOTE_READ + 600);   // 復旧：完了が届かなくても必ず出す
+    if(anims && anims.length) Promise.all(anims.map(a => a.finished.then(() => {}, () => {}))).then(() => { if(P && P.popT){ clearTimeout(P.popT); P.popT = setTimeout(pop, NOTE_READ); } });
+    else if(!anims || !anims.length){ clearTimeout(P.popT); P.popT = setTimeout(pop, longest + NOTE_READ); }
   }
   function endingFx(sparkOnly){
     const c = document.createElement('div'); c.className = 'sending' + (sparkOnly ? ' spark' : ''); c.setAttribute('role', 'status');
@@ -880,14 +1229,14 @@
     const cx = (W[0] + W[2]) / 2, cy = (W[1] + W[3]) / 2, rx = (W[2] - W[0]) / 2, ry = (W[3] - W[1]) / 2;
     let fx = '';
     let lit = -1; for(let i = 0; i <= pg.src; i++){ const t = ja(i); if(/水面/.test(t) && /光/.test(t) && /灯/.test(t)){ lit = i; break; } }
-    if(lit >= 0) fx += `<g class="wlight${lit === pg.src ? ' new' : ''}"><ellipse class="ns" cx="${cx}" cy="${cy}" rx="${rx * 1.05}" ry="${ry * 1.2}" fill="url(#wGlow)"/><ellipse class="ns" cx="${cx}" cy="${cy}" rx="${rx * .45}" ry="${ry * .45}" fill="url(#wGlow)"/><circle class="ns wcore" cx="${cx}" cy="${cy}" r="${ry * .22}" fill="#fffef2"/>${[[-.5,-.15],[.45,.1],[-.2,.25],[.25,-.3]].map(([dx, dy], i) => `<circle class="ns wspk" style="animation-delay:${(i * .45).toFixed(2)}s" cx="${(cx + dx * rx).toFixed(1)}" cy="${(cy + dy * ry).toFixed(1)}" r="1.4" fill="#fffbe0"/>`).join('')}</g>`;
+    if(lit >= 0) fx += `<g class="wlight${lit === pg.src ? ' new swait' : ''}"><ellipse class="ns" cx="${cx}" cy="${cy}" rx="${rx * 1.05}" ry="${ry * 1.2}" fill="url(#wGlow)"/><ellipse class="ns" cx="${cx}" cy="${cy}" rx="${rx * .45}" ry="${ry * .45}" fill="url(#wGlow)"/><circle class="ns wcore" cx="${cx}" cy="${cy}" r="${ry * .22}" fill="#fffef2"/>${[[-.5,-.15],[.45,.1],[-.2,.25],[.25,-.3]].map(([dx, dy], i) => `<circle class="ns wspk" style="animation-delay:${(i * .45).toFixed(2)}s" cx="${(cx + dx * rx).toFixed(1)}" cy="${(cy + dy * ry).toFixed(1)}" r="1.4" fill="#fffbe0"/>`).join('')}</g>`;
     const now = ja(pg.src);
     let txt = '', cls = '';
     if(/水面/.test(now) && /文字/.test(now) && /浮か/.test(now)){ txt = quote(pg.src + 1) || quote(pg.src); cls = 'in'; }
     else if(/文字/.test(now) && /消え/.test(now)){ txt = quote(pg.src); cls = 'out'; }
     if(txt){
       const est = Array.from(txt).reduce((a, c) => a + (/[\u3000-\u9fff\uff00-\uffef]/.test(c) ? 1 : .55), 0) * 11, fit = est > rx * 1.7 ? ` textLength="${(rx * 1.7).toFixed(0)}" lengthAdjust="spacingAndGlyphs"` : '';
-      fx += `<text class="wtext ${cls}" x="${cx}" y="${cy + 3}" text-anchor="middle" font-size="11" font-weight="700"${fit}>${esc(txt)}</text>`;
+      fx += `<text class="wtext ${cls} swait" x="${cx}" y="${cy + 3}" text-anchor="middle" font-size="11" font-weight="700"${fit}>${esc(txt)}</text>`;
     }
     if(!fx) return svg;
     return svg.replace('</svg>', `<defs><radialGradient id="wGlow"><stop offset="0" stop-color="rgba(255,252,225,1)"/><stop offset=".35" stop-color="rgba(255,245,190,.7)"/><stop offset=".7" stop-color="rgba(190,245,255,.35)"/><stop offset="1" stop-color="rgba(200,245,255,0)"/></radialGradient></defs>${fx}</svg>`);
@@ -915,7 +1264,7 @@
     const fs = Math.min(8, (pw * .86) / Math.max(...rows.map(len)), (ph * .7) / rows.length / 1.25);
     const y0 = cy + 4 - (rows.length - 1) * fs * .62;
     const text = rows.map((r, i) => `<text x="${cx}" y="${(y0 + i * fs * 1.25).toFixed(1)}" text-anchor="middle" font-size="${fs.toFixed(1)}" font-weight="700" fill="#3a2418">${esc(r)}</text>`).join('');
-    const note = `<g transform="rotate(-3 ${cx} ${cy})"><g class="bnote${at === pg.src ? ' new' : ''}"><rect class="ns" x="${(cx - pw / 2).toFixed(1)}" y="${(cy - ph / 2).toFixed(1)}" width="${pw.toFixed(1)}" height="${ph.toFixed(1)}" rx="1.5" fill="#fffaf0" stroke="#c8b08a" stroke-width=".6"/>
+    const note = `<g transform="rotate(-3 ${cx} ${cy})"><g class="bnote${at === pg.src ? ' new swait' : ''}"><rect class="ns" x="${(cx - pw / 2).toFixed(1)}" y="${(cy - ph / 2).toFixed(1)}" width="${pw.toFixed(1)}" height="${ph.toFixed(1)}" rx="1.5" fill="#fffaf0" stroke="#c8b08a" stroke-width=".6"/>
       <circle class="ns" cx="${cx}" cy="${(cy - ph / 2 + 3).toFixed(1)}" r="2" fill="#d9534a"/>${text}</g></g>`;
     return svg.replace('</svg>', note + '</svg>');
   }
@@ -929,6 +1278,186 @@
   }
   /* 紙切れが風に乗って飛んでくる演出（manifest の scenes.<背景>.scrap ＝ {from:[x,y], to:[x,y]}）。
      「紙」「飛ん」を含む行で飛んできて、そのあとの場面のあいだ止まっている。紙の言葉は次の行の『』「」“”の中（表示中の言語）。読むまでは文字を出さない */
+  /* 図書館：しおりが絵本のページの間から落ちる（manifest の scenes.<背景>.bookmark ＝ from：ページの間、to：着地する机の上）。
+     地の文で「しおり」と「落ち」を含む行で出る（日本語の文で判断するので、どの言語でも同じ行）。落ちたあとは机の上に斜めに寝たまま。
+     動きは SVG の SMIL（iPhone の Safari のため）。動きを減らす設定では、最初から机の上に置いた形で出す。光や音は足さない */
+  function bookmarkFx(svg, bg, sc, pg){
+    const C = (((window.IW_ART || {}).scenes || {})[bg] || {}).bookmark, img = artItem('old_bookmark'); if(!C || !svg || !img) return svg;
+    const ja = i => { const l = sc.lines[i]; return l ? (typeof l[1] === 'object' ? (l[1].ja || '') : String(l[1] || '')) : ''; };
+    let at = -1; for(let i = 0; i <= pg.src; i++){ const l = sc.lines[i] || [], t = ja(i); if(!l[0] && /しおり/.test(t) && /落ち/.test(t)){ at = i; break; } }
+    if(at < 0) return svg;
+    const key = P.id + ':' + at, fresh = at === pg.src && P.bmKey !== key && !calmMotion();
+    if(at === pg.src) P.bmKey = key;
+    P.bmFalling = fresh;
+    const [tx, ty] = C.to, fx = C.from[0] - tx, fy = C.from[1] - ty, rest = -66;
+    const pic = `<image class="ns" href="${esc(img)}" x="-28" y="-28" width="56" height="56" preserveAspectRatio="xMidYMid meet"/>`;
+    const shadow = `<ellipse class="ns" cx="1" cy="4" rx="20" ry="4" fill="rgba(60,35,10,.22)"${fresh ? ' opacity="0"' : ''}>${fresh ? '<animate attributeName="opacity" dur="0.5s" begin="1.75s" fill="freeze" values="0;1"/>' : ''}</ellipse>`;
+    // ページの間から少し浮き上がり（0〜0.35秒）、ゆらゆら揺れながら右の机へ落ちて（〜2.1秒）、斜めに寝て止まる
+    const move = fresh ? `<animateTransform data-wait="1" attributeName="transform" type="translate" dur="2.1s" fill="freeze" calcMode="spline" keyTimes="0;.17;.45;.72;1" keySplines=".3 .1 .3 1;.4 0 .6 1;.4 0 .6 1;.3 0 .4 1" values="${fx} ${fy};${fx} ${fy - 14};${(fx * .55).toFixed(1)} ${(fy * .5 - 10).toFixed(1)};${(fx * .2).toFixed(1)} ${(fy * .15 - 4).toFixed(1)};0 0"/>
+      <animateTransform attributeName="transform" type="rotate" additive="sum" dur="2.1s" fill="freeze" calcMode="spline" keyTimes="0;.17;.45;.72;1" keySplines=".3 .1 .3 1;.4 0 .6 1;.4 0 .6 1;.3 0 .4 1" values="0;-6;-38;-20;${rest}"/>
+      <animate attributeName="opacity" dur="0.35s" fill="freeze" values="0;1"/>` : '';
+    const body = `<g class="bmark"${fresh ? ` transform="translate(${fx} ${fy})" opacity="0"` : ` transform="rotate(${rest})"`}>${move}${pic}</g>`;
+    // 小さい画面でも、しおりが着地する机の上が文章の枠に隠れないように（fitRoom が見る目安：着地点の少し下）
+    return svg.replace('<svg ', `<svg data-bm="${ty + 30}" `).replace('</svg>', `<g transform="translate(${tx} ${ty})">${shadow}${body}</g></svg>`);
+  }
+  /* 物語の中で読む紙（manifest の papers・props）：古い記録の帳面・涙の跡が残る手紙。
+     出し方は場面IDと行（順番）で決める（シナリオの文からは判断しない）。紙が出ている行では、話す住人の立ち絵は出さない（名前と顔は会話の枠に出る）。
+     紙の言葉は絵に入れず、表示中の言語でアプリが書く。行を戻したときや言語を切りかえたときは、その行の段階を動きなしで出す（動きは先へ進んだときだけ）。
+     紙の大きさは場面の中で固定（紙を出す行のうち、いちばん高い会話の枠に合わせる）。文字の行の分け方も、出したときに決めて固定する（あとから字体が届いても文字が動かない） */
+  const paperBroken = {};
+  function paperState(pg){
+    const A = window.IW_ART || {}, cfg = (A.papers || {})[P.id], prop = cfg && (A.props || {})[cfg.prop];
+    if(!cfg || !prop || !prop.img || !(cfg.lines || []).length) return null;
+    const no = pg.src + 1, same = P.paperScene === P.id, prev = same ? P.paperLine : 0;
+    const fresh = (!same || no > prev) && !calmMotion();
+    P.paperScene = P.id; P.paperLine = no;
+    const show = cfg.lines.includes(no), leaving = !show && fresh && same && cfg.lines.includes(prev) && no === prev + 1;
+    return (show || leaving) ? {cfg, prop, no, show, leaving, fresh} : null;
+  }
+  function paperHtml(S){
+    if(!S) return '';
+    const L = lang(), upto = S.leaving ? S.no - 1 : S.no;
+    const cls = ['spaper', 'p-' + S.cfg.prop, S.leaving ? 'out swait' : (S.fresh && S.no === S.cfg.lines[0] ? 'in swait' : ''), paperBroken[S.cfg.prop] ? 'noimg' : ''].filter(Boolean).join(' ');
+    const words = S.cfg.words.map((w, i) => w.from <= upto ? `<div class="spw${w.strike ? ' strike' : ''}${S.fresh && !S.leaving && w.from === S.no ? ' new' : ''}" data-i="${i}"${w.color ? ` style="color:${esc(w.color)}"` : ''}>${esc(w[L] || w.ja || '')}</div>` : '').join('');
+    return `<div class="${cls}" aria-hidden="true"><img src="${esc(S.prop.img)}" alt="">${words}</div>`;
+  }
+  // 紙を出す行のうち、いちばん高い会話の枠の上の端（枠の写しに各行の文を入れて測る）
+  // 会話の枠の上端・下端（表示するときの動き＝下から少し持ち上がる動きの途中でも、動いたあとの位置で測る）
+  const boxRect = box => { const sc = box.offsetParent, t = (sc ? sc.getBoundingClientRect().top : 0) + box.offsetTop; return {top:t, bottom:t + box.offsetHeight, height:box.offsetHeight}; };
+  function paperLimit(box, cfg){
+    const r = boxRect(box); let maxH = r.height;
+    const c = box.cloneNode(true);
+    c.removeAttribute('aria-live');
+    c.style.cssText = `position:absolute;visibility:hidden;pointer-events:none;animation:none;margin:0;top:0;left:${box.offsetLeft}px;width:${box.offsetWidth}px`;
+    box.parentNode.appendChild(c);
+    const nav = c.querySelector('.snav');
+    if(nav && !nav.querySelector('.sprev') && nav.firstElementChild) nav.firstElementChild.outerHTML = `<button class="sbtn link sprev" tabindex="-1">◀ ${esc(t('prev'))}</button>`;
+    P.pages.forEach(p => {
+      if(!cfg.lines.includes(p.src + 1)) return;
+      let hd = c.querySelector('.sspeaker');
+      if(p.who){ if(!hd){ c.insertAdjacentHTML('afterbegin', `<header class="sspeaker">${face(p.who)}<b></b></header>`); hd = c.querySelector('.sspeaker'); } hd.querySelector('b').textContent = cname(p.who); c.classList.remove('narr'); }
+      else { if(hd) hd.remove(); c.classList.add('narr'); }
+      const tx = c.querySelector('.stext'); if(tx) tx.textContent = p.text;
+      maxH = Math.max(maxH, c.offsetHeight);
+    });
+    c.remove();
+    return r.bottom - maxH;
+  }
+  // 文を1〜4行に分ける（読点・空白で分けるのを優先し、行の長さをそろえる。どこでも分けられないときは文字の間で。行頭に句読点・小さい字は来ない）
+  function paperLines(txt, maxW, maxLines, meas0){
+    const memo = {}, meas = t => (t in memo ? memo[t] : (memo[t] = meas0(t)));   // 同じ行の幅は1回だけ測る
+    if(meas(txt) <= maxW) return [txt];
+    if(maxLines < 2) return null;
+    // 分けてよい所：読点・空白（優先）と、文字の間（読点や空白で収まらないときだけ。英単語の中では分けない。行頭に句読点・閉じかっこ・小さい字は来ない）
+    const pref = [], chars = [];
+    const noHead = /[、。，．,.」』）)!?！？ぁぃぅぇぉっゃゅょァィゥェォッャュョー…]/, noTail = /[「『（(]/, word = /[A-Za-z0-9'’]/;
+    for(let i = 1; i < txt.length; i++){
+      const a = txt[i - 1], b = txt[i];
+      if(/[、，,]/.test(a)) pref.push([i, i + (b === ' ' ? 1 : 0), 0]);
+      else if(b === ' ') pref.push([i, i + 1, 1]);
+      else if(a !== ' ' && !noHead.test(b) && !noTail.test(a) && !(word.test(a) && word.test(b))) chars.push([i, i, 2]);
+    }
+    const penalty = k => k * maxW * .12;
+    const search = cuts => {
+      let best = null;
+      const tryRows = (rows, pen) => { if(rows.some(s => !s)) return; const m = Math.max(...rows.map(meas)); if(m > maxW) return; const sc = m + pen; if(!best || sc < best.sc) best = {rows, sc}; };
+      for(let n = 2; n <= maxLines && !best; n++){
+        const pick = (from, left, acc, pen) => {
+          if(left === 0){ tryRows([...acc, txt.slice(from).trim()], pen); return; }
+          cuts.forEach(([a, b, k]) => { if(a > from) pick(b, left - 1, [...acc, txt.slice(from, a).trim()], pen + penalty(k)); });
+        };
+        if(cuts.length <= 40 || n <= 3) pick(0, n - 1, [], 0);
+      }
+      return best ? best.rows : null;
+    };
+    const sorted = c => c.slice().sort((x, y) => x[0] - y[0]);
+    return search(pref) || search(sorted(pref.concat(chars)));
+  }
+  // どうしても収まらないとき：1文字ずつ足して、はみ出す手前で折り返す（1行のまま出して紙からはみ出さないように）
+  function greedyLines(txt, maxW, meas){
+    const out = []; let cur = '';
+    Array.from(txt).forEach(c => { if(cur && meas(cur + c) > maxW && !/[、。，．,.」』）)!?！？ぁぃぅぇぉっゃゅょー]/.test(c)){ out.push(cur.trim()); cur = c; } else cur += c; });
+    if(cur.trim()) out.push(cur.trim());
+    return out;
+  }
+  function layoutPaper(){
+    const el = document.querySelector('.sscene > .spaper'); if(!el || !P) return;
+    const A = window.IW_ART || {}, cfg = (A.papers || {})[P.id], prop = cfg && (A.props || {})[cfg.prop]; if(!prop) return;
+    const sc = el.parentNode, so = sc.getBoundingClientRect(), bar = sc.querySelector('.sstop'), fac = sc.querySelector('.sfac'), box = sc.querySelector('.sbook');
+    if(!box) return;
+    // 高さの低い画面（640px 未満：小さい iPhone・アプリ内ブラウザなど）：紙を出している行では施設名の札を隠し、紙を上のボタンのすぐ下から出す
+    const short = so.height < 640;
+    sc.classList.toggle('spapershort', short && !!fac);
+    const top = Math.max(bar ? bar.getBoundingClientRect().bottom : so.top + 48, fac && !short ? fac.getBoundingClientRect().bottom : 0) + 6;
+    const limit = paperLimit(box, cfg), ar = prop.size[0] / prop.size[1], Wmax = so.width - 24, wide = ar >= 1;
+    let w, h, y, behind = false;
+    if(wide){   // 帳面：会話の枠より上に、全体を出す
+      const bottom = limit - 10; h = Math.max(60, bottom - top); w = h * ar; if(w > Wmax){ w = Wmax; h = w / ar; } y = top + Math.max(0, bottom - top - h) / 2;
+      // それでは小さくなりすぎる（幅300px 未満）低い画面：手紙と同じく大きさを保ち、帳面の下は会話の枠の後ろに通す（文字は枠に隠れない所に書く）
+      if(w < Math.min(300, Wmax)){ behind = true; w = Math.min(Wmax, 330); h = w / ar; y = top; }
+    } else {    // 手紙：大きい画面は全体を出す。小さい画面は幅270pxを保ち、紙の下は会話の枠の後ろに通す（文字は枠に隠れない所に書く）
+      w = Math.min(Wmax, Math.max(270, (limit - 10 - top) * ar)); h = w / ar; y = top;
+    }
+    Object.assign(el.style, {left:((so.width - w) / 2).toFixed(1) + 'px', top:(y - so.top).toFixed(1) + 'px', width:w.toFixed(1) + 'px', height:h.toFixed(1) + 'px'});
+    // 文字を置いてよい下の端：見積もった枠の上端と、いま表示中の枠の上端の、高いほう（見積もりがわずかに低くても、文字が枠にかからないように）
+    const broken = el.classList.contains('noimg'), visBottom = Math.min(limit, boxRect(box).top) - 6 - y, lh = 1.25;
+    let prevBottom = 0, prevF = 0;
+    el.querySelectorAll('.spw').forEach(d => {
+      const wd = cfg.words[+d.dataset.i] || {}, txt = String(wd[lang()] || wd.ja || '');
+      let area = broken ? [.1, .9] : (wd.area || prop.area || [.1, .9]);
+      const probe = document.createElement('span'); probe.style.cssText = 'position:absolute;visibility:hidden;white-space:nowrap;left:0;top:0'; d.textContent = ''; d.appendChild(probe);
+      const meas = fs => s => { probe.style.fontSize = fs + 'px'; probe.textContent = s; return probe.getBoundingClientRect().width; };
+      let f, rows = null;
+      const lay = () => {
+        const maxW = (area[1] - area[0]) * w * .88; rows = null;   // あとから届く字体で字の幅が変わっても、はみ出さないよう余白を残す
+        if(wide){
+          // 1行に収まれば1行（14pxまで小さくしてよい）。収まらないときは、16px以下で2行・3行に分ける。下に書き加えた言葉は、上の言葉より少し小さく（「その下に小さく」）
+          const base = Math.max(14, Math.min(22, Math.round(w * (wd.strike ? .06 : .048)), prevF ? prevF - 2 : 99));
+          for(const n of [1, 2, 3]){ for(f = n > 1 ? Math.min(base, 16) : base; f >= 14 && !(rows = paperLines(txt, maxW, n, meas(f))); f -= .5); if(rows) break; }
+          if(!rows){ f = 14; rows = greedyLines(txt, maxW, meas(f)); }
+        } else {
+          f = Math.max(14, Math.min(20, Math.round(w * .044)));
+          rows = paperLines(txt, maxW, 4, meas(f)) || greedyLines(txt, maxW, meas(f));
+        }
+        return rows.length * f * lh;
+      };
+      let blockH = lay();
+      let ty = (wd.at || 0) * h;
+      if(wide) ty = behind ? (prevBottom ? prevBottom + h * .02 : h * .40) : Math.max(ty, prevBottom + h * .02);
+      else if(wd.bottom){
+        // 手紙の下の文：涙の跡のあいだ（band）に置く。会話の枠に隠れる所には置かない。収まらないときは、右の端を涙の跡の左（narrow）までにして、上へのばす
+        const band = prop.band || [0, 1], maxBottom = Math.min(band[1] * h, visBottom);
+        if(maxBottom - blockH < band[0] * h && prop.narrow && !broken){
+          const wideArea = area, wideH = blockH;
+          area = [area[0], Math.min(area[1], prop.narrow)]; blockH = lay();
+          // 狭めると行がふえて上の文や会話の枠にかかるときは、狭めない（涙の跡に少しかかるほうを選ぶ）
+          if(maxBottom - blockH < prevBottom + h * .03 && maxBottom - wideH >= prevBottom + h * .03){ area = wideArea; blockH = lay(); }
+        }
+        ty = Math.max(Math.min(ty, maxBottom - blockH), prevBottom + h * .03);
+      }
+      probe.remove();
+      d.innerHTML = rows.map(r => `<span${wd.strike && d.classList.contains('new') ? ' class="swait"' : ''}>${esc(r)}</span>`).join('');   // 取り消し線を引く動きは、最後まで見せる
+      Object.assign(d.style, {left:(area[0] * 100) + '%', width:((area[1] - area[0]) * 100) + '%', top:ty.toFixed(1) + 'px', fontSize:f + 'px', lineHeight:String(lh)});
+      if(wd.strike){ const th = Math.max(2, Math.round(f * .11)), at = lang() === 'en' ? 57 : 50;
+        d.querySelectorAll('span').forEach(s => { s.style.backgroundImage = `linear-gradient(transparent calc(${at}% - ${th / 2}px), #8a2a1c calc(${at}% - ${th / 2}px), #8a2a1c calc(${at}% + ${th / 2}px), transparent calc(${at}% + ${th / 2}px))`; }); }
+      prevBottom = ty + blockH; prevF = f;
+    });
+    // 帳面を会話の枠の後ろに通すとき：文字が枠に隠れるなら、書き出しを上げる（ページの上の、消された古い文字の行（紙の高さの0.36）より上には上げない）
+    if(behind){
+      const ws = [...el.querySelectorAll('.spw')]; if(!ws.length) return;
+      const over = prevBottom - (visBottom - 2), first = parseFloat(ws[0].style.top);
+      const d = Math.min(over, first - h * .36);
+      if(over > 0 && d > 0) ws.forEach(x => { x.style.top = (parseFloat(x.style.top) - d).toFixed(1) + 'px'; });
+    }
+  }
+  function paperAfter(S){
+    const el = document.querySelector('.sscene > .spaper'); if(!el) return;
+    if(S.leaving){ setTimeout(() => el.remove(), 700); }
+    const im = el.querySelector('img'), fail = () => { if(el.classList.contains('noimg')) return; paperBroken[S.cfg.prop] = true; el.classList.add('noimg'); layoutPaper(); };
+    if(im){ if(im.complete && !im.naturalWidth) fail(); else im.addEventListener('error', fail); }
+    layoutPaper();
+  }
+  window.addEventListener('resize', () => { if(document.querySelector('.sscene > .spaper')) layoutPaper(); });
   function scrapFx(svg, bg, sc, pg){
     const C = (((window.IW_ART || {}).scenes || {})[bg] || {}).scrap; if(!C || !svg) return svg;
     const ja = i => { const l = sc.lines[i]; return l ? (typeof l[1] === 'object' ? (l[1].ja || '') : String(l[1] || '')) : ''; };
@@ -941,7 +1470,7 @@
       ${word ? `<text class="ns" y="${(fs * .35).toFixed(1)}" text-anchor="middle" font-size="${fs.toFixed(1)}" font-weight="700" fill="#5a3a1a">${esc(word)}</text>` : ''}</g>`;
     // 飛んでくる動きは SVG の animateTransform で（iPhone の Safari では、CSS の keyframes の中の var() が SVG で効かないため）
     const fx = C.from[0] - tx, fy = C.from[1] - ty;
-    const fly = at === pg.src ? `<animateTransform attributeName="transform" type="translate" dur="2.6s" begin="0.3s" fill="freeze" calcMode="spline" keyTimes="0;.45;.75;1" keySplines=".35 .1 .3 1;.35 .1 .3 1;.35 .1 .3 1" values="${fx} ${fy};${(fx * .55).toFixed(0)} ${(fy * .3 - 40).toFixed(0)};${(fx * .15).toFixed(0)} -14;0 0"/>
+    const fly = at === pg.src ? `<animateTransform data-wait="1" attributeName="transform" type="translate" dur="2.6s" begin="0.3s" fill="freeze" calcMode="spline" keyTimes="0;.45;.75;1" keySplines=".35 .1 .3 1;.35 .1 .3 1;.35 .1 .3 1" values="${fx} ${fy};${(fx * .55).toFixed(0)} ${(fy * .3 - 40).toFixed(0)};${(fx * .15).toFixed(0)} -14;0 0"/>
       <animateTransform attributeName="transform" type="rotate" additive="sum" dur="2.6s" begin="0.3s" fill="freeze" keyTimes="0;.45;.75;1" values="30;-25;15;0"/>` : '';
     return svg.replace('</svg>', `<g transform="translate(${tx} ${ty})"><g class="scrap${fly ? ' fly' : ''}"${fly ? ` transform="translate(${fx} ${fy})"` : ''}>${fly}${paper}</g></g></svg>`);
   }
@@ -959,7 +1488,7 @@
       const [px, py] = C.bell.pivot, ring = narr && /鐘/.test(now) && /鳴らし/.test(now) && !calm;
       if(ring){
         // 鐘を形どおりに切り抜いて、支点を中心に小さく揺らす（±1.6度から少しずつ小さく）。その上に金色の光
-        const swing = `<animateTransform attributeName="transform" type="rotate" dur="2.6s" begin="0.25s" fill="freeze" calcMode="spline" keyTimes="0;.18;.42;.66;.86;1" keySplines=".4 0 .6 1;.4 0 .6 1;.4 0 .6 1;.4 0 .6 1;.4 0 .6 1" values="0 ${px} ${py};1.6 ${px} ${py};-1.2 ${px} ${py};.7 ${px} ${py};-.3 ${px} ${py};0 ${px} ${py}"/>`;
+        const swing = `<animateTransform data-wait="1" attributeName="transform" type="rotate" dur="2.6s" begin="0.25s" fill="freeze" calcMode="spline" keyTimes="0;.18;.42;.66;.86;1" keySplines=".4 0 .6 1;.4 0 .6 1;.4 0 .6 1;.4 0 .6 1;.4 0 .6 1" values="0 ${px} ${py};1.6 ${px} ${py};-1.2 ${px} ${py};.7 ${px} ${py};-.3 ${px} ${py};0 ${px} ${py}"/>`;
         under += `<defs><clipPath id="cBell"><polygon points="${C.bell.shape}"/></clipPath>
           <radialGradient id="cGold"><stop offset="0" stop-color="rgba(255,236,170,.75)"/><stop offset=".45" stop-color="rgba(255,214,120,.32)"/><stop offset="1" stop-color="rgba(255,205,110,0)"/></radialGradient></defs>
           <g class="cbell">${swing}<image href="${esc(C.far)}" x="0" y="0" width="400" height="800" preserveAspectRatio="none" clip-path="url(#cBell)"/></g>`;
@@ -980,7 +1509,7 @@
       const hour = `<path class="ns" d="M${cx - 2.6} ${cy + 9} L${cx - 2.4} ${cy - hl + 12} L${cx - 6} ${cy - hl + 7} L${cx} ${cy - hl} L${cx + 6} ${cy - hl + 7} L${cx + 2.4} ${cy - hl + 12} L${cx + 2.6} ${cy + 9} Z" fill="#2c2018"/>`;
       const min = `<path class="ns" d="M${cx - 1.8} ${cy + 13} L${cx - 1.4} ${cy - ml + 9} L${cx - 4} ${cy - ml + 9} L${cx} ${cy - ml} L${cx + 4} ${cy - ml + 9} L${cx + 1.4} ${cy - ml + 9} L${cx + 1.8} ${cy + 13} Z" fill="#2c2018"/>`;
       const shade = d => d.replace(/fill="#2c2018"/, 'fill="rgba(40,24,10,.28)"');
-      const tick = twitch ? `<animateTransform attributeName="transform" type="rotate" additive="sum" dur="1.5s" begin="0.7s" fill="freeze" keyTimes="0;.06;.12;.55;.7;1" values="0 ${cx} ${cy};7 ${cx} ${cy};5.5 ${cx} ${cy};5.5 ${cx} ${cy};0 ${cx} ${cy};0 ${cx} ${cy}"/>` : '';
+      const tick = twitch ? `<animateTransform data-wait="1" attributeName="transform" type="rotate" additive="sum" dur="1.5s" begin="0.7s" fill="freeze" keyTimes="0;.06;.12;.55;.7;1" values="0 ${cx} ${cy};7 ${cx} ${cy};5.5 ${cx} ${cy};5.5 ${cx} ${cy};0 ${cx} ${cy};0 ${cx} ${cy}"/>` : '';
       over += `<g class="chands" aria-hidden="true">
         <g transform="translate(1.6 2.2)"><g transform="rotate(${aH} ${cx} ${cy})">${shade(hour)}</g><g transform="rotate(${aM} ${cx} ${cy})"><g>${tick}${shade(min)}</g></g></g>
         <g transform="rotate(${aH} ${cx} ${cy})">${hour}</g><g transform="rotate(${aM} ${cx} ${cy})"><g>${tick}${min}</g></g>
@@ -991,12 +1520,20 @@
   function arLink(m){ const u = new URL(AR_URL, location.href); u.searchParams.set('ar', m); return u.href; }
   function next(){
     const sc = scene(); if(!sc) return;
+    if(document.querySelector('.sscene [data-act=next][disabled], .sscene [data-act=choose][disabled]')) return;   // 大事な動きの途中は進まない（連打しても）
+    if(P.popT){ clearTimeout(P.popT); P.popT = 0; itemPop(P.got); }
     if(timeUp()) return;
     if(P.line < P.pages.length - 1){ P.line++; SFX.play('page'); return render(); }
     if(sc.next && P.b.scenes[sc.next]){
       const nx = P.b.scenes[sc.next];
       // 村から自分の部屋へ：まぶしい光に包まれて何も見えなくなり、光が消えると部屋にいる
-      if(/^bedroom/.test(nx.bg || '') && !/^bedroom/.test(sc.bg || '')) return lightTransition(() => { P.id = sc.next; enterScene(); });
+      if(/^bedroom/.test(nx.bg || '') && !/^bedroom/.test(sc.bg || '')) return lightTransition(() => { P.id = sc.next; enterScene(); }, artUrls(nx.bg));
+      // 背景がかわる場面：新しい背景の絵の準備ができてから切りかえる（そのあいだ「つぎへ」は止める）
+      if(nx.bg !== sc.bg && artNeeded(artUrls(nx.bg)).length){   // 絵がすでにあるときは待たずにすぐ切りかえる
+        const b = document.querySelector('.sscene [data-act=next]'); if(b){ b.disabled = true; b.classList.add('swaiting'); }
+        const id = P.id, ln = P.line;
+        return artGo(artUrls(nx.bg), () => { if(!P || P.id !== id || P.line !== ln) return; P.id = sc.next; enterScene(); }, charReady(charUrls(nx)));   // 待つあいだに「もどる」を押したら進まない
+      }
       P.id = sc.next; return enterScene();
     }
     if(P.b.facility === 'prologue') return prologueDone();
@@ -1008,17 +1545,20 @@
     lightTransition(() => {
       L.state.introSeen[runKey()] = true; save();
       if(L.intro) play(L.intro); else showMap();
-    });
+    }, L.intro ? storyArt(L.intro) : []);
   }
-  function lightTransition(mid){
+  function lightTransition(mid, urls){
     const c = document.createElement('div'); c.className = 'slightout'; c.setAttribute('aria-hidden', 'true');
+    const ready = artReady(urls || [], ART_WAIT);   // まっ白のあいだに、次の背景の絵を準備する
+    let shown = false; const tm = setTimeout(() => { shown = true; loading(true); }, 2300 + 700);
     c.innerHTML = '<div class="slightcore"></div>' + Array.from({length:26}, () => `<i style="--x:${(Math.random()*100).toFixed(1)}%;--y:${(Math.random()*100).toFixed(1)}%;--d:${(Math.random()*1.2).toFixed(2)}s;--s:${(6 + Math.random()*12).toFixed(0)}px"></i>`).join('');
     document.body.appendChild(c); SFX.play('warp');
-    setTimeout(() => { mid(); c.classList.add('clear'); }, 2300);       // まっ白のあいだに部屋へ切りかえる
-    setTimeout(() => c.remove(), 2300 + 1600);
+    // まっ白のあいだに部屋へ切りかえる。絵の準備がまだなら、まっ白のまま待ってから（最大 ART_WAIT）
+    Promise.all([ready, new Promise(r => setTimeout(r, 2300))]).then(() => { clearTimeout(tm); if(shown) loading(false); mid(); artUnwant(urls); requestAnimationFrame(() => requestAnimationFrame(() => { c.classList.add('clear'); setTimeout(() => c.remove(), 1600); })); });
   }
   function choose(i){
     const sc = scene(), c = sc.choices[i]; if(!c) return;
+    if(document.querySelector('.sscene [data-act=choose][disabled]')) return;
     if(timeUp()) return;
     const got = addAll(c.add, c.flag, c.item, 'choice:' + P.id); if(got.length) setTimeout(() => itemPop(got), 300);   // 同じ分かれ道で選び直しても1回だけ
     push({type:'choice', scene:P.id, choice:c.id, text:typeof c.text === 'object' ? (c.text.ja || T(c.text)) : c.text});   // 集計は日本語の文で（言語で分かれない）
@@ -1036,15 +1576,20 @@
     save();
     route();
     // 記録の送信と地図の更新（広場がひらく など）は、うしろで行う
+    // ・あとから送った問い合わせがあれば、古い返事は使わない（地図が前の状態に戻ったり、知らせが重なったりしないように）
+    // ・もちもの画面や住民票が開いているあいだは描き直さず、閉じたときに最新の状態で描き直す（overlayClosed）
+    // ・「新しい場所がひらいた」は、ひらいた場所が地図に出てから1回だけ（mapNewsNow）
+    const seq = ++bootSeq;
     try{
       const j = await api('boot', {}, {quiet:true});
+      if(seq !== bootSeq) return;
       if(j.ok){
-        const before = JSON.stringify(L.map), wasMap = VIEW === showMap;
-        const closed = (L.map || []).filter(x => x.status === 'blocked' || x.status === 'hidden').map(x => x.id);
+        const before = JSON.stringify(L.map);
         takeBoot(j);
-        const opened = (L.map || []).some(x => closed.includes(x.id) && x.status !== 'blocked' && x.status !== 'hidden');
-        if(wasMap && VIEW === showMap && !document.querySelector('.smodal:not([hidden]), .sitempop') && JSON.stringify(L.map) !== before){ const y = window.scrollY; showMap(); window.scrollTo(0, y); }
-        if(opened && VIEW === showMap){ SFX.play('correct'); toast(t('newPlace')); }
+        if(VIEW === showMap){
+          if(JSON.stringify(L.map) !== before){ if(overlayOpen()) mapStale = true; else { const y = window.scrollY; showMap(); window.scrollTo(0, y); } }
+          else mapNewsNow();
+        }
       }
     }catch(e){}
   }
@@ -1097,11 +1642,13 @@
     if(a === 'tomap') return showMap();
     if(a === 'card') return showCard();
     if(a === 'item') return itemDetail(b.dataset.id);
-    if(a === 'itemclose'){ const v = $('svItem'); if(v) v.remove(); return; }
+    if(a === 'itemclose'){ const v = $('svItem'); if(v) v.remove(); overlayClosed(); return; }
     if(a === 'close') return closeModal();
     if(a === 'closego'){ closeModal(); return start(); }
     if(a === 'fac') return openFac(b.dataset.id);
-    if(a === 'hiddenfac'){ const f = (L.map || []).find(x => x.id === b.dataset.id); return toast(f && T(f.hint) ? T(f.hint) : t('hiddenHint')); }
+    if(a === 'hiddenfac'){ const f = (L.map || []).find(x => x.id === b.dataset.id);
+      if(f && f.status !== 'blocked' && f.status !== 'hidden' && VIEW === showMap){ mapStale = false; showMap(); return openFac(f.id); }   // 描き直しが間に合っていなかった
+      return toast(f && T(f.hint) ? T(f.hint) : t('hiddenHint')); }
     if(a === 'next') return next();
     if(a === 'prev'){ if(P && P.line > 0){ P.line--; render(); } return; }
     if(a === 'sound'){ SFX.set(!SFX.on); b.outerHTML = soundBtn(); if(SFX.on) SFX.play('page'); return; }

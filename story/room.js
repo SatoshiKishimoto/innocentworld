@@ -65,13 +65,13 @@
       return `<g transform="translate(${x} ${y})"><path class="ns spk" style="animation-delay:${d}s" d="${star4(r)}" fill="#fff6c8"/></g>`; }).join('') : '';
     const rise = leaving ? Array.from({length:22}, (_, i) => { const x = 134 + ((i * 37) % 132), y = 230 + ((i * 53) % 70), d = (1.3 + (i % 7) * .22).toFixed(2);
       return `<g transform="translate(${x} ${y})"><path class="ns rise r${i % 5}" style="animation-delay:${d}s" d="${star4(i % 3 ? 4.5 : 6.5)}" fill="#fff6c8"/></g>`; }).join('') : '';
-    const cls = o.lace === 'opening' ? 'friendsIn' : leaving ? 'friendsOut' : '';
-    return `<g clip-path="url(#${noShift === 0 ? 'rmWin0' : 'rmWin'})"><g class="${cls}">${imgs}</g>${leaving ? `<g class="friendsGlow" filter="url(#rmGlowF)">${imgs}</g>${sparks}${rise}` : ''}</g>`;
+    const cls = o.lace === 'opening' ? 'friendsIn swait' : leaving ? 'friendsOut swait' : '';   // swait＝この動きが終わるまで「つぎへ」を待たせる（story.js の gateNext）
+    return `<g clip-path="url(#${noShift === 0 ? 'rmWin0' : 'rmWin'})"><g class="${cls}">${imgs}</g>${leaving ? `<g class="friendsGlow swait" filter="url(#rmGlowF)">${imgs}</g>${sparks}${rise}` : ''}</g>`;
   }
 
   /* レースのカーテン（薄くて、閉じていても月と星が透けて見える）と、両わきの厚手のカーテン */
   function curtains(lace){
-    const cls = lace === 'closed' ? 'closed' : lace === 'opening' ? 'opening' : '';
+    const cls = lace === 'closed' ? 'closed' : lace === 'opening' ? 'opening swait' : '';
     const hem = (x0, x1) => { let d = ''; for(let x = x0; x < x1; x += 10) d += ` Q${x + 5} 312 ${x + 10} 304`; return d; };
     const laceL = `<g class="lace l ${cls}"><path d="M128 86 H200 V304 L128 304 Z" fill="url(#rmLace)"/><path d="M128 304${hem(128, 200)}" fill="none" stroke="rgba(255,255,255,.7)" stroke-width="1.4"/>
       ${[140, 158, 176, 192].map(x => `<path d="M${x} 90 Q${x + 3} 200 ${x - 2} 302" fill="none" stroke="rgba(255,255,255,.28)" stroke-width="2"/>`).join('')}</g>`;
@@ -142,7 +142,7 @@
       ${village}
       ${[0, 1, 2, 3, 4, 5].map(i => `<path d="M${210} ${342 + i * 14} H${246 - (i % 2) * 8}" stroke="#b8a888" stroke-width="2" stroke-linecap="round"/>`).join('')}
       <path d="M200 324 V446" stroke="#c8b48c" stroke-width="1.6"/>
-      ${state === 'opening' ? `<path class="rflip" d="M200 324 Q224 314 258 318 V440 Q224 436 200 446 Z" fill="#fff8e8" ${st(1.2)}/>` : ''}
+      ${state === 'opening' ? `<path class="rflip swait" d="M200 324 Q224 314 258 318 V440 Q224 436 200 446 Z" fill="#fff8e8" ${st(1.2)}/>` : ''}
       ${glow ? Array.from({length:10}, (_, i) => `<g transform="translate(${160 + (i * 29) % 84} ${330 + (i * 37) % 100})"><path class="rmote" style="animation-delay:${(i * .27).toFixed(2)}s" d="${star4(i % 3 ? 3 : 5)}" fill="#fff6c8"/></g>`).join('') : ''}
     </g>`;
   }
@@ -161,13 +161,13 @@
   /* 部屋の絵ぜんたい。o = {book, lace, friends, leaving, memento, mementoAt, img} */
   /* 正式なイラスト（story/art/manifest.js の IW_ART）。どれも 1200×2400 の同じキャンバスで、viewBox 400×800 にぴったり重ねる */
   const ART = () => window.IW_ART || {};
-  const layer = (href, cls) => href ? `<image ${cls ? `class="${cls}" ` : ''}href="${href}" x="0" y="0" width="400" height="800" preserveAspectRatio="none"/>` : '';
+  const layer = (href, cls) => href ? `<image ${cls ? `class="${cls}" ` : ''}href="${href}" x="0" y="0" width="400" height="800" preserveAspectRatio="none" decoding="sync"/>` : '';   // decoding=sync：展開が終わってから描く（展開の途中で、絵のない画面を描かない）
   // 窓の開口（400×800 の目安の座標で [左, 上, 右, 下]）。画像の窓に合わせて manifest の room.window で変えられる
   const winRect = () => ((ART().room || {}).window) || [128, 80, 272, 294];
   function winClip(){ const [x1, y1, x2, y2] = winRect(), r = (x2 - x1) / 2; return `<clipPath id="rmWin0"><path d="M${x1} ${y2} V${y1 + r} A${r} ${r} 0 0 1 ${x2} ${y1 + r} V${y2} Z"/></clipPath>`; }
   function laceImg(lace){
     const R = ART().room || {}; if(!R.laceLeft && !R.laceRight) return null;
-    const cls = lace === 'closed' ? 'closed' : lace === 'opening' ? 'opening' : '', [x1, , x2] = winRect();
+    const cls = lace === 'closed' ? 'closed' : lace === 'opening' ? 'opening swait' : '', [x1, , x2] = winRect();
     return `<g class="lace l ${cls}" style="transform-origin:${x1}px 0">${layer(R.laceLeft)}</g><g class="lace r ${cls}" style="transform-origin:${x2}px 0">${layer(R.laceRight)}</g>`;
   }
   /* 正式ロゴ：表紙の余白（manifest の book.logoAt）に、原本の縦横比のまま縮小して載せる（加工はしない） */
@@ -181,7 +181,7 @@
       return `<g class="rbook">${layer(B.closed)}${logoImg(B)}${state !== 'closed' && B.clasp ? `<g class="rclasp ${state === 'unlocking' ? 'open' : ''}">${layer(B.clasp)}</g>` : ''}</g>`;
     if(/^(opening|open|glow)$/.test(state) && B.open){
       const glow = state === 'glow';
-      return `<g class="rbook">${glow ? `<ellipse class="rbglow" cx="200" cy="372" rx="150" ry="120" fill="url(#rmBookGlow)"/>` : ''}${layer(B.open, state === 'opening' ? 'rbookfade' : '')}
+      return `<g class="rbook">${glow ? `<ellipse class="rbglow" cx="200" cy="372" rx="150" ry="120" fill="url(#rmBookGlow)"/>` : ''}${layer(B.open, state === 'opening' ? 'rbookfade swait' : '')}
         ${glow ? Array.from({length:10}, (_, i) => `<g transform="translate(${160 + (i * 29) % 84} ${330 + (i * 37) % 100})"><path class="rmote" style="animation-delay:${(i * .27).toFixed(2)}s" d="${star4(i % 3 ? 3 : 5)}" fill="#fff6c8"/></g>`).join('') : ''}</g>`;
     }
     return null;

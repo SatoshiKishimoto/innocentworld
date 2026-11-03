@@ -31,17 +31,60 @@ window.IW_ART = {
     meadow: {far: 'art/scenes/meadow/far.webp', focus: 528},              // レンガ村に到着：絵本の門の足元
     plaza:  {far: 'art/scenes/plaza/far.webp', focus: 552, keep: 237},    // 中央広場：噴水の足元／時計台の文字盤
     // 村の井戸：focus＝水面の下の端、floor＝井戸のふちの上の端（立ち絵の足もとをこれより上に）、water＝水面のだ円（光と文字を重ねる）
-    well:   {far: 'art/scenes/well/far.webp', focus: 541, floor: 473, water: [122, 498, 289, 541]},
+    // choice＝選択肢の画面の構図（試作）：focus＝見せたい物の下の端 [横, 縦]（会話の枠のすぐ上に出す）、at＝その物を置く横の位置（画面の幅に対する割合）、actor＝住人の立ち絵の横の位置
+    well:   {far: 'art/scenes/well/far.webp', focus: 541, floor: 473, water: [122, 498, 289, 541], choice: {focus: [205, 541], at: .36, actor: .8}},
     // ニコのパン屋さん：focus＝作業台の生地のボウル・めん棒の下の端、floor＝作業台の奥の端、board＝貼り紙を貼る範囲（ボードの左寄り。細長いスマホでも切れない所）
     bakery: {far: 'art/scenes/bakery/far.webp', focus: 527, keep: 222, floor: 446, board: [331, 222, 377, 300]},
     // モックとハルの森：focus＝橋の下の端、ground＝こちら岸の地面の上の端（話す場面では足もとまで引き上げる）、fill＝下に見える地の色（小道）、
     // wind＝葉と花びらが流れる、scrap＝紙切れが橋の向こうから飛んでくる（from）→ 止まる位置（to）
     forest: {far: 'art/scenes/forest/far.webp', focus: 441, ground: 577, fill: '#c9a46a', wind: true, scrap: {from: [345, 395], to: [72, 418]}},
+    // リリィとヌールの図書館：focus＝机の上の開いた絵本の手前の端（小さいスマホでも、会話中に絵本が文章の枠の上に見えるところまで絵を上にずらす。
+    // keep は付けない＝天井・窓のアーチの上は上のボタンの裏に少し隠れてよい。390×844 ではずらさない）
+    // bookmark＝しおりが落ちる演出（「しおり」と「落ち」を含む地の文の行）。from＝絵本のページの間、to＝着地する机の上（絵本の右側の空いた面）
+    // under＝場面の下地にも同じ絵を敷く（絵が描かれないとき・小さい画面で絵を上にずらしたときに、旧式の背景の模様を出さない）
+    library: {far: 'art/scenes/library/far.webp', focus: 527, under: true, bookmark: {from: [200, 474], to: [328, 494]}},
     // ルークとアリカの時計台：focus＝帳面の手前の端、keep＝鐘の吊り金具の上の端、floor＝作業机の奥の端、
     // hands＝文字盤に重ねる針（中心・止まっている時刻・長さ［短針, 長針］）、bell＝鐘（揺れの支点と、鐘の形［この形で切り抜いて揺らす］）
     clock:  {far: 'art/scenes/clock/far.webp', focus: 560, keep: 100, floor: 489,
              hands: {at: [353, 193], time: '10:00', len: [34, 54]},
              bell: {pivot: [72, 101], shape: '60,112 68,100 76,100 84,112 92,119 102,128 107,145 110,165 115,185 122,203 128,215 134,228 137,240 133,250 115,258 82,261 82,270 68,270 68,261 35,258 18,250 14,238 16,222 22,207 30,188 35,165 37,145 42,128 52,119'}}
+  },
+  // 物語の中で読む紙（帳面・手紙）の絵。紙の文字は絵に入れず、アプリが3言語で書く（docs/art-library.md §4）
+  // size＝画像の縦横比のもと、area＝文字を書いてよい横の範囲 [左, 右]（紙の幅に対する割合）
+  props: {
+    ledger: {img: 'art/props/ledger.webp', size: [1448, 1086], area: [.32, .84]},   // 古い記録の帳面（右のページの罫線の範囲に書く）
+    // 涙の跡が残る手紙。band＝下の文を置いてよい縦の範囲 [上, 下]（右の2つの涙の跡のあいだ。会話の枠に隠れる所には置かない）。narrow＝下の文が band に収まらないとき、右の端をここまでにして（上の涙の跡の左を通して）上へのばす。言葉ごとの area で横の範囲を狭められる
+    letter: {img: 'art/props/letter.webp', size: [1086, 1448], area: [.29, .91], band: [.505, .655], narrow: .75}
+  },
+  // 場面ごとの紙の出し方（場面ID → 紙）。lines＝紙を出す行（順番）。その次の行で紙が消えて、住人の立ち絵に戻る
+  // words＝紙に書く言葉。from＝その行から出る（以後、紙が出ているあいだ残る）、at＝紙の上からの位置（紙の高さに対する割合）、
+  // strike＝取り消し線、bottom＝紙の下の文（小さい画面では会話の枠に隠れない所まで上げる）。言葉はシナリオの「」の中と一字一句同じにする（自動では抜き出さない）
+  papers: {
+    library_02a: {prop: 'ledger', lines: [1, 2, 3], words: [
+      {from: 2, at: .43, strike: true, color: '#4a2e1c', ja: 'かならず戻ってきて', kana: 'かならず もどって きて', en: 'You must come back.'},
+      {from: 3, at: .56, color: '#22407a', ja: '自分で決めていい', kana: 'じぶんで きめて いい', en: 'You may decide for yourself.'}
+    ]},
+    library_02b: {prop: 'letter', lines: [1, 2, 3, 4], words: [
+      {from: 2, at: .17, ja: 'ここが好きなら、ずっといてね', kana: 'ここが すきなら、ずっと いてね', en: 'If you love this place, stay forever.'},
+      {from: 4, at: .62, bottom: true, area: [.29, .87], ja: '帰ることと、忘れることは違う', kana: 'かえる ことと、わすれる ことは ちがう', en: 'Leaving and forgetting are not the same thing.'}
+    ]}
+  },
+  map: {
+    // レンガ村の地図（docs/art-map.md・設計図 v2）。背景と施設を別々の画像にして、アプリが重ねる。
+    // 座標は 1600×2000 の地図の上の px。施設の位置は本番DBの「施設」シートの地図X・Y（0〜100）から換算し（横×16、縦×20）、ここでは絵に合わせて少しずらすだけ（DBは変えない）。
+    // 施設名の札・状態の印（🔒・NEW・✓・…・?）・タップ範囲はアプリが重ねる。画像が1枚でも読めないときは、今までの描画の地図に戻る。
+    bg: 'art/map/bg.webp',             // 背景（文字・建物なし）
+    size: [1600, 2000],
+    // img＝施設の絵（背景透明）、w・h＝画像の大きさ、at＝画像の中の足もとの中心（基準点）、
+    // dy＝基準点を上下にずらす量（下が＋）、half・top＝タップ範囲（基準点から左右・上へ。下は100、札も含む）
+    fac: {
+      well:    {img: 'art/map/well.webp',    w: 400, h: 400, at: [200, 300], dy: 40,  half: 160, top: 284},
+      bakery:  {img: 'art/map/bakery.webp',  w: 400, h: 400, at: [200, 300], dy: 40,  half: 160, top: 280},
+      forest:  {img: 'art/map/forest.webp',  w: 400, h: 400, at: [200, 300], dy: 0,   half: 194, top: 286},
+      clock:   {img: 'art/map/clock.webp',   w: 400, h: 480, at: [200, 380], dy: 0,   half: 160, top: 365},   // 針は10時（物語と同じ）
+      library: {img: 'art/map/library.webp', w: 400, h: 400, at: [200, 300], dy: -60, half: 196, top: 295},
+      plaza:   {img: 'art/map/plaza.webp',   w: 400, h: 400, at: [200, 300], dy: 65,  half: 144, top: 251}
+    }
   },
   characterTone: true,    // 住人（エスパー・ミミなど）の色味を、部屋の温かい灯りに少しなじませる（元の画像は変えず、表示のときだけ調整）
   logo: ''           // 正式ロゴ（透明つき PNG または SVG。改変しない）。※原本が未着のため未配置
