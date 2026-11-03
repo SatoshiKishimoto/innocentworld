@@ -272,6 +272,7 @@
     }, 0);
   }
   // 「新しい場所がひらいた」の知らせ：地図が最新の状態で表示されていて、何も重なっていないときに1回だけ
+  function newsHide(){ const el = $('svToast'); if(el && !el.hidden && el.textContent === t('newPlace')){ clearTimeout(toast._t); el.hidden = true; } }
   function mapNewsNow(){ if(!mapNews || VIEW !== showMap || overlayOpen() || mapStale) return; mapNews = false; SFX.play('correct'); toast(t('newPlace')); }
   function celebrate(msg){
     const c = document.createElement('div'); c.className = 'scele';
@@ -766,6 +767,7 @@
   function facWatch(ent){ ent.t = setTimeout(() => { if(facCur !== ent) return; ent.dead = true; if(ent.hide) ent.hide(); facFree(ent); toast(errText({code: 'network'})); }, facMax()); }
   function openFac(id){
     const f = (L.map || []).find(x => x.id === id); if(!f || facWait) return;
+    newsHide();   // 「新しい場所に入れるようになったよ！」が、入口の窓や物語の画面に重ならないように
     if(f.status !== 'locked') return fetchStory(f, '');
     const keep = $('svFac') ? $('svFac').w.value : '';
     modal(`<div class="sdlg" role="dialog" aria-label="${esc(T(f.name))}"><div class="sdlghead" style="--c:${esc(f.roof)}"><b>${esc(T(f.name))}</b><span>${esc(T(f.sub))}</span></div>
@@ -1580,9 +1582,10 @@
     // ・もちもの画面や住民票が開いているあいだは描き直さず、閉じたときに最新の状態で描き直す（overlayClosed）
     // ・「新しい場所がひらいた」は、ひらいた場所が地図に出てから1回だけ（mapNewsNow）
     const seq = ++bootSeq;
-    try{
+    const upd = (async () => { try{
       const j = await api('boot', {}, {quiet:true});
       if(seq !== bootSeq) return;
+      mapUpdFail = !j.ok;
       if(j.ok){
         const before = JSON.stringify(L.map);
         takeBoot(j);
@@ -1591,7 +1594,25 @@
           else mapNewsNow();
         }
       }
-    }catch(e){}
+    }catch(e){ if(seq === bootSeq) mapUpdFail = true; } })();
+    // この地図の更新が届くまでのあいだに、まだひらいていない場所（広場など）を押されたら、届くのを待ってから判断する（mapUpd）
+    mapUpd = upd; upd.then(() => { if(mapUpd === upd) mapUpd = null; });
+    await upd;
+  }
+  let mapUpd = null;   // 物語を読み終えたあとの地図の更新（boot）を待っているあいだだけ入る
+  let mapUpdFail = false;   // その地図の更新が届かなかった（通信の失敗など）。手元の地図は古いかもしれない
+  let hidBusy = false;      // まだひらいていない場所を押したときの確認中（連打しても1回だけ）
+  // 地図を最新にする（まだひらいていない場所を押したとき、前の更新が届いていなかった場合だけ）。届いたら true
+  async function mapRefresh(){
+    const seq = ++bootSeq;
+    try{
+      const j = await api('boot', {});
+      if(seq !== bootSeq) return false;
+      if(!j.ok){ toast(errText(j)); return false; }
+      mapUpdFail = false; takeBoot(j);
+      if(VIEW === showMap){ const y = window.scrollY; showMap(); window.scrollTo(0, y); }   // ひらいた場所があれば、ここで地図の上に知らせが出る
+      return true;
+    }catch(e){ if(seq === bootSeq) toast(errText({error:'network'})); return false; }
   }
 
   /* ---------- 住民票 ---------- */
@@ -1646,9 +1667,30 @@
     if(a === 'close') return closeModal();
     if(a === 'closego'){ closeModal(); return start(); }
     if(a === 'fac') return openFac(b.dataset.id);
-    if(a === 'hiddenfac'){ const f = (L.map || []).find(x => x.id === b.dataset.id);
-      if(f && f.status !== 'blocked' && f.status !== 'hidden' && VIEW === showMap){ mapStale = false; showMap(); return openFac(f.id); }   // 描き直しが間に合っていなかった
-      return toast(f && T(f.hint) ? T(f.hint) : t('hiddenHint')); }
+    if(a === 'hiddenfac'){
+      if(hidBusy) return;
+      const id = b.dataset.id, isOpen = () => { const f = (L.map || []).find(x => x.id === id); return f && f.status !== 'blocked' && f.status !== 'hidden'; };
+      let waited = false;
+      hidBusy = true;
+      try{
+        // 物語を読み終えた直後は、地図の更新（広場がひらく など）がまだ届いていないことがある。届くのを待ってから、ひらいたかどうかを判断する
+        if(mapUpd && VIEW === showMap){ waited = true; const w = mapUpd; loading(true); try{ await w; }finally{ loading(false); } if(VIEW !== showMap) return; }
+        // その更新が届かなかったときは、古い地図のまま「まだひらいていない」と言わない。次に押されたときに、もう一度たずねる（届かなければ通信の案内）
+        if(mapUpdFail && !isOpen() && VIEW === showMap){
+          if(waited) return toast(errText({error:'network'}));   // いま待っていた更新が届かなかった（すぐにたずね直すと待たせすぎるので、案内だけ）
+          waited = true; if(!await mapRefresh()) return; if(VIEW !== showMap) return;
+        }
+        if(isOpen() && VIEW === showMap){
+          if(!waited){ mapStale = false; showMap(); return openFac(id); }   // 描き直しが間に合っていなかった
+          // 待っているあいだにひらいた：まず地図の上で「新しい場所に入れるようになったよ！」を見せてから、その場所に入る
+          await new Promise(r => setTimeout(r, 1500));
+          if(VIEW !== showMap || facWait || overlayOpen()) return;
+          return openFac(id);
+        }
+        const f = (L.map || []).find(x => x.id === id);
+        return toast(f && T(f.hint) ? T(f.hint) : t('hiddenHint'));
+      }finally{ hidBusy = false; }
+    }
     if(a === 'next') return next();
     if(a === 'prev'){ if(P && P.line > 0){ P.line--; render(); } return; }
     if(a === 'sound'){ SFX.set(!SFX.on); b.outerHTML = soundBtn(); if(SFX.on) SFX.play('page'); return; }
