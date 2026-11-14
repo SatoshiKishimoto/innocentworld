@@ -1,0 +1,409 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>森の橋フロート試作</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;800&display=swap">
+<style>
+/* 試作ページ：既存のARパレード（index.html）とは別のページ。夜の舞台でフロートを確かめる */
+:root{
+  --ink:#f6f1e6; --dim:rgba(246,241,230,.72); --line:rgba(246,241,230,.22); --veil:rgba(14,16,34,.66); --gold:#e8b85a; --on:#ffd27a;
+  --round:"M PLUS Rounded 1c","Hiragino Maru Gothic ProN","Hiragino Sans","Yu Gothic",system-ui,sans-serif;
+  color-scheme:dark;
+}
+html,body{margin:0;height:100%;background:#0b0e26;color:var(--ink);font-family:var(--round);overflow:hidden;
+  -webkit-user-select:none;user-select:none;touch-action:none;-webkit-tap-highlight-color:transparent}
+#cam{position:fixed;inset:0;width:100%;height:100%;object-fit:cover;background:#000;z-index:0}
+#stage{position:fixed;inset:0;z-index:0;background:radial-gradient(ellipse at 50% 115%,#4a3060 0%,#1c2058 46%,#0a0c24 100%)}
+#gl{position:fixed;inset:0;width:100%;height:100%;z-index:1;display:block}
+[hidden]{display:none!important}
+.bar{position:fixed;left:0;right:0;z-index:5;display:flex;gap:8px;align-items:center;padding:10px 16px;
+  padding-left:max(16px,env(safe-area-inset-left));padding-right:max(16px,env(safe-area-inset-right))}
+#top{top:0;padding-top:max(10px,env(safe-area-inset-top));background:linear-gradient(var(--veil),rgba(14,16,34,0));justify-content:space-between}
+#top h1{margin:0;font-size:15px;font-weight:800;letter-spacing:.02em;line-height:1.3}
+#top h1 small{display:block;font-size:11px;font-weight:500;color:var(--dim)}
+.tabs{display:flex;background:rgba(255,255,255,.08);border:1px solid var(--line);border-radius:999px;padding:3px;flex:none}
+.tabs button{border:0;background:none;color:var(--dim);font:700 13px var(--round);padding:7px 12px;border-radius:999px;cursor:pointer}
+.tabs button[aria-pressed="true"]{background:var(--on);color:#2a1a08}
+#tabDev{font-size:12px}
+.hbtns{display:flex;gap:6px;align-items:center;flex:none}
+.round{width:38px;height:38px;border-radius:50%;border:1px solid var(--line);background:rgba(255,255,255,.08);color:var(--ink);font:800 16px var(--round);cursor:pointer;flex:none}
+.round[aria-pressed="true"]{background:rgba(255,210,122,.22);border-color:var(--on);color:var(--on)}
+.round:focus-visible{outline:2px solid var(--on);outline-offset:2px}
+@media (max-height:500px){ #scene{font-size:12px;min-height:0} #top{padding-top:max(6px,env(safe-area-inset-top))} #bottom{gap:4px;padding-bottom:max(6px,env(safe-area-inset-bottom))} }
+@media (max-width:400px){ .tabs button{padding:7px 8px} #top h1 small{display:none} } #tabDev[aria-pressed="true"]{background:rgba(255,210,122,.25);color:var(--on)}
+body.public .dev{display:none!important}
+#bottom{bottom:0;padding-bottom:max(12px,env(safe-area-inset-bottom));flex-direction:column;align-items:stretch;gap:8px;
+  background:linear-gradient(rgba(14,16,34,0),var(--veil) 40%)}
+.row{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+.chip{border:1px solid var(--line);background:rgba(255,255,255,.07);color:var(--ink);font:700 12.5px var(--round);
+  padding:8px 11px;border-radius:999px;cursor:pointer;min-height:36px}
+.chip[aria-pressed="true"]{background:rgba(255,210,122,.2);border-color:var(--on);color:var(--on)}
+.chip:focus-visible,.tabs button:focus-visible{outline:2px solid var(--on);outline-offset:2px}
+.lbl{font-size:11px;color:var(--dim);align-self:center;margin-right:2px}
+#scene{text-align:center;font-size:13px;line-height:1.5;min-height:2.6em;color:var(--ink);text-shadow:0 1px 6px rgba(0,0,0,.6)}
+#scene b{color:var(--on);font-weight:800;margin-right:.4em}
+#perf{position:fixed;z-index:6;right:max(12px,env(safe-area-inset-right));top:calc(max(10px,env(safe-area-inset-top)) + 54px);
+  font:600 11px/1.55 ui-monospace,Menlo,monospace;background:rgba(0,0,0,.55);border:1px solid var(--line);border-radius:10px;padding:8px 10px;white-space:pre;color:#d9f5d0;pointer-events:none}
+#start{position:fixed;inset:0;z-index:8;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(8,10,28,.82)}
+#start .card{max-width:420px;background:rgba(30,32,70,.92);border:1px solid var(--line);border-radius:18px;padding:22px 20px;text-align:center}
+#start h2{margin:0 0 8px;font-size:18px}
+#start p{margin:0 0 14px;font-size:13px;line-height:1.7;color:var(--dim)}
+.go{border:0;background:var(--on);color:#2a1a08;font:800 15px var(--round);padding:12px 22px;border-radius:999px;cursor:pointer;min-height:44px}
+.ghost{border:1px solid var(--line);background:none;color:var(--ink);font:700 13px var(--round);padding:10px 16px;border-radius:999px;cursor:pointer;margin-top:8px}
+#toast{position:fixed;z-index:9;left:50%;top:40%;transform:translate(-50%,-50%);background:rgba(0,0,0,.72);padding:10px 16px;border-radius:12px;font-size:13px;max-width:80vw;text-align:center}
+#loading{position:fixed;inset:0;z-index:7;display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--dim)}
+@media (max-width:420px){ #top h1{font-size:13px} .tabs button{padding:7px 10px;font-size:12px} .chip{padding:7px 9px;font-size:12px} }
+</style>
+</head>
+<body>
+<video id="cam" playsinline muted hidden></video>
+<div id="stage"></div>
+<canvas id="gl"></canvas>
+<div id="loading">フロートを組み立てています…</div>
+
+<header class="bar" id="top">
+  <h1>森の古い橋 <small>ARパレード 試作フロート</small></h1>
+  <div class="hbtns">
+  <button class="round" id="btnSound" aria-pressed="false" aria-label="音楽" title="音楽">♪</button>
+  <button class="round" id="btnRecall" aria-label="もう一度通す" title="もう一度通す" hidden>↻</button>
+  <div class="tabs" role="group" aria-label="表示">
+    <button id="tabDev" class="dev" aria-pressed="true" title="開発用の操作を表示">操作</button>
+    <button id="tabShow" aria-pressed="true">ショールーム</button>
+    <button id="tabAR" aria-pressed="false">AR走行</button>
+  </div>
+  </div>
+</header>
+<pre id="perf" class="dev" hidden></pre>
+
+<footer class="bar" id="bottom">
+  <div id="scene" aria-live="polite"></div>
+  <!-- ここから下は開発用（?ui=public で隠す。一般向けの画面では使わない） -->
+  <div id="devPanel" class="dev">
+  <div class="row" id="rowView">
+    <span class="lbl">見る位置</span>
+    <button class="chip" data-view="side" aria-pressed="true">観客側</button>
+    <button class="chip" data-view="front" aria-pressed="false">正面</button>
+    <button class="chip" data-view="back" aria-pressed="false">背面</button>
+    <button class="chip" data-view="far" aria-pressed="false">奥側</button>
+    <button class="chip" data-view="bridge" aria-pressed="false">橋をななめ上から</button>
+    <button class="chip" data-view="close" aria-pressed="false">近くで</button>
+  </div>
+  <div class="row" id="rowAct">
+    <span class="lbl">演出</span>
+    <button class="chip" data-act="" aria-pressed="true">通し</button>
+    <button class="chip" data-act="A" aria-pressed="false">A ためらい</button>
+    <button class="chip" data-act="B" aria-pressed="false">B 気づき</button>
+    <button class="chip" data-act="C" aria-pressed="false">C 一緒にいる</button>
+  </div>
+  <div class="row">
+    <button class="chip" id="btnNight" aria-pressed="true">夜の照明</button>
+    <button class="chip" id="btnSpin" aria-pressed="false">回転台</button>
+    <button class="chip" id="btnQuality" aria-pressed="false">軽量モード</button>
+    <button class="chip" id="btnPerf" aria-pressed="false">負荷を表示</button>
+  </div>
+  </div>
+</footer>
+
+<div id="start" hidden>
+  <div class="card">
+    <h2>AR走行で確かめる</h2>
+    <p>カメラと傾きセンサーを使います。スマホを前に向けると、フロートが右からやってきて左へ通り過ぎます（パレードと同じ8m先）。<br>音楽は既存のパレードの曲です。</p>
+    <button class="go" id="btnGo">カメラをつけてはじめる</button><br>
+    <button class="ghost" id="btnCancel">やめる</button>
+  </div>
+</div>
+<div id="toast" hidden></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>window.IW_BASE = window.IW_BASE || '../';</script>
+<script src="forest-bridge-float.js"></script>
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+const BASE = window.IW_BASE;
+const params = new URLSearchParams(location.search);
+
+/* ---------- 描画（既存のパレードと同じ設定：sRGB出力・トーンマッピングなし） ---------- */
+const renderer = new THREE.WebGLRenderer({canvas:$('gl'), alpha:true, antialias:true});
+let PR = Math.min(window.devicePixelRatio || 1, 2);
+renderer.setPixelRatio(PR);
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.setClearColor(0x000000, 0);
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(50, 1, 0.05, 300);
+scene.add(camera);
+const hemi = new THREE.HemisphereLight(0x8a96d0, 0x3a2418, 0.6); scene.add(hemi);
+const moon = new THREE.DirectionalLight(0xa8b8ff, 0.38); moon.position.set(-3, 6, 2); scene.add(moon);
+const key = new THREE.DirectionalLight(0xffd8a8, 0.42); key.position.set(4, 5, 3); scene.add(key);
+function resize(){
+  const w = window.innerWidth, h = window.innerHeight;
+  renderer.setSize(w, h, false); camera.aspect = w/h; camera.clearViewOffset(); camera.updateProjectionMatrix();
+  if(typeof mode !== 'undefined' && mode === 'show' && typeof F !== 'undefined' && F) refit();
+}
+let reT = 0;
+window.addEventListener('resize', ()=>{ resize(); clearTimeout(reT); reT = setTimeout(resize, 350); });   // 縦横の切りかえ直後は寸法が遅れて変わるので、少し待ってもう一度
+window.addEventListener('orientationchange', ()=>setTimeout(resize, 400));
+
+/* ---------- 床（ショールームだけ）：石畳の円 ---------- */
+const floor = (()=>{
+  const c = document.createElement('canvas'); c.width = c.height = 512; const x = c.getContext('2d');
+  const g = x.createRadialGradient(256, 256, 0, 256, 256, 256); g.addColorStop(0, '#3a3440'); g.addColorStop(0.7, '#221e2c'); g.addColorStop(1, 'rgba(20,18,30,0)');
+  x.fillStyle = g; x.fillRect(0, 0, 512, 512);
+  x.strokeStyle = 'rgba(255,255,255,.05)'; x.lineWidth = 2;
+  for(let r=40;r<256;r+=34){ x.beginPath(); x.arc(256, 256, r, 0, Math.PI*2); x.stroke(); }
+  for(let k=0;k<24;k++){ const a = k/24*Math.PI*2; x.beginPath(); x.moveTo(256 + Math.cos(a)*40, 256 + Math.sin(a)*40); x.lineTo(256 + Math.cos(a)*256, 256 + Math.sin(a)*256); x.stroke(); }
+  const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding;
+  const m = new THREE.Mesh(new THREE.CircleGeometry(7, 48), new THREE.MeshStandardMaterial({map:t, transparent:true, roughness:0.85, metalness:0}));
+  m.rotation.x = -Math.PI/2; scene.add(m); return m;
+})();
+// フロートの足元にこぼれる光
+const pool = (()=>{
+  const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d'), g = x.createRadialGradient(64, 64, 0, 64, 64, 64);
+  g.addColorStop(0, 'rgba(255,200,120,.55)'); g.addColorStop(1, 'rgba(255,160,80,0)'); x.fillStyle = g; x.fillRect(0, 0, 128, 128);
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(c), transparent:true, depthWrite:false, blending:THREE.AdditiveBlending}));
+  m.rotation.x = -Math.PI/2; m.scale.set(4.4, 7.4, 1); m.position.y = 0.012; return m;
+})();
+
+/* ---------- フロート ---------- */
+let quality = params.get('q') === 'low' ? 'low' : 'high';
+let F = null, wrap = new THREE.Group(); scene.add(wrap);
+function build(){
+  if(F){ wrap.remove(F.g); F.dispose(); }
+  F = IWForestBridge.create({renderer, camera, base:BASE, quality, night:night}); floatBox = null;
+  wrap.add(F.g); wrap.add(pool);
+  F.setScene(act);
+  stats.build = performance.now();
+}
+
+/* ---------- 状態 ---------- */
+let mode = 'show', night = true, act = '', spin = false;
+const ACTS = {
+  A:'<b>A ためらい</b>約束した古い橋が風に揺れます。モックは渡ろうと身を乗り出し、ハルはこわくて一歩あとずさります。',
+  B:'<b>B 気づき</b>モックはハルの方を向き、ハルの気持ちを聞いて、やさしくうなずきます。',
+  C:'<b>C 一緒にいる</b>二人は橋を渡らず、同じ岸の川辺に並びます。ランタンが温かく輝き、向こう岸の花がひらきます。',
+  R:'<b>…</b>二人はまた橋のたもとへ。（走行中はこの流れを24秒ごとにくり返します）'
+};
+let lastPhase = '';
+function showPhase(p){ if(p === lastPhase) return; lastPhase = p; $('scene').innerHTML = ACTS[p] || ''; }
+
+/* ---------- 照明：夜と昼 ---------- */
+function applyLight(){
+  if(night){ hemi.intensity = 0.6; hemi.color.set(0x8a96d0); hemi.groundColor.set(0x3a2418); moon.intensity = 0.38; key.intensity = 0.42; key.color.set(0xffd8a8);
+    $('stage').style.background = 'radial-gradient(ellipse at 50% 115%,#4a3060 0%,#1c2058 46%,#0a0c24 100%)'; }
+  else { hemi.intensity = 1.15; hemi.color.set(0xfff4e0); hemi.groundColor.set(0x5a4a40); moon.intensity = 0.2; key.intensity = 1.1; key.color.set(0xfff0d8);
+    $('stage').style.background = 'linear-gradient(#9cc8f0,#d8ecff 60%,#c8d8c0)'; }
+  if(F) F.setNight(night);
+  pool.visible = night;
+}
+
+/* ---------- ショールームのカメラ（ドラッグで回す・ピンチで寄る） ---------- */
+/* 画面の大きさ・縦横比に合わせて、見せたい範囲がちょうど収まる距離を自動で決める。
+   上の帯と下の操作ボタンに隠れない、残りの部分のまん中に来るよう、絵の位置もずらす */
+const orbit = {yaw:Math.PI/2, pitch:0.14, dist:8, c:new THREE.Vector3(0, 1.4, 0), off:{x:0, y:0},
+  tYaw:Math.PI/2, tPitch:0.14, tDist:8, tc:new THREE.Vector3(0, 1.4, 0), toff:{x:0, y:0}, zoom:1, view:'side'};
+const VIEWS = {
+  side:{yaw:Math.PI/2, pitch:0.12, focus:'all', fill:0.92},          // 観客の側（+x）から：パレードで見える面
+  front:{yaw:0, pitch:0.16, focus:'all', fill:0.92},                 // 進む向き（+z）から
+  back:{yaw:Math.PI, pitch:0.16, focus:'all', fill:0.92},
+  far:{yaw:-Math.PI/2, pitch:0.12, focus:'all', fill:0.92},          // 観客と反対の側
+  bridge:{yaw:Math.PI/2 - 0.5, pitch:0.62, focus:'bridge', fill:0.82},  // 橋を中心に、ななめ上から
+  close:{yaw:Math.PI/2 + 0.28, pitch:0.08, focus:'stage', fill:1.0}
+};
+let floatBox = null;
+function boxFor(f){
+  if(f === 'all'){ if(!floatBox){ floatBox = new THREE.Box3().setFromObject(F.g); floatBox.expandByScalar(0.08); } return floatBox; }
+  return F.focus[f];
+}
+function usableRect(){
+  const W = window.innerWidth, H = window.innerHeight;
+  const top = Math.min($('top').getBoundingClientRect().bottom, H*0.22);
+  const b = $('bottom'), bot = b.hidden ? 0 : Math.min(H - b.getBoundingClientRect().top, H*0.55);
+  return {W, H, top, bot};
+}
+const _cn = [...Array(8)].map(()=>new THREE.Vector3()), _tc = new THREE.Vector3(), _cam = new THREE.PerspectiveCamera();
+function fitView(v, yaw, pitch){
+  const box = boxFor(v.focus), U = usableRect();
+  box.getCenter(_tc);
+  _cam.fov = camera.fov; _cam.aspect = U.W/U.H; _cam.near = 0.05; _cam.far = 300; _cam.updateProjectionMatrix();
+  const dir = new THREE.Vector3(Math.sin(yaw)*Math.cos(pitch), Math.sin(pitch), Math.cos(yaw)*Math.cos(pitch));
+  const corners = [];
+  for(let i=0;i<8;i++) corners.push(new THREE.Vector3(i & 1 ? box.max.x : box.min.x, i & 2 ? box.max.y : box.min.y, i & 4 ? box.max.z : box.min.z));
+  const availY = 2*(U.H - U.top - U.bot)/U.H*v.fill, availX = 2*(1 - 32/U.W)*v.fill;
+  const proj = d=>{ _cam.position.copy(_tc).addScaledVector(dir, d); _cam.lookAt(_tc); _cam.updateMatrixWorld(); let x0 = 9, x1 = -9, y0 = 9, y1 = -9;
+    corners.forEach(c=>{ const p = c.clone().project(_cam); x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x); y0 = Math.min(y0, p.y); y1 = Math.max(y1, p.y); }); return {x0, x1, y0, y1}; };
+  let lo = 1, hi = 60;
+  for(let k=0;k<26;k++){ const m = (lo + hi)/2, r = proj(m); if(r.x1 - r.x0 <= availX && r.y1 - r.y0 <= availY) hi = m; else lo = m; }
+  const r = proj(hi);
+  const cy0 = ((U.bot + U.H - U.top)/2)/U.H*2 - 1;          // 隠れない部分のまん中（NDC）
+  return {dist:hi, c:_tc.clone(), off:{x:(r.x0 + r.x1)/2*U.W/2, y:(cy0 - (r.y0 + r.y1)/2)*U.H/2}};
+}
+function setView(k){ const v = VIEWS[k]; orbit.view = k; orbit.zoom = 1; orbit.tYaw = v.yaw; orbit.tPitch = v.pitch;
+  while(orbit.tYaw - orbit.yaw > Math.PI) orbit.tYaw -= Math.PI*2; while(orbit.tYaw - orbit.yaw < -Math.PI) orbit.tYaw += Math.PI*2;   // 近いほうの回り方で回す
+  refit();
+  document.querySelectorAll('[data-view]').forEach(b=>b.setAttribute('aria-pressed', b.dataset.view === k)); }
+function refit(){
+  const v = VIEWS[orbit.view] || VIEWS.side, f = fitView(v, orbit.tYaw, orbit.tPitch);
+  orbit.tDist = f.dist*orbit.zoom; orbit.tc.copy(f.c); orbit.toff = f.off;
+}
+const ptrs = new Map(); let pinch0 = 0, dist0 = 0, moved = 0;
+const gl = $('gl');
+gl.addEventListener('pointerdown', e=>{ gl.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, {x:e.clientX, y:e.clientY}); moved = 0;
+  if(ptrs.size === 2){ const [a, b] = [...ptrs.values()]; pinch0 = Math.hypot(a.x - b.x, a.y - b.y); dist0 = orbit.tDist; } });
+gl.addEventListener('pointermove', e=>{
+  const p = ptrs.get(e.pointerId); if(!p) return;
+  const dx = e.clientX - p.x, dy = e.clientY - p.y; p.x = e.clientX; p.y = e.clientY; moved += Math.abs(dx) + Math.abs(dy);
+  if(mode === 'show'){
+    if(ptrs.size === 1){ orbit.tYaw -= dx*0.008; orbit.tPitch = Math.max(-0.05, Math.min(1.2, orbit.tPitch + dy*0.006)); document.querySelectorAll('[data-view]').forEach(b=>b.setAttribute('aria-pressed', 'false')); }
+    else if(ptrs.size === 2){ const [a, b] = [...ptrs.values()], d = Math.hypot(a.x - b.x, a.y - b.y); if(pinch0 > 0){ orbit.tDist = Math.max(2.0, Math.min(40, dist0*pinch0/d)); } }
+  } else if(!gotOri){ yaw += dx*0.005; pitch = Math.max(-1.2, Math.min(1.2, pitch + dy*0.005)); }
+});
+const up = e=>{ if(ptrs.size === 2 && pinch0 > 0){ const f = fitView(VIEWS[orbit.view] || VIEWS.side, orbit.tYaw, orbit.tPitch); orbit.zoom = orbit.tDist/f.dist; }
+  if(ptrs.size === 1 && moved > 8 && mode === 'show'){ refit(); }   // 回したあとも、その角度で全体が収まるように合わせ直す
+  ptrs.delete(e.pointerId); if(ptrs.size < 2) pinch0 = 0; };
+gl.addEventListener('pointerup', up); gl.addEventListener('pointercancel', up);
+gl.addEventListener('wheel', e=>{ e.preventDefault(); if(mode === 'show'){ orbit.zoom = Math.max(0.3, Math.min(2.5, orbit.zoom*Math.exp(e.deltaY*0.0015))); refit(); } }, {passive:false});
+
+/* ---------- AR走行：カメラの映像・傾きセンサー・右から左への行進 ---------- */
+const PARADE_DIST = 8, EYE = 1.4;   // 既存のパレードと同じ（CONFIG.paradeDistance / eyeHeight）
+let ori = null, gotOri = false, yaw = 0, pitch = 0;
+const euler = new THREE.Euler(), q0 = new THREE.Quaternion(), q1 = new THREE.Quaternion(-Math.sqrt(0.5), 0, 0, Math.sqrt(0.5)), zee = new THREE.Vector3(0, 0, 1), targetQ = new THREE.Quaternion(), DEG = Math.PI/180;
+function onOri(e){ if(e.alpha == null && e.beta == null) return; ori = e; gotOri = true; }
+function screenAngle(){ return (screen.orientation && screen.orientation.angle) || window.orientation || 0; }
+function oriToQuat(q){ euler.set((ori.beta||0)*DEG, (ori.alpha||0)*DEG, -(ori.gamma||0)*DEG, 'YXZ'); q.setFromEuler(euler); q.multiply(q1); q.multiply(q0.setFromAxisAngle(zee, -screenAngle()*DEG)); }
+const march = {start:new THREE.Vector3(), dir:new THREE.Vector3(), t0:0, L:0, speed:1.15, active:false};
+function placeMarch(){
+  const f = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion); f.y = 0; if(f.lengthSq() < 0.01) f.set(0, 0, -1); f.normalize();
+  const right = new THREE.Vector3(-f.z, 0, f.x);
+  const tanH = Math.tan(camera.fov*Math.PI/360)*camera.aspect;
+  march.L = (PARADE_DIST + 3)*tanH + 3.2;
+  march.dir.copy(right).negate();
+  march.start.copy(camera.position).addScaledVector(f, PARADE_DIST).addScaledVector(right, march.L);
+  march.start.y = camera.position.y - EYE;
+  march.t0 = clock.elapsedTime; march.active = true;
+}
+function updateMarch(t){
+  if(!march.active) return;
+  const total = march.L*2 + 2;
+  const s = ((t - march.t0)*march.speed) % total;
+  wrap.position.copy(march.start).addScaledVector(march.dir, s);
+  wrap.lookAt(wrap.position.x + march.dir.x, wrap.position.y, wrap.position.z + march.dir.z);
+}
+let camOn = false, sensorsAsked = false;
+async function startAR(){
+  startMusic();   // 音はタップの直後、ほかの処理を待つ前に鳴らしはじめる（iPhone は、許可の確認などを待ったあとだと音を出させない）
+  $('start').hidden = true;
+  if(!sensorsAsked){
+    sensorsAsked = true;
+    if(typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function'){ try{ await DeviceOrientationEvent.requestPermission(); }catch(e){} }
+    window.addEventListener('deviceorientation', onOri);
+  }
+  try{
+    if(!camOn){
+      const stream = await navigator.mediaDevices.getUserMedia({audio:false, video:{facingMode:{ideal:'environment'}, width:{ideal:1280}, height:{ideal:720}}});
+      const v = $('cam'); v.srcObject = stream; v.hidden = false; await v.play().catch(()=>{}); camOn = true;
+    } else $('cam').hidden = false;
+    $('stage').hidden = true;
+  }catch(e){ toast(window.isSecureContext ? 'カメラが使えないため、夜空の背景で表示しています。' : 'カメラを使うには https のURLで開いてください。', 5000); }
+  floor.visible = false;
+  camera.position.set(0, EYE, 0); camera.fov = 62; resize();
+  setTimeout(()=>{ placeMarch(); }, 500);
+  // 実機の確認用：カメラと傾きセンサーが使えているかを知らせる
+  setTimeout(()=>{ toast((camOn ? 'カメラ：使用中' : 'カメラ：使えません') + '／' + (gotOri ? '傾きセンサー：使用中' : '傾きセンサー：使えません（画面をドラッグすると見回せます）'), 4500); }, 1500);
+}
+function toShow(){
+  mode = 'show'; march.active = false;
+  $('cam').hidden = true; $('stage').hidden = false; floor.visible = true;
+  wrap.position.set(0, 0, 0); wrap.rotation.set(0, 0, 0);
+  camera.fov = 50; $('rowView').hidden = false; $('rowAct').hidden = false; $('scene').hidden = false; $('btnSpin').hidden = false; $('btnRecall').hidden = true;
+  resize(); refit(); orbit.dist = orbit.tDist; orbit.c.copy(orbit.tc); orbit.off = {...orbit.toff};
+  $('tabShow').setAttribute('aria-pressed', 'true'); $('tabAR').setAttribute('aria-pressed', 'false');
+}
+function toAR(){
+  mode = 'ar';
+  $('rowView').hidden = true; $('rowAct').hidden = true; $('scene').hidden = true; $('btnSpin').hidden = true; $('btnSound').hidden = false; $('btnRecall').hidden = false;
+  $('tabShow').setAttribute('aria-pressed', 'false'); $('tabAR').setAttribute('aria-pressed', 'true');
+  wrap.rotation.set(0, 0, 0);
+  $('start').hidden = false;
+}
+
+/* ---------- 音楽：既存のパレードの曲（music/parade.mp3）。音を出すのは試作ページの中だけ ---------- */
+const music = new Audio(); music.loop = true; music.preload = 'auto'; music.setAttribute('playsinline', ''); music.src = BASE + 'music/parade.mp3';
+let wantMusic = true;
+function startMusic(){ if(!wantMusic) return; const p = music.play(); if(p && p.then) p.then(()=>$('btnSound').setAttribute('aria-pressed', 'true')).catch(()=>{ $('btnSound').setAttribute('aria-pressed', 'false'); toast('音が出ないときは「♪ 音楽」を押してください。音量も確かめてください。', 4500); }); }
+function stopMusic(){ music.pause(); $('btnSound').setAttribute('aria-pressed', 'false'); }
+
+/* ---------- 負荷の計測 ---------- */
+const stats = {frames:0, acc:0, fps:0, build:0, low:0, worst:0};
+function perfText(){
+  const i = renderer.info, mem = performance.memory ? (performance.memory.usedJSHeapSize/1048576).toFixed(0) + ' MB' : '（この端末では取得不可）';
+  return `fps        ${stats.fps.toFixed(0)}  (最も遅い ${stats.worst.toFixed(0)}ms)\n描画回数    ${i.render.calls}\n三角形      ${(i.render.triangles/1000).toFixed(1)}k\n形状        ${i.memory.geometries}\nテクスチャ  ${i.memory.textures}\nJSメモリ    ${mem}\n解像度      ×${PR.toFixed(2)}  ${quality === 'low' ? '軽量' : '標準'}\nカメラ      ${camOn ? '使用中' : 'なし'}\n傾き        ${gotOri ? '受信中' : 'なし'}\n音楽        ${music.paused ? '停止' : '再生中 ' + music.currentTime.toFixed(0) + '秒'}`;
+}
+
+/* ---------- 操作 ---------- */
+document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click', ()=>{ spin = false; $('btnSpin').setAttribute('aria-pressed', 'false'); setView(b.dataset.view); }));
+document.querySelectorAll('[data-act]').forEach(b=>b.addEventListener('click', ()=>{ act = b.dataset.act; if(F) F.setScene(act); document.querySelectorAll('[data-act]').forEach(x=>x.setAttribute('aria-pressed', x === b)); }));
+$('btnNight').addEventListener('click', ()=>{ night = !night; $('btnNight').setAttribute('aria-pressed', night); applyLight(); });
+$('btnSpin').addEventListener('click', ()=>{ spin = !spin; $('btnSpin').setAttribute('aria-pressed', spin); });
+$('btnQuality').addEventListener('click', ()=>{ quality = quality === 'low' ? 'high' : 'low'; $('btnQuality').setAttribute('aria-pressed', quality === 'low');
+  PR = quality === 'low' ? Math.min(window.devicePixelRatio || 1, 1.25) : Math.min(window.devicePixelRatio || 1, 2); renderer.setPixelRatio(PR); build(); applyLight(); resize(); });
+$('btnPerf').addEventListener('click', ()=>{ const on = $('perf').hidden; $('perf').hidden = !on; $('btnPerf').setAttribute('aria-pressed', on); });
+$('btnSound').addEventListener('click', ()=>{ if(music.paused){ wantMusic = true; startMusic(); } else { wantMusic = false; stopMusic(); } });
+$('btnRecall').addEventListener('click', ()=>placeMarch());
+$('tabShow').addEventListener('click', toShow);
+$('tabAR').addEventListener('click', toAR);
+$('btnGo').addEventListener('click', ()=>startAR());
+$('btnCancel').addEventListener('click', toShow);
+// 開発用の操作の表示／非表示（一般向けの画面 ?ui=public では、最初から隠す）
+const PUBLIC = params.get('ui') === 'public';
+if(PUBLIC) document.body.classList.add('public');
+function setDev(on){ $('devPanel').hidden = !on; $('tabDev').setAttribute('aria-pressed', on); if(mode === 'show') refit(); }
+$('tabDev').addEventListener('click', ()=>setDev($('devPanel').hidden));
+function toast(m, ms){ const el = $('toast'); el.textContent = m; el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(()=>el.hidden = true, ms || 3000); }
+
+/* ---------- ループ ---------- */
+const clock = new THREE.Clock();
+const look = new THREE.Vector3();
+function loop(){
+  requestAnimationFrame(loop);
+  const raw = clock.getDelta(), dt = Math.min(raw, 0.05), t = clock.elapsedTime;
+  if(mode === 'show'){
+    if(spin) orbit.tYaw += dt*0.35;
+    const k = Math.min(1, dt*4);
+    if(spin && Math.floor(t*2) !== Math.floor((t - dt)*2)) refit();
+    orbit.yaw += (orbit.tYaw - orbit.yaw)*k; orbit.pitch += (orbit.tPitch - orbit.pitch)*k; orbit.dist += (orbit.tDist - orbit.dist)*k; orbit.c.lerp(orbit.tc, k);
+    orbit.off.x += (orbit.toff.x - orbit.off.x)*k; orbit.off.y += (orbit.toff.y - orbit.off.y)*k;
+    camera.position.set(orbit.c.x + Math.sin(orbit.yaw)*Math.cos(orbit.pitch)*orbit.dist, orbit.c.y + Math.sin(orbit.pitch)*orbit.dist, orbit.c.z + Math.cos(orbit.yaw)*Math.cos(orbit.pitch)*orbit.dist);
+    camera.lookAt(orbit.c);
+    camera.setViewOffset(window.innerWidth, window.innerHeight, orbit.off.x, orbit.off.y, window.innerWidth, window.innerHeight);
+  } else {
+    if(gotOri && ori){ oriToQuat(targetQ); camera.quaternion.slerp(targetQ, 0.35); } else camera.rotation.set(pitch, yaw, 0, 'YXZ');
+    updateMarch(t);
+  }
+  if(F){ F.update(t, dt, 0); showPhase(F.story.phase); }
+  renderer.render(scene, camera);
+  // fps
+  stats.frames++; stats.acc += raw; stats.worst = Math.max(stats.worst, raw*1000);
+  if(stats.acc >= 1){ stats.fps = stats.frames/stats.acc; stats.frames = 0; stats.acc = 0; if(!$('perf').hidden) $('perf').textContent = perfText(); stats.worst = 0;
+    window.__fl = {fps:stats.fps, calls:renderer.info.render.calls, tris:renderer.info.render.triangles, geos:renderer.info.memory.geometries, texs:renderer.info.memory.textures, phase:F && F.story.phase}; }
+}
+
+/* ---------- 起動 ---------- */
+requestAnimationFrame(()=>{
+  build(); applyLight();
+  if(PUBLIC || window.innerHeight < 560 || params.get('dev') === '0') setDev(false);
+  resize(); setView(params.get('view') || 'side'); orbit.yaw = orbit.tYaw; orbit.pitch = orbit.tPitch; orbit.dist = orbit.tDist; orbit.c.copy(orbit.tc); orbit.off = {...orbit.toff};
+  if(params.get('act')){ act = params.get('act'); F.setScene(act); document.querySelectorAll('[data-act]').forEach(x=>x.setAttribute('aria-pressed', x.dataset.act === act)); }
+  if(params.get('perf')){ $('perf').hidden = false; $('btnPerf').setAttribute('aria-pressed', 'true'); }
+  if(params.get('night') === '0'){ night = false; $('btnNight').setAttribute('aria-pressed', 'false'); applyLight(); }
+  $('loading').hidden = true;
+  window.__ready = true;
+  loop();
+});
+</script>
+</body>
+</html>
