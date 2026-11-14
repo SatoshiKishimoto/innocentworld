@@ -93,6 +93,12 @@ body.public .dev{display:none!important}
     <button class="chip" data-view="bridge" aria-pressed="false">橋をななめ上から</button>
     <button class="chip" data-view="close" aria-pressed="false">近くで</button>
   </div>
+  <div class="row" id="rowSpeed" hidden>
+    <span class="lbl">速さ</span>
+    <button class="chip" data-speed="0.5" aria-pressed="false">ゆっくり</button>
+    <button class="chip" data-speed="0.75" aria-pressed="true">標準（試作）</button>
+    <button class="chip" data-speed="1.15" aria-pressed="false">前の速さ</button>
+  </div>
   <div class="row" id="rowAct">
     <span class="lbl">演出</span>
     <button class="chip" data-act="" aria-pressed="true">通し</button>
@@ -275,7 +281,14 @@ const euler = new THREE.Euler(), q0 = new THREE.Quaternion(), q1 = new THREE.Qua
 function onOri(e){ if(e.alpha == null && e.beta == null) return; ori = e; gotOri = true; }
 function screenAngle(){ return (screen.orientation && screen.orientation.angle) || window.orientation || 0; }
 function oriToQuat(q){ euler.set((ori.beta||0)*DEG, (ori.alpha||0)*DEG, -(ori.gamma||0)*DEG, 'YXZ'); q.setFromEuler(euler); q.multiply(q1); q.multiply(q0.setFromAxisAngle(zee, -screenAngle()*DEG)); }
-const march = {start:new THREE.Vector3(), dir:new THREE.Vector3(), t0:0, L:0, speed:1.15, active:false};
+// 進む速さ（m/秒）。標準は 0.75：フロートが画面を横切るあいだに、物語（24秒）がちょうど一回り見られる速さ
+const march = {start:new THREE.Vector3(), dir:new THREE.Vector3(), t0:0, L:0, speed:+(params.get('speed') || 0.75), active:false};
+function setSpeed(v){
+  // いまの位置のまま、速さだけを変える
+  if(march.active){ const t = clock.elapsedTime, s = (t - march.t0)*march.speed; march.t0 = t - s/v; }
+  march.speed = v;
+  document.querySelectorAll('[data-speed]').forEach(b=>b.setAttribute('aria-pressed', Math.abs(+b.dataset.speed - v) < 1e-3));
+}
 function placeMarch(){
   const f = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion); f.y = 0; if(f.lengthSq() < 0.01) f.set(0, 0, -1); f.normalize();
   const right = new THREE.Vector3(-f.z, 0, f.x);
@@ -319,13 +332,13 @@ function toShow(){
   mode = 'show'; march.active = false;
   $('cam').hidden = true; $('stage').hidden = false; floor.visible = true;
   wrap.position.set(0, 0, 0); wrap.rotation.set(0, 0, 0);
-  camera.fov = 50; $('rowView').hidden = false; $('rowAct').hidden = false; $('scene').hidden = false; $('btnSpin').hidden = false; $('btnRecall').hidden = true;
+  camera.fov = 50; $('rowView').hidden = false; $('rowAct').hidden = false; $('scene').hidden = false; $('btnSpin').hidden = false; $('btnRecall').hidden = true; $('rowSpeed').hidden = true;
   resize(); refit(); orbit.dist = orbit.tDist; orbit.c.copy(orbit.tc); orbit.off = {...orbit.toff};
   $('tabShow').setAttribute('aria-pressed', 'true'); $('tabAR').setAttribute('aria-pressed', 'false');
 }
 function toAR(){
   mode = 'ar';
-  $('rowView').hidden = true; $('rowAct').hidden = true; $('scene').hidden = true; $('btnSpin').hidden = true; $('btnSound').hidden = false; $('btnRecall').hidden = false;
+  $('rowView').hidden = true; $('rowAct').hidden = true; $('scene').hidden = true; $('btnSpin').hidden = true; $('btnSound').hidden = false; $('btnRecall').hidden = false; $('rowSpeed').hidden = false;
   $('tabShow').setAttribute('aria-pressed', 'false'); $('tabAR').setAttribute('aria-pressed', 'true');
   wrap.rotation.set(0, 0, 0);
   $('start').hidden = false;
@@ -354,6 +367,7 @@ $('btnQuality').addEventListener('click', ()=>{ quality = quality === 'low' ? 'h
 $('btnPerf').addEventListener('click', ()=>{ const on = $('perf').hidden; $('perf').hidden = !on; $('btnPerf').setAttribute('aria-pressed', on); });
 $('btnSound').addEventListener('click', ()=>{ if(music.paused){ wantMusic = true; startMusic(); } else { wantMusic = false; stopMusic(); } });
 $('btnRecall').addEventListener('click', ()=>placeMarch());
+document.querySelectorAll('[data-speed]').forEach(b=>b.addEventListener('click', ()=>setSpeed(+b.dataset.speed)));
 $('tabShow').addEventListener('click', toShow);
 $('tabAR').addEventListener('click', toAR);
 $('btnGo').addEventListener('click', ()=>startAR());
@@ -400,6 +414,7 @@ requestAnimationFrame(()=>{
   if(params.get('act')){ act = params.get('act'); F.setScene(act); document.querySelectorAll('[data-act]').forEach(x=>x.setAttribute('aria-pressed', x.dataset.act === act)); }
   if(params.get('perf')){ $('perf').hidden = false; $('btnPerf').setAttribute('aria-pressed', 'true'); }
   if(params.get('night') === '0'){ night = false; $('btnNight').setAttribute('aria-pressed', 'false'); applyLight(); }
+  setSpeed(march.speed);
   $('loading').hidden = true;
   window.__ready = true;
   loop();

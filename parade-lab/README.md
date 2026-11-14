@@ -11,7 +11,7 @@
 使う既存の素材（読むだけ）：`characters2/mock.png`、`characters2/hal.png`（公式画像）、`music/parade.mp3`（♪ を押したときと、AR走行のとき）。
 
 ## URL の指定
-`?view=side|front|back|far|bridge|close`、`?act=A|B|C`、`?night=0`（昼）、`?q=low`（軽量）、`?perf=1`（負荷を表示）、`?ui=public`（一般向けの画面：開発用の操作を出さない）、`?dev=0`（開発用の操作をたたんで開く）
+`?view=side|front|back|far|bridge|close`、`?act=A|B|C`、`?night=0`（昼）、`?q=low`（軽量）、`?perf=1`（負荷を表示）、`?ui=public`（一般向けの画面：開発用の操作を出さない）、`?dev=0`（開発用の操作をたたんで開く）、`?speed=0.75`（AR走行の速さ m/秒。標準0.75、開発用の画面で「ゆっくり0.5／標準0.75／前の速さ1.15」を切りかえ）
 
 ## 画面の作り（一般向けと開発用を分けられる）
 - 上の帯：題名・♪（音楽）・表示の切りかえ（ショールーム／AR走行）。一般向けにも残す部分。
