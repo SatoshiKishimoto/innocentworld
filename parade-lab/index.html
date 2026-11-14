@@ -95,8 +95,8 @@ body.public .dev{display:none!important}
   </div>
   <div class="row" id="rowSpeed" hidden>
     <span class="lbl">速さ</span>
-    <button class="chip" data-speed="0.5" aria-pressed="false">ゆっくり</button>
-    <button class="chip" data-speed="0.75" aria-pressed="true">標準（試作）</button>
+    <button class="chip" data-speed="0.5" aria-pressed="true">標準（ゆっくり）</button>
+    <button class="chip" data-speed="0.75" aria-pressed="false">少し速く</button>
     <button class="chip" data-speed="1.15" aria-pressed="false">前の速さ</button>
   </div>
   <div class="row" id="rowAct">
@@ -281,8 +281,8 @@ const euler = new THREE.Euler(), q0 = new THREE.Quaternion(), q1 = new THREE.Qua
 function onOri(e){ if(e.alpha == null && e.beta == null) return; ori = e; gotOri = true; }
 function screenAngle(){ return (screen.orientation && screen.orientation.angle) || window.orientation || 0; }
 function oriToQuat(q){ euler.set((ori.beta||0)*DEG, (ori.alpha||0)*DEG, -(ori.gamma||0)*DEG, 'YXZ'); q.setFromEuler(euler); q.multiply(q1); q.multiply(q0.setFromAxisAngle(zee, -screenAngle()*DEG)); }
-// 進む速さ（m/秒）。標準は 0.75：フロートが画面を横切るあいだに、物語（24秒）がちょうど一回り見られる速さ
-const march = {start:new THREE.Vector3(), dir:new THREE.Vector3(), t0:0, L:0, speed:+(params.get('speed') || 0.75), active:false};
+// 進む速さ（m/秒）。標準は 0.5（ゆっくり）：フロートが画面を横切るあいだに、物語（24秒）を2回近く見られる
+const march = {start:new THREE.Vector3(), dir:new THREE.Vector3(), t0:0, L:0, speed:+(params.get('speed') || 0.5), active:false};
 function setSpeed(v){
   // いまの位置のまま、速さだけを変える
   if(march.active){ const t = clock.elapsedTime, s = (t - march.t0)*march.speed; march.t0 = t - s/v; }
