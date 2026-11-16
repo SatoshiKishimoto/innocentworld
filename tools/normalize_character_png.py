@@ -54,9 +54,15 @@ def main():
     ap.add_argument('--height', type=int, default=1536, help='仕上がりの高さ（px）')
     ap.add_argument('--margin', type=float, default=0.08, help='上下左右の余白（高さに対する割合）')
     ap.add_argument('--bg', default='auto', choices=['auto', 'white', 'none'], help='背景の抜き方')
+    ap.add_argument('--alpha-cut', type=int, default=0, help='この値以下の透明度を完全な透明にする（背景に薄い光（グロー）が付いた透過PNG用。例：40）。あわせて透明度240以上は不透明にする')
     a = ap.parse_args()
 
     im = Image.open(a.src).convert('RGBA'); rgba = np.array(im)
+    if a.alpha_cut:
+        al = rgba[..., 3].astype(int)
+        al = np.where(al <= a.alpha_cut, 0, np.where(al >= 240, 255, (al - a.alpha_cut) * 255 // (240 - a.alpha_cut)))
+        rgba = rgba.copy(); rgba[..., 3] = al.astype(np.uint8)
+        print(f'薄い光（透明度{a.alpha_cut}以下）を取り除きました')
     rgba = remove_background(rgba, a.bg)
     vis = rgba[..., 3] >= chk.ALPHA_VISIBLE
     if not vis.any(): sys.exit('絵が見つかりません')
