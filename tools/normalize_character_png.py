@@ -21,6 +21,7 @@ import argparse, os, sys
 import numpy as np
 from PIL import Image
 
+sys.dont_write_bytecode = True   # tools/ に __pycache__ を作らない
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import check_character_png as chk
 
