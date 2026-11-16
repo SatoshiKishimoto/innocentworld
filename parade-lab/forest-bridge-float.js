@@ -899,7 +899,7 @@ function createForestBridgeFloat(opts){
       star(56, 60, 46, '#ffffff'); star(56, 60, 38, '#ffd94a'); star(100, 26, 20, '#ffffff'); star(100, 26, 15, '#ffd94a'); star(104, 100, 14, '#ffffff'); star(104, 100, 10, '#ffd94a'); });
   })();
   const mkChar = (key, h, a, o)=>{
-    const loader = new T.TextureLoader(), t = loader.load(base + 'characters2/' + key + '.png'); t.encoding = T.sRGBEncoding; t.anisotropy = 4; disposables.push(t);
+    const loader = new T.TextureLoader(), t = loader.load(base + (o.src || ('characters2/' + key + '.png'))); t.encoding = T.sRGBEncoding; t.anisotropy = 4; disposables.push(t);
     const SX = 6, SY = 12, geo = new T.PlaneGeometry(h*a, h, SX, SY); geo.translate(0, h/2, 0);
     // 2枚の板：ふだんの絵（mesh）と左右反転した絵（meshM）。反転が必要なときだけ、重ねて入れ替える（板を細くして裏返す見え方にしない）
     const mat = new T.MeshBasicMaterial({map:t, transparent:true, alphaTest:0.05, side:T.FrontSide, color:0xffffff, depthWrite:true}); disposables.push(mat, geo);
@@ -917,7 +917,8 @@ function createForestBridgeFloat(opts){
   };
   // 絵の向き：ハルの絵は左向き、モックは正面。ハルは観客側から見て「橋（+z）の方」を向く絵になる
   const mock = mkChar('mock', 1.6, 270/382, {});
-  const hal = mkChar('hal', 1.15, 273/302, {artFacesLeft:true});
+  // ハルは、羽の先まで描かれた公式三面図の斜め向き（左向き）を使う（characters2/hal.png は羽の先が画像の端で切れているため）
+  const hal = mkChar('hal', 1.2, 385/409, {artFacesLeft:true, src:'parade-lab/assets/hal_full.png'});
 
   /* ---- 演出の台本：A ためらい → B 気づき → C 一緒にいる（24秒でくり返す）
      二人とも最初から最後まで、橋の手前の同じ岸にいる。橋を渡らせる場面は作らない。
