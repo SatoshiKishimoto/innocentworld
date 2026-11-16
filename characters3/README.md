@@ -60,6 +60,7 @@ python3 tools/check_character_png.py characters3/ --out characters3/_check
 | `mock_walk.png` | モック・歩く姿（正面） | 正式採用（2026-11-17） | `requests/mock/review.md` |
 | `lily_run.png` | リリィ・走る姿（正面寄り） | 正式採用（2026-11-17） | `requests/lily/review.md` |
 | `luke_run.png` | ルーク・走る姿（正面寄り） | 正式採用（2026-11-17） | `requests/luke/review.md` |
+| `esper_run.png` | エスパー・走る姿（正面寄り） | 正式採用（2026-11-17） | `requests/esper/review.md` |
 
 正式採用は素材としての判断。既存パレード・本番（main）への反映は、10人全員の素材がそろってから別途判断する。
 
