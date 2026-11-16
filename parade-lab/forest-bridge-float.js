@@ -913,12 +913,16 @@ function createForestBridgeFloat(opts){
     const basePos = Float32Array.from(geo.attributes.position.array);
     const C = {key, h, a, mesh, meshM, holder, geo, basePos, sh, rim, emo, pos:V3(0, 0, 0), side:1, mir:0, lz:0, nod:0, squash:0, bob:0, sway:0,
                emoKind:null, emoK:0, emoT:0, emoSide:1, tint:[1, 1, 1], glow:0, artFacesLeft:!!o.artFacesLeft};
+    // 二人が重なったときはハルを手前に描く（反対側から見るとモックの方がカメラに近く、ハルの羽が隠れてしまうため）。
+    // モックは奥行きを書き込まず先に、ハルはあとから描く。どちらも橋や木などとの前後関係はこれまでどおり
+    if(o.drawFirst){ mat.depthWrite = false; matM.depthWrite = false; mesh.renderOrder = 5; meshM.renderOrder = 5; }
+    if(o.drawOver){ mesh.renderOrder = 7; meshM.renderOrder = 8; }
     chars[key] = C; return C;
   };
   // 絵の向き：ハルの絵は左向き、モックは正面。ハルは観客側から見て「橋（+z）の方」を向く絵になる
-  const mock = mkChar('mock', 1.6, 270/382, {});
+  const mock = mkChar('mock', 1.6, 270/382, {drawFirst:true});
   // ハルは、羽の先まで描かれた公式三面図の斜め向き（左向き）を使う（characters2/hal.png は羽の先が画像の端で切れているため）
-  const hal = mkChar('hal', 1.2, 385/409, {artFacesLeft:true, src:'parade-lab/assets/hal_full.png'});
+  const hal = mkChar('hal', 1.2, 385/409, {artFacesLeft:true, src:'parade-lab/assets/hal_full.png', drawOver:true});
 
   /* ---- 演出の台本：A ためらい → B 気づき → C 一緒にいる（24秒でくり返す）
      二人とも最初から最後まで、橋の手前の同じ岸にいる。橋を渡らせる場面は作らない。
