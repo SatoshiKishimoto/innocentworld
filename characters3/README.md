@@ -64,6 +64,7 @@ python3 tools/check_character_png.py characters3/ --out characters3/_check
 | `esper_run.png` | エスパー・走る姿（正面寄り） | 正式採用（2026-11-17） | `requests/esper/review.md` |
 | `jiiji_walk.png` | じいじ・歩く姿（正面寄り） | 正式採用（2026-11-17） | `requests/jiiji/review.md` |
 | `niko_run.png` | ニコ・走る姿（正面寄り） | 正式採用（2026-11-17） | `requests/niko/review.md` |
+| `arika_fly.png` | アリカ・宙を跳ぶ姿（正面寄り） | 正式採用（2026-11-17） | `requests/arika/review.md` |
 
 正式採用は素材としての判断。既存パレード・本番（main）への反映は、10人全員の素材がそろってから別途判断する。
 
