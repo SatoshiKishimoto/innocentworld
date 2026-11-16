@@ -58,8 +58,9 @@ python3 tools/check_character_png.py characters3/ --out characters3/_check
 | `hal_run.png` | ハル・走る姿（左向き） | 正式採用（2026-11-16） | `requests/hal_run/review.md` |
 | `hal_stand.png` | ハル・立つ姿（左向きの斜め） | 正式採用（2026-11-16） | `requests/hal_stand/review.md` |
 | `mock_walk.png` | モック・歩く姿（正面） | 正式採用（2026-11-17） | `requests/mock/review.md` |
+| `lily_run.png` | リリィ・走る姿（正面寄り） | 正式採用（2026-11-17） | `requests/lily/review.md` |
 
-正式採用は素材としての判断。既存パレード・本番（main）への反映は、別途承認を得てから行う。
+正式採用は素材としての判断。既存パレード・本番（main）への反映は、10人全員の素材がそろってから別途判断する。
 
 ## 完成基準（ハル2種・モック1種で確定）
 
