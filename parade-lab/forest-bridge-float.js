@@ -898,9 +898,13 @@ function createForestBridgeFloat(opts){
     EMO.spark = mk(x=>{ const star = (cx, cy, r, col)=>{ x.fillStyle = col; x.beginPath(); for(let i=0;i<8;i++){ const rr = i % 2 ? r*0.3 : r, a = i/8*Math.PI*2 - Math.PI/2; x.lineTo(cx + Math.cos(a)*rr, cy + Math.sin(a)*rr); } x.closePath(); x.fill(); };
       star(56, 60, 46, '#ffffff'); star(56, 60, 38, '#ffd94a'); star(100, 26, 20, '#ffffff'); star(100, 26, 15, '#ffd94a'); star(104, 100, 14, '#ffffff'); star(104, 100, 10, '#ffd94a'); });
   })();
+  const loadTex = src=>{ const t = new T.TextureLoader().load(base + src); t.encoding = T.sRGBEncoding; t.anisotropy = 4; disposables.push(t); return t; };
   const mkChar = (key, h, a, o)=>{
-    const loader = new T.TextureLoader(), t = loader.load(base + (o.src || ('characters2/' + key + '.png'))); t.encoding = T.sRGBEncoding; t.anisotropy = 4; disposables.push(t);
-    const SX = 6, SY = 12, geo = new T.PlaneGeometry(h*a, h, SX, SY); geo.translate(0, h/2, 0);
+    const t = loadTex(o.src || ('characters2/' + key + '.png'));
+    // o.margin：絵のまわりに透明な余白がある素材（characters3 の標準：高さの8%）。
+    // 見た目の高さが h になるよう板を大きくし、足もと（下の余白の線）を地面に合わせる。a は画像全体の横÷縦
+    const m = o.margin || 0, HP = h/(1 - 2*m);
+    const SX = 6, SY = 12, geo = new T.PlaneGeometry(HP*a, HP, SX, SY); geo.translate(0, HP/2 - m*HP, 0);
     // 2枚の板：ふだんの絵（mesh）と左右反転した絵（meshM）。反転が必要なときだけ、重ねて入れ替える（板を細くして裏返す見え方にしない）
     const mat = new T.MeshBasicMaterial({map:t, transparent:true, alphaTest:0.05, side:T.FrontSide, color:0xffffff, depthWrite:true}); disposables.push(mat, geo);
     const matM = mat.clone(); matM.opacity = 0; disposables.push(matM);
@@ -912,7 +916,9 @@ function createForestBridgeFloat(opts){
     const emo = new T.Sprite(new T.SpriteMaterial({map:EMO.spark, transparent:true, depthWrite:false, depthTest:true, opacity:0})); emo.renderOrder = 9; emo.visible = false; holder.add(emo); disposables.push(emo.material);
     const basePos = Float32Array.from(geo.attributes.position.array);
     const C = {key, h, a, mesh, meshM, holder, geo, basePos, sh, rim, emo, pos:V3(0, 0, 0), side:1, mir:0, lz:0, nod:0, squash:0, bob:0, sway:0,
-               emoKind:null, emoK:0, emoT:0, emoSide:1, tint:[1, 1, 1], glow:0, artFacesLeft:!!o.artFacesLeft};
+               emoKind:null, emoK:0, emoT:0, emoSide:1, tint:[1, 1, 1], glow:0, artFacesLeft:!!o.artFacesLeft,
+               // o.run：動いているあいだだけ使う絵（ハルの走る姿）。{src, a}。o.pose：'auto'（動きで切りかえ）／'stand'／'run'
+               maps:{stand:t, run:o.run ? loadTex(o.run.src) : null}, aStand:a, aRun:o.run ? o.run.a : a, pose:o.pose || 'auto', running:false, runHold:0, lastPos:null};
     // 二人が重なったときはハルを手前に描く（反対側から見るとモックの方がカメラに近く、ハルの羽が隠れてしまうため）。
     // モックは奥行きを書き込まず先に、ハルはあとから描く。どちらも橋や木などとの前後関係はこれまでどおり
     if(o.drawFirst){ mat.depthWrite = false; matM.depthWrite = false; mesh.renderOrder = 5; meshM.renderOrder = 5; }
@@ -920,9 +926,32 @@ function createForestBridgeFloat(opts){
     chars[key] = C; return C;
   };
   // 絵の向き：ハルの絵は左向き、モックは正面。ハルは観客側から見て「橋（+z）の方」を向く絵になる
-  const mock = mkChar('mock', 1.6, 270/382, {drawFirst:true});
-  // ハルは、羽の先まで描かれた公式三面図の斜め向き（左向き）を使う（characters2/hal.png は羽の先が画像の端で切れているため）
-  const hal = mkChar('hal', 1.2, 385/409, {artFacesLeft:true, src:'parade-lab/assets/hal_full.png', drawOver:true});
+  // 住人の絵：opts.chars === 'old' なら今までの絵（モック＝characters2、ハル＝公式三面図の斜め向き）。
+  // それ以外は characters3 の標準素材（表示用に縮小した parade-lab/assets/chars3/。余白8%）
+  const OLD = opts.chars === 'old';
+  const mock = OLD ? mkChar('mock', 1.6, 270/382, {drawFirst:true})
+                   : mkChar('mock', 1.6, 794/1024, {drawFirst:true, src:'parade-lab/assets/chars3/mock_walk.png', margin:0.08});
+  // ハル（左向きの絵）：今までは、羽の先まで描かれた公式三面図の斜め向き（characters2/hal.png は羽の先が画像の端で切れているため）。
+  // 新しい絵は、立つ姿（hal_stand）と走る姿（hal_run）。opts.halPose：'auto'（動いているあいだは走る姿）／'stand'／'run'
+  const hal = OLD ? mkChar('hal', 1.2, 385/409, {artFacesLeft:true, src:'parade-lab/assets/hal_full.png', drawOver:true})
+                  : mkChar('hal', 1.2, 945/1024, {artFacesLeft:true, src:'parade-lab/assets/chars3/hal_stand.png', margin:0.08, drawOver:true,
+                                                  run:{src:'parade-lab/assets/chars3/hal_run.png', a:1016/1024}, pose:opts.halPose || 'auto'});
+  // 立つ姿と走る姿の切りかえ：同じ板のまま絵を入れかえ、横幅の違いは板の横の倍率で合わせる
+  function setRunning(C, run){
+    if(C.running === run || !C.maps.run) return; C.running = run;
+    const map = run ? C.maps.run : C.maps.stand, r = run ? C.aRun/C.aStand : 1;
+    C.mesh.material.map = C.meshM.material.map = map; C.mesh.material.needsUpdate = C.meshM.material.needsUpdate = true;
+    C.mesh.scale.x = r; C.meshM.scale.x = -r;
+  }
+  function updatePose(C, dt){
+    if(!C.maps.run) return;
+    if(C.pose !== 'auto'){ setRunning(C, C.pose === 'run'); C.lastPos = null; return; }
+    // 速さ（m/秒）で判断。0.35 を超えたら走る姿、0.12 未満が 0.25 秒続いたら立つ姿（境目で行き来しない）
+    const v = C.lastPos && dt > 0 ? Math.hypot(C.pos.x - C.lastPos.x, C.pos.z - C.lastPos.z)/dt : 0;
+    C.lastPos = C.lastPos || V3(0, 0, 0); C.lastPos.copy(C.pos);
+    if(v > 0.35){ C.runHold = 0.25; setRunning(C, true); }
+    else if(v < 0.12){ C.runHold -= dt; if(C.runHold <= 0) setRunning(C, false); }
+  }
 
   /* ---- 演出の台本：A ためらい → B 気づき → C 一緒にいる（24秒でくり返す）
      二人とも最初から最後まで、橋の手前の同じ岸にいる。橋を渡らせる場面は作らない。
@@ -1090,6 +1119,7 @@ function createForestBridgeFloat(opts){
     focus:{bridge:new T.Box3(V3(BX - 0.55, YD - 0.05, BZ0 - 1.8), V3(BX + 0.95, YD + 1.75, BZ1 + 0.1)), stage:new T.Box3(V3(-0.2, YD, -2.7), V3(1.1, YD + 1.8, 0.2))},
     loop:LOOP,
     setCamera(c){ opts.camera = c; },
+    setHalPose(p){ hal.pose = p; },
     setNight(on){ night = on ? 1 : 0; water.uni.uNight.value = night; },
     setScene(s){ forced = s || null; },
     update(t, dt, cheer){
@@ -1127,7 +1157,7 @@ function createForestBridgeFloat(opts){
       flies.update(t, night ? k : 0);
       blown.update(t, w);
       // 住人
-      poseChar(hal, cam, dt); poseChar(mock, cam, dt);
+      updatePose(hal, dt); poseChar(hal, cam, dt); poseChar(mock, cam, dt);
       const tint = night ? 0.8 + k*0.18 : 1;
       [hal, mock].forEach(C=>{ const c = C.tint; [C.mesh, C.meshM].forEach(ms=>ms.material.color.setRGB(Math.min(1.15, tint*c[0]), Math.min(1.15, tint*0.97*c[1]), Math.min(1.15, tint*0.92*c[2])));
         C.rim.material.opacity = night ? 0.18 + k*0.3 + C.glow*0.45 : C.glow*0.25; C.rim.material.color.setRGB(1, 0.92 + 0.08*(1 - C.glow), 0.8 + 0.2*(1 - C.glow)); });

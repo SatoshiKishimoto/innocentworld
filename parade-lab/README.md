@@ -7,11 +7,15 @@
 |---|---|
 | `parade-lab/index.html` | 試作ページ。ショールーム（観客側・正面・背面・奥側・橋をななめ上から・近く／夜と昼／演出A・B・C／回転台／負荷表示）と、AR走行（カメラ・傾きセンサー・既存パレードと同じ8m先を右から左へ）。 |
 | `parade-lab/forest-bridge-float.js` | フロート本体。three.js r128 のグローバル `THREE` だけを使う独立した部品。 |
+| `parade-lab/characters.html` | 住人の見本（試作）。10人の住人を、既存のパレードと同じ描き方（いつも正面を向く板・同じ高さ・進む向きに左右反転・同じはずみ方）で並べ、新しい絵（characters3）と今の絵（characters2）をくらべる。ショールーム（全員／1人ずつ／新旧を並べる／目盛り）とAR走行（8m先を一列で右から左へ）。 |
+| `parade-lab/assets/chars3/*.png` | characters3 の標準素材11種類を、表示用に高さ1024pxへ縮小したもの（上下左右に高さの8%の透明な余白・足もと＝下の余白の線）。元の1536px版は `proto/characters3` ブランチの `characters3/`。 |
 
-使う既存の素材（読むだけ）：`characters2/mock.png`、`characters2/hal.png`（公式画像）、`music/parade.mp3`（♪ を押したときと、AR走行のとき）。
+使う素材（読むだけ）：新しい住人の絵 `parade-lab/assets/chars3/`（標準）、これまでの絵 `characters2/mock.png`・`parade-lab/assets/hal_full.png`（「今」を選んだとき）、`music/parade.mp3`（♪ を押したときと、AR走行のとき）。
 
 ## URL の指定
-`?view=side|front|back|far|bridge|close`、`?act=A|B|C`、`?night=0`（昼）、`?q=low`（軽量）、`?perf=1`（負荷を表示）、`?ui=public`（一般向けの画面：開発用の操作を出さない）、`?dev=0`（開発用の操作をたたんで開く）、`?speed=0.5`（AR走行の速さ m/秒。標準0.5、開発用の画面で「標準（ゆっくり）0.5／少し速く0.75／前の速さ1.15」を切りかえ）、`?t=10.4`（確認用：物語の時刻をその秒で止める）
+`?view=side|front|back|far|bridge|close`、`?act=A|B|C`、`?night=0`（昼）、`?q=low`（軽量）、`?perf=1`（負荷を表示）、`?ui=public`（一般向けの画面：開発用の操作を出さない）、`?dev=0`（開発用の操作をたたんで開く）、`?speed=0.5`（AR走行の速さ m/秒。標準0.5、開発用の画面で「標準（ゆっくり）0.5／少し速く0.75／前の速さ1.15」を切りかえ）、`?t=10.4`（確認用：物語の時刻をその秒で止める）、`?chars=old`（住人をこれまでの絵で表示）、`?hal=auto|stand|run`（ハルの絵：自動＝動いているあいだは走る姿／立つ姿だけ／走る姿だけ）
+
+住人の見本 `characters.html`：`?set=new|old|both`、`?hal=stand|run`、`?gap=2.2|0.9`（間隔）、`?one=hal`（1人ずつ表示の最初の住人）、`?move=0`（動きを止める）、`?grid=1`（0.5mごとの目盛り）、`?night=0`、`?speed=0.5`、`?t=秒`（確認用に時刻を止める）
 
 ## 画面の作り（一般向けと開発用を分けられる）
 - 上の帯：題名・♪（音楽）・表示の切りかえ（ショールーム／AR走行）。一般向けにも残す部分。

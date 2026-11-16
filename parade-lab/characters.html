@@ -1,0 +1,450 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>住人の見本</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;800&display=swap">
+<style>
+/* 試作ページ：住人の新旧の絵をくらべる。見た目は森の橋フロートの試作ページ（index.html）と同じ */
+:root{
+  --ink:#f6f1e6; --dim:rgba(246,241,230,.72); --line:rgba(246,241,230,.22); --veil:rgba(14,16,34,.66); --gold:#e8b85a; --on:#ffd27a;
+  --round:"M PLUS Rounded 1c","Hiragino Maru Gothic ProN","Hiragino Sans","Yu Gothic",system-ui,sans-serif;
+  color-scheme:dark;
+}
+html,body{margin:0;height:100%;background:#0b0e26;color:var(--ink);font-family:var(--round);overflow:hidden;
+  -webkit-user-select:none;user-select:none;touch-action:none;-webkit-tap-highlight-color:transparent}
+#cam{position:fixed;inset:0;width:100%;height:100%;object-fit:cover;background:#000;z-index:0}
+#stage{position:fixed;inset:0;z-index:0;background:radial-gradient(ellipse at 50% 115%,#4a3060 0%,#1c2058 46%,#0a0c24 100%)}
+#gl{position:fixed;inset:0;width:100%;height:100%;z-index:1;display:block}
+[hidden]{display:none!important}
+.bar{position:fixed;left:0;right:0;z-index:5;display:flex;gap:8px;align-items:center;padding:10px 16px;
+  padding-left:max(16px,env(safe-area-inset-left));padding-right:max(16px,env(safe-area-inset-right))}
+#top{top:0;padding-top:max(10px,env(safe-area-inset-top));background:linear-gradient(var(--veil),rgba(14,16,34,0));justify-content:space-between}
+#top h1{margin:0;font-size:15px;font-weight:800;letter-spacing:.02em;line-height:1.3}
+#top h1 small{display:block;font-size:11px;font-weight:500;color:var(--dim)}
+.tabs{display:flex;background:rgba(255,255,255,.08);border:1px solid var(--line);border-radius:999px;padding:3px;flex:none}
+.tabs button{border:0;background:none;color:var(--dim);font:700 13px var(--round);padding:7px 12px;border-radius:999px;cursor:pointer}
+.tabs button[aria-pressed="true"]{background:var(--on);color:#2a1a08}
+#tabDev{font-size:12px}
+.hbtns{display:flex;gap:6px;align-items:center;flex:none}
+.round{width:38px;height:38px;border-radius:50%;border:1px solid var(--line);background:rgba(255,255,255,.08);color:var(--ink);font:800 16px var(--round);cursor:pointer;flex:none}
+.round[aria-pressed="true"]{background:rgba(255,210,122,.22);border-color:var(--on);color:var(--on)}
+.round:focus-visible{outline:2px solid var(--on);outline-offset:2px}
+@media (max-height:500px){ #scene{font-size:12px;min-height:0} #top{padding-top:max(6px,env(safe-area-inset-top))} #bottom{gap:4px;padding-bottom:max(6px,env(safe-area-inset-bottom))} }
+@media (max-width:400px){ .tabs button{padding:7px 8px} #top h1 small{display:none} } #tabDev[aria-pressed="true"]{background:rgba(255,210,122,.25);color:var(--on)}
+body.public .dev{display:none!important}
+#bottom{bottom:0;padding-bottom:max(12px,env(safe-area-inset-bottom));flex-direction:column;align-items:stretch;gap:8px;
+  background:linear-gradient(rgba(14,16,34,0),var(--veil) 40%)}
+.row{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+.chip{border:1px solid var(--line);background:rgba(255,255,255,.07);color:var(--ink);font:700 12.5px var(--round);
+  padding:8px 11px;border-radius:999px;cursor:pointer;min-height:36px}
+.chip[aria-pressed="true"]{background:rgba(255,210,122,.2);border-color:var(--on);color:var(--on)}
+.chip:focus-visible,.tabs button:focus-visible{outline:2px solid var(--on);outline-offset:2px}
+.lbl{font-size:11px;color:var(--dim);align-self:center;margin-right:2px}
+#scene{text-align:center;font-size:13px;line-height:1.5;min-height:2.6em;color:var(--ink);text-shadow:0 1px 6px rgba(0,0,0,.6)}
+#scene b{color:var(--on);font-weight:800;margin-right:.4em}
+#perf{position:fixed;z-index:6;right:max(12px,env(safe-area-inset-right));top:calc(max(10px,env(safe-area-inset-top)) + 54px);
+  font:600 11px/1.55 ui-monospace,Menlo,monospace;background:rgba(0,0,0,.55);border:1px solid var(--line);border-radius:10px;padding:8px 10px;white-space:pre;color:#d9f5d0;pointer-events:none}
+#start{position:fixed;inset:0;z-index:8;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(8,10,28,.82)}
+#start .card{max-width:420px;background:rgba(30,32,70,.92);border:1px solid var(--line);border-radius:18px;padding:22px 20px;text-align:center}
+#start h2{margin:0 0 8px;font-size:18px}
+#start p{margin:0 0 14px;font-size:13px;line-height:1.7;color:var(--dim)}
+.go{border:0;background:var(--on);color:#2a1a08;font:800 15px var(--round);padding:12px 22px;border-radius:999px;cursor:pointer;min-height:44px}
+.ghost{border:1px solid var(--line);background:none;color:var(--ink);font:700 13px var(--round);padding:10px 16px;border-radius:999px;cursor:pointer;margin-top:8px}
+#toast{position:fixed;z-index:9;left:50%;top:40%;transform:translate(-50%,-50%);background:rgba(0,0,0,.72);padding:10px 16px;border-radius:12px;font-size:13px;max-width:80vw;text-align:center}
+#loading{position:fixed;inset:0;z-index:7;display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--dim)}
+@media (max-width:420px){ #top h1{font-size:13px} .tabs button{padding:7px 10px;font-size:12px} .chip{padding:7px 9px;font-size:12px} }
+</style>
+</head>
+<body>
+<video id="cam" playsinline muted hidden></video>
+<div id="stage"></div>
+<canvas id="gl"></canvas>
+<div id="loading">住人を読み込んでいます…</div>
+<header class="bar" id="top">
+  <h1>住人の見本 <small>新しい絵（characters3）と今の絵（characters2）をくらべる試作</small></h1>
+  <div class="hbtns">
+  <button class="round" id="btnRecall" aria-label="もう一度通す" title="もう一度通す" hidden>↻</button>
+  <div class="tabs" role="group" aria-label="表示">
+    <button id="tabDev" aria-pressed="true" title="操作を表示">操作</button>
+    <button id="tabShow" aria-pressed="true">ショールーム</button>
+    <button id="tabAR" aria-pressed="false">AR走行</button>
+  </div>
+  </div>
+</header>
+<pre id="perf" hidden></pre>
+<footer class="bar" id="bottom">
+  <div id="scene"></div>
+  <div id="devPanel">
+  <div class="row">
+    <span class="lbl">絵</span>
+    <button class="chip" data-set="new" aria-pressed="true">新（characters3）</button>
+    <button class="chip" data-set="old" aria-pressed="false">今（characters2）</button>
+    <button class="chip" data-set="both" aria-pressed="false">新旧を並べる</button>
+  </div>
+  <div class="row">
+    <span class="lbl">ハル</span>
+    <button class="chip" data-hal="stand" aria-pressed="true">立つ</button>
+    <button class="chip" data-hal="run" aria-pressed="false">走る</button>
+    <span class="lbl" style="margin-left:8px">間隔</span>
+    <button class="chip" data-gap="2.2" aria-pressed="true">ふつう</button>
+    <button class="chip" data-gap="0.9" aria-pressed="false">近い（重なり）</button>
+  </div>
+  <div class="row" id="rowView">
+    <span class="lbl">見る</span>
+    <button class="chip" id="btnAll" aria-pressed="true">全員</button>
+    <button class="chip" id="btnPrev" aria-label="前の住人">‹</button>
+    <button class="chip" id="btnOne" aria-pressed="false">1人ずつ</button>
+    <button class="chip" id="btnNext" aria-label="次の住人">›</button>
+  </div>
+  <div class="row" id="rowSpeed" hidden>
+    <span class="lbl">速さ</span>
+    <button class="chip" data-speed="0.5" aria-pressed="true">ゆっくり</button>
+    <button class="chip" data-speed="1.15" aria-pressed="false">今のパレード</button>
+  </div>
+  <div class="row">
+    <button class="chip" id="btnMove" aria-pressed="true">動き</button>
+    <button class="chip" id="btnNight" aria-pressed="true">夜</button>
+    <button class="chip" id="btnGrid" aria-pressed="false">目盛り</button>
+    <button class="chip" id="btnPerf" aria-pressed="false">負荷</button>
+  </div>
+  </div>
+</footer>
+
+<div id="start" hidden>
+  <div class="card">
+    <h2>AR走行で確かめる</h2>
+    <p>カメラと傾きセンサーを使います。スマホを前に向けると、住人が一列になって右からやってきて左へ通り過ぎます（今のパレードと同じ8m先・同じ大きさ・同じ描き方）。</p>
+    <button class="go" id="btnGo">カメラをつけてはじめる</button><br>
+    <button class="ghost" id="btnCancel">やめる</button>
+  </div>
+</div>
+<div id="toast" hidden></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+'use strict';
+/* 住人の見本：既存のARパレード（index.html）の住人と同じ描き方（いつも正面を向く板・足もとが地面・進む向きに左右反転）で、
+   新しい標準素材（characters3 を表示用に縮小した parade-lab/assets/chars3/）と、今の素材（characters2/）をくらべる。
+   既存のファイルは読むだけで変更しない。 */
+const $ = id => document.getElementById(id);
+const BASE = '../';
+const params = new URLSearchParams(location.search);
+
+/* 住人の一覧。h＝見た目の高さ(m)・fly＝宙に浮く。値は既存のパレード（index.html の CHARS）と同じ */
+const LIST = [
+  {k:'esper', name:'エスパー', h:1.75, a:0.735, nw:'esper_run'},
+  {k:'mimi',  name:'ミミ',     h:1.35, a:0.585, nw:'mimi_jump'},
+  {k:'lily',  name:'リリィ',   h:1.7,  a:0.711, nw:'lily_run'},
+  {k:'luke',  name:'ルーク',   h:1.75, a:0.721, nw:'luke_run'},
+  {k:'niko',  name:'ニコ',     h:1.45, a:0.84,  nw:'niko_run'},
+  {k:'hal',   name:'ハル',     h:1.6,  a:0.904, nw:'hal_stand', nwRun:'hal_run'},
+  {k:'arika', name:'アリカ',   h:1.55, a:0.725, nw:'arika_fly', fly:true},
+  {k:'nuru',  name:'ヌール',   h:1.4,  a:0.7,   nw:'nuru_fly', fly:true},
+  {k:'mock',  name:'モック',   h:1.9,  a:0.707, nw:'mock_walk'},
+  {k:'jiiji', name:'じいじ',   h:1.75, a:0.797, nw:'jiiji_walk'}
+];
+/* 新しい素材の大きさ（表示用 1024px）。上下左右に高さの8%の透明な余白があり、足もとは下の余白の線 */
+const NEW = {arika_fly:741, esper_run:755, hal_run:1016, hal_stand:945, jiiji_walk:794, lily_run:758, luke_run:806, mimi_jump:679, mock_walk:794, niko_run:903, nuru_fly:729};
+const NEW_H = 1024, MARGIN = 0.08;
+
+/* ---------- 描画 ---------- */
+const renderer = new THREE.WebGLRenderer({canvas:$('gl'), alpha:true, antialias:true});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.setClearColor(0x000000, 0);
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(50, 1, 0.05, 300);
+scene.add(camera);
+function resize(){ const w = window.innerWidth, h = window.innerHeight; renderer.setSize(w, h, false); camera.aspect = w/h; if(mode !== 'show') camera.clearViewOffset(); camera.updateProjectionMatrix(); if(mode === 'show') fit(); }
+window.addEventListener('resize', ()=>{ resize(); setTimeout(resize, 350); });
+window.addEventListener('orientationchange', ()=>setTimeout(resize, 400));
+
+/* 床と目盛り（ショールームだけ） */
+const floor = (()=>{
+  const c = document.createElement('canvas'); c.width = c.height = 512; const x = c.getContext('2d');
+  const g = x.createRadialGradient(256, 256, 0, 256, 256, 256); g.addColorStop(0, '#3a3440'); g.addColorStop(0.75, '#221e2c'); g.addColorStop(1, 'rgba(20,18,30,0)');
+  x.fillStyle = g; x.fillRect(0, 0, 512, 512);
+  const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding;
+  const m = new THREE.Mesh(new THREE.CircleGeometry(16, 48), new THREE.MeshBasicMaterial({map:t, transparent:true, depthWrite:false}));
+  m.rotation.x = -Math.PI/2; m.scale.set(1.6, 0.5, 1); scene.add(m); return m;
+})();
+// 目盛り：0.5mごとの横線（高さの比べ方を見る）
+const grid = (()=>{
+  const g = new THREE.Group(), mat = new THREE.LineBasicMaterial({color:0xffffff, transparent:true, opacity:0.22});
+  for(let y=0.5;y<=2.0;y+=0.5){ const geo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-14, y, -0.3), new THREE.Vector3(14, y, -0.3)]); g.add(new THREE.Line(geo, y === 1.0 || y === 2.0 ? new THREE.LineBasicMaterial({color:0xffd27a, transparent:true, opacity:0.4}) : mat)); }
+  g.visible = false; scene.add(g); return g;
+})();
+
+/* ---------- テクスチャ ---------- */
+const loader = new THREE.TextureLoader(), texCache = {};
+let pending = 0;
+function tex(url){
+  if(texCache[url]) return texCache[url];
+  pending++;
+  const t = loader.load(BASE + url, ()=>{ pending--; checkLoaded(); }, undefined, ()=>{ pending--; checkLoaded(); toast('読み込めませんでした：' + url, 5000); });
+  t.encoding = THREE.sRGBEncoding; t.anisotropy = 4;
+  t.wrapS = THREE.RepeatWrapping; t.repeat.x = -1; t.offset.x = 1;   // 既存のパレードと同じ：進む向き（左）を向くように左右反転
+  texCache[url] = t; return t;
+}
+function checkLoaded(){ if(pending <= 0) $('loading').hidden = true; }
+
+/* 影（足もとの丸いかげ） */
+const shadowTex = (()=>{ const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d'), g = x.createRadialGradient(32, 32, 0, 32, 32, 32);
+  g.addColorStop(0, 'rgba(0,0,0,.45)'); g.addColorStop(1, 'rgba(0,0,0,0)'); x.fillStyle = g; x.fillRect(0, 0, 64, 64); return new THREE.CanvasTexture(c); })();
+/* 名前の札 */
+function label(text){
+  const c = document.createElement('canvas'); c.width = 256; c.height = 64; const x = c.getContext('2d');
+  x.font = '700 30px "M PLUS Rounded 1c","Hiragino Maru Gothic ProN",sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle';
+  x.fillStyle = 'rgba(0,0,0,.45)'; x.beginPath(); x.roundRect ? x.roundRect(8, 8, 240, 48, 24) : x.rect(8, 8, 240, 48); x.fill();
+  x.fillStyle = '#f6f1e6'; x.fillText(text, 128, 33);
+  const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding;
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({map:t, transparent:true, depthTest:false})); s.scale.set(0.8, 0.2, 1); s.center.set(0.5, 1); s.renderOrder = 12; return s;
+}
+
+/* ---------- 住人：既存のパレードの character() と同じ板 ---------- */
+function makeChar(info, which){
+  const g = new THREE.Group();
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({transparent:true, alphaTest:0.12, depthTest:false}));
+  sp.renderOrder = 10;
+  g.add(sp);
+  const sh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({map:shadowTex, transparent:true, depthWrite:false}));
+  sh.rotation.x = -Math.PI/2; sh.position.y = 0.01; sh.scale.set(info.h*0.7, info.h*0.5, 1); g.add(sh);
+  const lb = label(info.name + (which === 'old' ? '（今）' : which === 'new' ? '' : '')); lb.position.y = -0.05; g.add(lb);
+  const C = {info, which, g, sp, sh, lb, phase:Math.random()*6, w:1, hgt:1};
+  setArt(C);
+  return C;
+}
+// 絵を選ぶ：今の絵は余白なし（足もと＝画像の下端）、新しい絵は高さの8%の余白（足もと＝下の余白の線）
+function setArt(C){
+  const i = C.info;
+  if(C.which === 'old'){
+    C.sp.material.map = tex('characters2/' + i.k + '.png'); C.sp.center.set(0.5, 0);
+    C.hgt = i.h; C.w = i.h*i.a;
+  } else {
+    const f = (i.k === 'hal' && halPose === 'run') ? i.nwRun : i.nw;
+    C.sp.material.map = tex('parade-lab/assets/chars3/' + f + '.png');
+    C.hgt = i.h/(1 - 2*MARGIN); C.w = C.hgt*NEW[f]/NEW_H;
+    C.sp.center.set(0.5, MARGIN);
+  }
+  C.sp.material.needsUpdate = true;
+  C.sp.scale.set(C.w, C.hgt, 1);
+}
+// 動き：既存のパレードの _animChar と同じ（歩く住人ははずむ・宙に浮く住人はゆれる）。粒の演出は省く
+function animChar(C, t, dist){
+  const i = C.info;
+  if(!moving){ C.sp.position.y = i.fly ? 0.4 : 0; C.sp.material.rotation = 0; C.sp.scale.set(C.w, C.hgt, 1); return; }
+  if(i.fly){
+    C.sp.position.y = 0.4 + Math.sin(t*1.7 + C.phase)*0.28;
+    C.sp.material.rotation = Math.sin(t*1.3 + C.phase)*0.1;
+    const fl = 1 + Math.sin(t*9 + C.phase)*0.03; C.sp.scale.set(C.w*fl, C.hgt/fl, 1);
+  } else {
+    const w = dist*3.0 + C.phase;
+    C.sp.position.y = Math.abs(Math.sin(w))*0.1;
+    C.sp.material.rotation = Math.sin(w)*0.07;
+    const sq = 1 - Math.max(0, Math.cos(w*2))*0.03; C.sp.scale.set(C.w/sq, C.hgt*sq, 1);
+  }
+}
+
+/* ---------- 並べ方 ---------- */
+let set = ['new','old','both'].includes(params.get('set')) ? params.get('set') : 'new';
+let halPose = params.get('hal') === 'run' ? 'run' : 'stand';
+let gap = params.get('gap') ? +params.get('gap') : 2.2;
+let moving = params.get('move') !== '0', night = params.get('night') !== '0';
+let chars = [];
+const line = new THREE.Group(); scene.add(line);
+function rebuild(){
+  chars.forEach(C=>line.remove(C.g)); chars = [];
+  LIST.forEach((info, n)=>{
+    if(set === 'both'){
+      const a = makeChar(info, 'old'), b = makeChar(info, 'new');
+      a.g.position.x = n*gap*1.6 - 0.45*Math.max(1, gap/2.2); b.g.position.x = n*gap*1.6 + 0.45*Math.max(1, gap/2.2);
+      line.add(a.g, b.g); chars.push(a, b);
+    } else { const C = makeChar(info, set); C.g.position.x = n*gap; line.add(C.g); chars.push(C); }
+  });
+  const xs = chars.map(C=>C.g.position.x), mid = (Math.min(...xs) + Math.max(...xs))/2;
+  chars.forEach(C=>C.g.position.x -= mid);
+  chars.forEach(C=>{ C.lb.visible = mode === 'show'; });
+  document.querySelectorAll('[data-set]').forEach(b=>b.setAttribute('aria-pressed', b.dataset.set === set));
+  document.querySelectorAll('[data-hal]').forEach(b=>b.setAttribute('aria-pressed', b.dataset.hal === halPose));
+  document.querySelectorAll('[data-gap]').forEach(b=>b.setAttribute('aria-pressed', Math.abs(+b.dataset.gap - gap) < 1e-3));
+  updateCaption();
+  if(mode === 'show') fit();
+}
+function updateCaption(){
+  const s = {new:'<b>新</b>characters3 の標準素材（表示用 1024px）', old:'<b>今</b>characters2（今のパレードの絵）', both:'<b>新旧</b>左＝今の絵・右＝新しい絵'}[set];
+  $('scene').innerHTML = s + (focus >= 0 && mode === 'show' ? '　｜　' + LIST[focus].name : '');
+}
+
+/* ---------- ショールームのカメラ：全員が収まる距離／1人ずつ近くで ---------- */
+const orbit = {yaw:0, pitch:0.12, dist:12, c:new THREE.Vector3(0, 1, 0), tYaw:0, tPitch:0.12, tDist:12, tc:new THREE.Vector3(0, 1, 0)};
+let focus = -1;
+function usable(){ const H = window.innerHeight, top = $('top').getBoundingClientRect().bottom, b = $('bottom'), bot = H - b.getBoundingClientRect().top; return {H, top:Math.min(top, H*0.22), bot:Math.min(bot, H*0.6)}; }
+function fit(){
+  const U = usable(), vfrac = Math.max(0.25, (U.H - U.top - U.bot)/U.H);
+  const tanV = Math.tan(camera.fov*Math.PI/360), tanH = tanV*camera.aspect;
+  let w, h, cx;
+  if(focus < 0){ const xs = chars.map(C=>C.g.position.x); w = Math.max(...xs) - Math.min(...xs) + 2.2; h = 2.5; cx = 0; }
+  else { const cs = chars.filter(C=>C.info === LIST[focus]); const xs = cs.map(C=>C.g.position.x); w = Math.max(...xs) - Math.min(...xs) + 1.8; h = 2.4; cx = (Math.max(...xs) + Math.min(...xs))/2; }
+  const d = Math.max(w/2/tanH/0.94, h/2/(tanV*vfrac)/0.94);
+  orbit.tDist = Math.min(60, d); orbit.tc.set(cx, 1.0, 0); orbit.offY = (U.bot - U.top)/2;   // 上下の帯に隠れない部分のまん中に来るよう、絵をずらす
+}
+function setFocus(i){ focus = i; $('btnAll').setAttribute('aria-pressed', focus < 0); $('btnOne').setAttribute('aria-pressed', focus >= 0); fit(); updateCaption(); }
+const ptrs = new Map(); let pinch0 = 0, dist0 = 0;
+const gl = $('gl');
+gl.addEventListener('pointerdown', e=>{ gl.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, {x:e.clientX, y:e.clientY}); if(ptrs.size === 2){ const [a, b] = [...ptrs.values()]; pinch0 = Math.hypot(a.x - b.x, a.y - b.y); dist0 = orbit.tDist; } });
+gl.addEventListener('pointermove', e=>{
+  const p = ptrs.get(e.pointerId); if(!p) return;
+  const dx = e.clientX - p.x, dy = e.clientY - p.y; p.x = e.clientX; p.y = e.clientY;
+  if(mode === 'show'){
+    if(ptrs.size === 1){ orbit.tYaw = Math.max(-1.2, Math.min(1.2, orbit.tYaw - dx*0.006)); orbit.tPitch = Math.max(-0.05, Math.min(1.1, orbit.tPitch + dy*0.005)); }
+    else if(ptrs.size === 2 && pinch0 > 0){ const [a, b] = [...ptrs.values()]; orbit.tDist = Math.max(1.2, Math.min(60, dist0*pinch0/Math.hypot(a.x - b.x, a.y - b.y))); }
+  } else if(!gotOri){ yaw += dx*0.005; pitch = Math.max(-1.2, Math.min(1.2, pitch + dy*0.005)); }
+});
+const up = e=>{ ptrs.delete(e.pointerId); if(ptrs.size < 2) pinch0 = 0; };
+gl.addEventListener('pointerup', up); gl.addEventListener('pointercancel', up);
+gl.addEventListener('wheel', e=>{ e.preventDefault(); if(mode === 'show') orbit.tDist = Math.max(1.2, Math.min(60, orbit.tDist*Math.exp(e.deltaY*0.0015))); }, {passive:false});
+
+/* ---------- AR走行：既存のパレードと同じ8m先を、右から左へ一列で通る（試作フロートと同じ仕組み） ---------- */
+const PARADE_DIST = 8, EYE = 1.4;
+let ori = null, gotOri = false, yaw = 0, pitch = 0, mode = 'show';
+const euler = new THREE.Euler(), q0 = new THREE.Quaternion(), q1 = new THREE.Quaternion(-Math.sqrt(0.5), 0, 0, Math.sqrt(0.5)), zee = new THREE.Vector3(0, 0, 1), targetQ = new THREE.Quaternion(), DEG = Math.PI/180;
+function onOri(e){ if(e.alpha == null && e.beta == null) return; ori = e; gotOri = true; }
+function screenAngle(){ return (screen.orientation && screen.orientation.angle) || window.orientation || 0; }
+function oriToQuat(q){ euler.set((ori.beta||0)*DEG, (ori.alpha||0)*DEG, -(ori.gamma||0)*DEG, 'YXZ'); q.setFromEuler(euler); q.multiply(q1); q.multiply(q0.setFromAxisAngle(zee, -screenAngle()*DEG)); }
+const march = {start:new THREE.Vector3(), dir:new THREE.Vector3(), t0:0, L:0, speed:+(params.get('speed') || 0.5), active:false, len:0};
+function setSpeed(v){ if(march.active){ const t = clock.elapsedTime, s = (t - march.t0)*march.speed; march.t0 = t - s/v; } march.speed = v;
+  document.querySelectorAll('[data-speed]').forEach(b=>b.setAttribute('aria-pressed', Math.abs(+b.dataset.speed - v) < 1e-3)); }
+function placeMarch(){
+  const f = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion); f.y = 0; if(f.lengthSq() < 0.01) f.set(0, 0, -1); f.normalize();
+  const right = new THREE.Vector3(-f.z, 0, f.x), tanH = Math.tan(camera.fov*Math.PI/360)*camera.aspect;
+  const xs = chars.map(C=>C.g.position.x); march.len = Math.max(...xs) - Math.min(...xs);
+  march.L = (PARADE_DIST + 3)*tanH + 1.5;
+  march.dir.copy(right).negate();
+  // 列の先頭（いちばん左の住人）が画面の右の外から入る
+  march.start.copy(camera.position).addScaledVector(f, PARADE_DIST).addScaledVector(right, march.L + march.len/2);
+  march.start.y = camera.position.y - EYE;
+  march.t0 = clock.elapsedTime; march.active = true;
+}
+let travelled = 0;
+function updateMarch(t){
+  if(!march.active) return;
+  const total = march.L*2 + march.len + 2, s = ((t - march.t0)*march.speed) % total; travelled = (t - march.t0)*march.speed;
+  line.position.copy(march.start).addScaledVector(march.dir, s);
+  // 列は進む向きにそって並ぶ（左の住人が先頭）
+  line.rotation.set(0, Math.atan2(-march.dir.z, march.dir.x), 0);
+}
+let camOn = false, sensorsAsked = false;
+async function startAR(){
+  $('start').hidden = true;
+  if(!sensorsAsked){
+    sensorsAsked = true;
+    if(typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function'){ try{ await DeviceOrientationEvent.requestPermission(); }catch(e){} }
+    window.addEventListener('deviceorientation', onOri);
+  }
+  try{
+    if(!camOn){
+      const stream = await navigator.mediaDevices.getUserMedia({audio:false, video:{facingMode:{ideal:'environment'}, width:{ideal:1280}, height:{ideal:720}}});
+      const v = $('cam'); v.srcObject = stream; v.hidden = false; await v.play().catch(()=>{}); camOn = true;
+    } else $('cam').hidden = false;
+    $('stage').hidden = true;
+  }catch(e){ toast(window.isSecureContext ? 'カメラが使えないため、夜空の背景で表示しています。' : 'カメラを使うには https のURLで開いてください。', 5000); }
+  floor.visible = false; grid.visible = false;
+  camera.clearViewOffset(); camera.position.set(0, EYE, 0); camera.fov = 62; resize();
+  setTimeout(()=>placeMarch(), 500);
+  setTimeout(()=>toast((camOn ? 'カメラ：使用中' : 'カメラ：使えません') + '／' + (gotOri ? '傾きセンサー：使用中' : '傾きセンサー：使えません（画面をドラッグすると見回せます）'), 4000), 1500);
+}
+function toShow(){
+  mode = 'show'; march.active = false; focus = -1;
+  $('cam').hidden = true; $('stage').hidden = false; floor.visible = true; grid.visible = $('btnGrid').getAttribute('aria-pressed') === 'true';
+  line.position.set(0, 0, 0); line.rotation.set(0, 0, 0); chars.forEach(C=>C.lb.visible = true);
+  camera.fov = 50; $('rowView').hidden = false; $('rowSpeed').hidden = true; $('btnRecall').hidden = true;
+  $('tabShow').setAttribute('aria-pressed', 'true'); $('tabAR').setAttribute('aria-pressed', 'false');
+  resize(); setFocus(-1); orbit.dist = orbit.tDist; orbit.c.copy(orbit.tc);
+}
+function toAR(){
+  mode = 'ar'; chars.forEach(C=>C.lb.visible = false);
+  $('rowView').hidden = true; $('rowSpeed').hidden = false; $('btnRecall').hidden = false;
+  $('tabShow').setAttribute('aria-pressed', 'false'); $('tabAR').setAttribute('aria-pressed', 'true');
+  $('start').hidden = false; updateCaption();
+}
+
+/* ---------- 夜と昼 ---------- */
+function applyLight(){
+  $('stage').style.background = night ? 'radial-gradient(ellipse at 50% 115%,#4a3060 0%,#1c2058 46%,#0a0c24 100%)' : 'linear-gradient(#9cc8f0,#d8ecff 60%,#c8d8c0)';
+  $('btnNight').setAttribute('aria-pressed', night); $('btnNight').textContent = night ? '夜' : '昼';
+}
+
+/* ---------- 負荷 ---------- */
+const stats = {frames:0, acc:0, fps:0};
+function perfText(){
+  const i = renderer.info; let px = 0;
+  Object.values(texCache).forEach(t=>{ if(t.image) px += t.image.width*t.image.height; });
+  return `fps        ${stats.fps.toFixed(0)}\n描画回数    ${i.render.calls}\nテクスチャ  ${i.memory.textures}\n絵の画素    ${(px/1e6).toFixed(1)} M（GPU 約 ${(px*4*1.33/1048576).toFixed(0)} MB）`;
+}
+
+/* ---------- 操作 ---------- */
+document.querySelectorAll('[data-set]').forEach(b=>b.addEventListener('click', ()=>{ set = b.dataset.set; rebuild(); }));
+document.querySelectorAll('[data-hal]').forEach(b=>b.addEventListener('click', ()=>{ halPose = b.dataset.hal; chars.forEach(C=>{ if(C.info.k === 'hal' && C.which === 'new') setArt(C); }); document.querySelectorAll('[data-hal]').forEach(x=>x.setAttribute('aria-pressed', x.dataset.hal === halPose)); }));
+document.querySelectorAll('[data-gap]').forEach(b=>b.addEventListener('click', ()=>{ gap = +b.dataset.gap; rebuild(); if(mode === 'ar') placeMarch(); }));
+document.querySelectorAll('[data-speed]').forEach(b=>b.addEventListener('click', ()=>setSpeed(+b.dataset.speed)));
+$('btnAll').addEventListener('click', ()=>setFocus(-1));
+$('btnOne').addEventListener('click', ()=>setFocus(focus < 0 ? 0 : focus));
+$('btnPrev').addEventListener('click', ()=>setFocus(focus < 0 ? LIST.length - 1 : (focus + LIST.length - 1) % LIST.length));
+$('btnNext').addEventListener('click', ()=>setFocus(focus < 0 ? 0 : (focus + 1) % LIST.length));
+$('btnMove').addEventListener('click', ()=>{ moving = !moving; $('btnMove').setAttribute('aria-pressed', moving); });
+$('btnNight').addEventListener('click', ()=>{ night = !night; applyLight(); });
+$('btnGrid').addEventListener('click', ()=>{ const on = !grid.visible; grid.visible = on && mode === 'show'; $('btnGrid').setAttribute('aria-pressed', on); });
+$('btnPerf').addEventListener('click', ()=>{ const on = $('perf').hidden; $('perf').hidden = !on; $('btnPerf').setAttribute('aria-pressed', on); });
+$('btnRecall').addEventListener('click', ()=>placeMarch());
+$('tabShow').addEventListener('click', toShow);
+$('tabAR').addEventListener('click', toAR);
+$('btnGo').addEventListener('click', ()=>startAR());
+$('btnCancel').addEventListener('click', toShow);
+function setDev(on){ $('devPanel').hidden = !on; $('tabDev').setAttribute('aria-pressed', on); if(mode === 'show') fit(); }
+$('tabDev').addEventListener('click', ()=>setDev($('devPanel').hidden));
+function toast(m, ms){ const el = $('toast'); el.textContent = m; el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(()=>el.hidden = true, ms || 3000); }
+
+/* ---------- ループ ---------- */
+const clock = new THREE.Clock();
+function loop(){
+  requestAnimationFrame(loop);
+  const raw = clock.getDelta(), dt = Math.min(raw, 0.05), t = window.__tFix != null ? window.__tFix : clock.elapsedTime;
+  if(mode === 'show'){
+    const k = Math.min(1, dt*4);
+    orbit.yaw += (orbit.tYaw - orbit.yaw)*k; orbit.pitch += (orbit.tPitch - orbit.pitch)*k; orbit.dist += (orbit.tDist - orbit.dist)*k; orbit.c.lerp(orbit.tc, k);
+    camera.position.set(orbit.c.x + Math.sin(orbit.yaw)*Math.cos(orbit.pitch)*orbit.dist, orbit.c.y + Math.sin(orbit.pitch)*orbit.dist, orbit.c.z + Math.cos(orbit.yaw)*Math.cos(orbit.pitch)*orbit.dist);
+    camera.lookAt(orbit.c);
+    camera.setViewOffset(window.innerWidth, window.innerHeight, 0, orbit.offY || 0, window.innerWidth, window.innerHeight);
+    chars.forEach(C=>animChar(C, t, t*0.5));
+  } else {
+    if(gotOri && ori){ oriToQuat(targetQ); camera.quaternion.slerp(targetQ, 0.35); } else camera.rotation.set(pitch, yaw, 0, 'YXZ');
+    updateMarch(clock.elapsedTime);
+    chars.forEach(C=>animChar(C, t, travelled));
+  }
+  renderer.render(scene, camera);
+  stats.frames++; stats.acc += raw;
+  if(stats.acc >= 1){ stats.fps = stats.frames/stats.acc; stats.frames = 0; stats.acc = 0; if(!$('perf').hidden) $('perf').textContent = perfText(); }
+}
+
+/* ---------- 起動 ---------- */
+requestAnimationFrame(()=>{
+  if(window.innerHeight < 560 || params.get('dev') === '0') setDev(false);
+  applyLight(); $('btnMove').setAttribute('aria-pressed', moving);
+  if(params.get('grid') === '1'){ grid.visible = true; $('btnGrid').setAttribute('aria-pressed', 'true'); }
+  if(params.get('t')) window.__tFix = +params.get('t');
+  rebuild(); resize();
+  if(params.get('one') != null) setFocus(Math.max(0, LIST.findIndex(x=>x.k === params.get('one'))));
+  orbit.dist = orbit.tDist; orbit.c.copy(orbit.tc);
+  setSpeed(march.speed);
+  checkLoaded();
+  window.__ready = true;
+  loop();
+});
+</script>
+</body>
+</html>

@@ -107,6 +107,15 @@ body.public .dev{display:none!important}
     <button class="chip" data-act="C" aria-pressed="false">C 一緒にいる</button>
   </div>
   <div class="row">
+    <span class="lbl">住人の絵</span>
+    <button class="chip" data-chars="new" aria-pressed="true">新</button>
+    <button class="chip" data-chars="old" aria-pressed="false">今</button>
+    <span class="lbl" style="margin-left:8px">ハル</span>
+    <button class="chip" data-halpose="auto" aria-pressed="true">自動</button>
+    <button class="chip" data-halpose="stand" aria-pressed="false">立つ</button>
+    <button class="chip" data-halpose="run" aria-pressed="false">走る</button>
+  </div>
+  <div class="row">
     <button class="chip" id="btnNight" aria-pressed="true">夜の照明</button>
     <button class="chip" id="btnSpin" aria-pressed="false">回転台</button>
     <button class="chip" id="btnQuality" aria-pressed="false">軽量モード</button>
@@ -177,10 +186,17 @@ const pool = (()=>{
 
 /* ---------- フロート ---------- */
 let quality = params.get('q') === 'low' ? 'low' : 'high';
+// 住人の絵：新（characters3 の標準素材）／今（これまでの絵）。ハルの絵：自動（動いているあいだは走る姿）／立つ／走る
+let chars = params.get('chars') === 'old' ? 'old' : 'new';
+let halPose = ['stand', 'run'].includes(params.get('hal')) ? params.get('hal') : 'auto';
+function markChars(){
+  document.querySelectorAll('[data-chars]').forEach(b=>b.setAttribute('aria-pressed', b.dataset.chars === chars));
+  document.querySelectorAll('[data-halpose]').forEach(b=>{ b.setAttribute('aria-pressed', b.dataset.halpose === halPose); b.disabled = chars === 'old'; });
+}
 let F = null, wrap = new THREE.Group(); scene.add(wrap);
 function build(){
   if(F){ wrap.remove(F.g); F.dispose(); }
-  F = IWForestBridge.create({renderer, camera, base:BASE, quality, night:night}); floatBox = null;
+  F = IWForestBridge.create({renderer, camera, base:BASE, quality, night:night, chars, halPose}); floatBox = null;
   wrap.add(F.g); wrap.add(pool);
   F.setScene(act);
   stats.build = performance.now();
@@ -360,6 +376,8 @@ function perfText(){
 /* ---------- 操作 ---------- */
 document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click', ()=>{ spin = false; $('btnSpin').setAttribute('aria-pressed', 'false'); setView(b.dataset.view); }));
 document.querySelectorAll('[data-act]').forEach(b=>b.addEventListener('click', ()=>{ act = b.dataset.act; if(F) F.setScene(act); document.querySelectorAll('[data-act]').forEach(x=>x.setAttribute('aria-pressed', x === b)); }));
+document.querySelectorAll('[data-chars]').forEach(b=>b.addEventListener('click', ()=>{ chars = b.dataset.chars; markChars(); build(); applyLight(); }));
+document.querySelectorAll('[data-halpose]').forEach(b=>b.addEventListener('click', ()=>{ halPose = b.dataset.halpose; markChars(); if(F && F.setHalPose) F.setHalPose(halPose); }));
 $('btnNight').addEventListener('click', ()=>{ night = !night; $('btnNight').setAttribute('aria-pressed', night); applyLight(); });
 $('btnSpin').addEventListener('click', ()=>{ spin = !spin; $('btnSpin').setAttribute('aria-pressed', spin); });
 $('btnQuality').addEventListener('click', ()=>{ quality = quality === 'low' ? 'high' : 'low'; $('btnQuality').setAttribute('aria-pressed', quality === 'low');
@@ -408,7 +426,7 @@ function loop(){
 
 /* ---------- 起動 ---------- */
 requestAnimationFrame(()=>{
-  build(); applyLight();
+  markChars(); build(); applyLight();
   if(PUBLIC || window.innerHeight < 560 || params.get('dev') === '0') setDev(false);
   resize(); setView(params.get('view') || 'side'); orbit.yaw = orbit.tYaw; orbit.pitch = orbit.tPitch; orbit.dist = orbit.tDist; orbit.c.copy(orbit.tc); orbit.off = {...orbit.toff};
   if(params.get('act')){ act = params.get('act'); F.setScene(act); document.querySelectorAll('[data-act]').forEach(x=>x.setAttribute('aria-pressed', x.dataset.act === act)); }
