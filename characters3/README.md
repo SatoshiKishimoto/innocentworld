@@ -57,5 +57,15 @@ python3 tools/check_character_png.py characters3/ --out characters3/_check
 |---|---|---|---|
 | `hal_run.png` | ハル・走る姿（左向き） | 正式採用（2026-11-16） | `requests/hal_run/review.md` |
 | `hal_stand.png` | ハル・立つ姿（左向きの斜め） | 正式採用（2026-11-16） | `requests/hal_stand/review.md` |
+| `mock_walk.png` | モック・歩く姿（正面） | 正式採用（2026-11-17） | `requests/mock/review.md` |
 
 正式採用は素材としての判断。既存パレード・本番（main）への反映は、別途承認を得てから行う。
+
+## 完成基準（ハル2種・モック1種で確定）
+
+1. 公式イラストの顔立ち・体形・色・装飾を変えない。ChatGPTで欠けた部分を描き足し、色の違いは画像編集で基準にそろえる（再生成で顔や形が変わるのを避ける）。
+2. 全身と持ち物が画像内に収まる。透過PNG、高さ1536px、余白は高さの8%（123px）、足もとを下の余白の線にそろえる。
+3. 体の内側に半透明の画素がない（元の絵で半透明の表現は除く）。白い縁取り・影・地面・文字なし。
+4. 自動検査（`check_character_png.py`）が「問題なし」。
+5. 元の絵・公式三面図と並べた比較画像で目視確認し、確認記録（`requests/<名前>/review.md`）に、同じ点・直った点・変わった点を残す。
+6. ChatGPTの画像はチェック柄の背景や薄い光が付くことがある → `normalize_character_png.py`（`--alpha-cut`）で取り除く。
