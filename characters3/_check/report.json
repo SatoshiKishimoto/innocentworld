@@ -1,0 +1,567 @@
+[
+ {
+  "file": "characters2/arika.png",
+  "issues": [
+   "高さ不足：357px（目標 1536px、23%）",
+   "余白不足：上 0px・下 0px・左 0px・右 3px（必要 18px）",
+   "内側に半透明の画素：2856px（内側の 5.93%）"
+  ],
+  "notes": [
+   "端に少し接している（切り抜きが詰めすぎの可能性・要目視）：上・下・左",
+   "閉じた透明部分あり：287px（腕と体のすき間など。意図どおりか要目視）"
+  ],
+  "format": "PNG",
+  "mode": "RGBA",
+  "width": 259,
+  "height": 357,
+  "has_alpha": true,
+  "target_height": 1536,
+  "margin_px": {
+   "top": 0,
+   "bottom": 0,
+   "left": 0,
+   "right": 3
+  },
+  "margin_needed_px": 18,
+  "edge_touch": {
+   "top": {
+    "pixels": 13,
+    "longest_run": 13
+   },
+   "bottom": {
+    "pixels": 6,
+    "longest_run": 6
+   },
+   "left": {
+    "pixels": 1,
+    "longest_run": 1
+   }
+  },
+  "inner_pixels": 48147,
+  "inner_semitransparent": 2856,
+  "inner_semitransparent_ratio": 0.05932,
+  "edge_antialias_ratio": 0.608,
+  "white_rim_ratio": 0.02,
+  "hole_pixels": 287,
+  "foot_row": 356,
+  "foot_margin_px": 0,
+  "content_box": [
+   0,
+   0,
+   255,
+   356
+  ],
+  "content_height_px": 357,
+  "status": "要対応"
+ },
+ {
+  "file": "characters2/esper.png",
+  "issues": [
+   "高さ不足：392px（目標 1536px、26%）",
+   "余白不足：上 0px・下 1px・左 0px・右 0px（必要 20px）",
+   "端に長く接している（切り落としの疑い・要目視）：左 31px・右 126px",
+   "内側に半透明の画素：290px（内側の 0.41%）"
+  ],
+  "notes": [
+   "端に少し接している（切り抜きが詰めすぎの可能性・要目視）：上",
+   "閉じた透明部分あり：297px（腕と体のすき間など。意図どおりか要目視）"
+  ],
+  "format": "PNG",
+  "mode": "RGBA",
+  "width": 288,
+  "height": 392,
+  "has_alpha": true,
+  "target_height": 1536,
+  "margin_px": {
+   "top": 0,
+   "bottom": 1,
+   "left": 0,
+   "right": 0
+  },
+  "margin_needed_px": 20,
+  "edge_touch": {
+   "top": {
+    "pixels": 6,
+    "longest_run": 6
+   },
+   "left": {
+    "pixels": 31,
+    "longest_run": 31
+   },
+   "right": {
+    "pixels": 126,
+    "longest_run": 126
+   }
+  },
+  "inner_pixels": 70694,
+  "inner_semitransparent": 290,
+  "inner_semitransparent_ratio": 0.0041,
+  "edge_antialias_ratio": 0.497,
+  "white_rim_ratio": 0.003,
+  "hole_pixels": 297,
+  "foot_row": 390,
+  "foot_margin_px": 1,
+  "content_box": [
+   0,
+   0,
+   287,
+   390
+  ],
+  "content_height_px": 391,
+  "status": "要対応"
+ },
+ {
+  "file": "characters2/hal.png",
+  "issues": [
+   "高さ不足：302px（目標 1536px、20%）",
+   "余白不足：上 0px・下 0px・左 0px・右 0px（必要 16px）",
+   "端に長く接している（切り落としの疑い・要目視）：右 40px",
+   "内側に半透明の画素：969px（内側の 1.81%）"
+  ],
+  "notes": [
+   "端に少し接している（切り抜きが詰めすぎの可能性・要目視）：上・下・左"
+  ],
+  "format": "PNG",
+  "mode": "RGBA",
+  "width": 273,
+  "height": 302,
+  "has_alpha": true,
+  "target_height": 1536,
+  "margin_px": {
+   "top": 0,
+   "bottom": 0,
+   "left": 0,
+   "right": 0
+  },
+  "margin_needed_px": 16,
+  "edge_touch": {
+   "top": {
+    "pixels": 1,
+    "longest_run": 1
+   },
+   "bottom": {
+    "pixels": 5,
+    "longest_run": 5
+   },
+   "left": {
+    "pixels": 12,
+    "longest_run": 12
+   },
+   "right": {
+    "pixels": 90,
+    "longest_run": 40
+   }
+  },
+  "inner_pixels": 53571,
+  "inner_semitransparent": 969,
+  "inner_semitransparent_ratio": 0.01809,
+  "edge_antialias_ratio": 0.516,
+  "white_rim_ratio": 0.002,
+  "hole_pixels": 0,
+  "foot_row": 301,
+  "foot_margin_px": 0,
+  "content_box": [
+   0,
+   0,
+   272,
+   301
+  ],
+  "content_height_px": 302,
+  "status": "要対応"
+ },
+ {
+  "file": "characters2/jiiji.png",
+  "issues": [
+   "高さ不足：370px（目標 1536px、24%）",
+   "余白不足：上 0px・下 0px・左 0px・右 0px（必要 18px）",
+   "端に長く接している（切り落としの疑い・要目視）：下 42px・右 60px",
+   "内側に半透明の画素：765px（内側の 1.07%）"
+  ],
+  "notes": [
+   "端に少し接している（切り抜きが詰めすぎの可能性・要目視）：上・左"
+  ],
+  "format": "PNG",
+  "mode": "RGBA",
+  "width": 295,
+  "height": 370,
+  "has_alpha": true,
+  "target_height": 1536,
+  "margin_px": {
+   "top": 0,
+   "bottom": 0,
+   "left": 0,
+   "right": 0
+  },
+  "margin_needed_px": 18,
+  "edge_touch": {
+   "top": {
+    "pixels": 19,
+    "longest_run": 19
+   },
+   "bottom": {
+    "pixels": 71,
+    "longest_run": 42
+   },
+   "left": {
+    "pixels": 16,
+    "longest_run": 16
+   },
+   "right": {
+    "pixels": 60,
+    "longest_run": 60
+   }
+  },
+  "inner_pixels": 71294,
+  "inner_semitransparent": 765,
+  "inner_semitransparent_ratio": 0.01073,
+  "edge_antialias_ratio": 0.494,
+  "white_rim_ratio": 0.006,
+  "hole_pixels": 57,
+  "foot_row": 369,
+  "foot_margin_px": 0,
+  "content_box": [
+   0,
+   0,
+   294,
+   369
+  ],
+  "content_height_px": 370,
+  "status": "要対応"
+ },
+ {
+  "file": "characters2/lily.png",
+  "issues": [
+   "高さ不足：394px（目標 1536px、26%）",
+   "余白不足：上 0px・下 1px・左 0px・右 0px（必要 20px）",
+   "端に長く接している（切り落としの疑い・要目視）：左 69px・右 45px",
+   "内側に半透明の画素：2032px（内側の 2.65%）"
+  ],
+  "notes": [
+   "端に少し接している（切り抜きが詰めすぎの可能性・要目視）：上",
+   "閉じた透明部分あり：686px（腕と体のすき間など。意図どおりか要目視）"
+  ],
+  "format": "PNG",
+  "mode": "RGBA",
+  "width": 280,
+  "height": 394,
+  "has_alpha": true,
+  "target_height": 1536,
+  "margin_px": {
+   "top": 0,
+   "bottom": 1,
+   "left": 0,
+   "right": 0
+  },
+  "margin_needed_px": 20,
+  "edge_touch": {
+   "top": {
+    "pixels": 2,
+    "longest_run": 2
+   },
+   "left": {
+    "pixels": 174,
+    "longest_run": 69
+   },
+   "right": {
+    "pixels": 45,
+    "longest_run": 45
+   }
+  },
+  "inner_pixels": 76569,
+  "inner_semitransparent": 2032,
+  "inner_semitransparent_ratio": 0.02654,
+  "edge_antialias_ratio": 0.566,
+  "white_rim_ratio": 0.0,
+  "hole_pixels": 686,
+  "foot_row": 392,
+  "foot_margin_px": 1,
+  "content_box": [
+   0,
+   0,
+   279,
+   392
+  ],
+  "content_height_px": 393,
+  "status": "要対応"
+ },
+ {
+  "file": "characters2/luke.png",
+  "issues": [
+   "高さ不足：394px（目標 1536px、26%）",
+   "余白不足：上 0px・下 0px・左 0px・右 0px（必要 20px）",
+   "端に長く接している（切り落としの疑い・要目視）：上 22px・下 45px・左 48px・右 82px",
+   "内側に半透明の画素：638px（内側の 0.82%）"
+  ],
+  "notes": [],
+  "format": "PNG",
+  "mode": "RGBA",
+  "width": 284,
+  "height": 394,
+  "has_alpha": true,
+  "target_height": 1536,
+  "margin_px": {
+   "top": 0,
+   "bottom": 0,
+   "left": 0,
+   "right": 0
+  },
+  "margin_needed_px": 20,
+  "edge_touch": {
+   "top": {
+    "pixels": 22,
+    "longest_run": 22
+   },
+   "bottom": {
+    "pixels": 45,
+    "longest_run": 45
+   },
+   "left": {
+    "pixels": 48,
+    "longest_run": 48
+   },
+   "right": {
+    "pixels": 116,
+    "longest_run": 82
+   }
+  },
+  "inner_pixels": 77951,
+  "inner_semitransparent": 638,
+  "inner_semitransparent_ratio": 0.00818,
+  "edge_antialias_ratio": 0.506,
+  "white_rim_ratio": 0.002,
+  "hole_pixels": 16,
+  "foot_row": 393,
+  "foot_margin_px": 0,
+  "content_box": [
+   0,
+   0,
+   283,
+   393
+  ],
+  "content_height_px": 394,
+  "status": "要対応"
+ },
+ {
+  "file": "characters2/mimi.png",
+  "issues": [
+   "高さ不足：381px（目標 1536px、25%）",
+   "余白不足：上 0px・下 1px・左 0px・右 0px（必要 19px）",
+   "内側に半透明の画素：69px（内側の 0.16%）"
+  ],
+  "notes": [
+   "端に少し接している（切り抜きが詰めすぎの可能性・要目視）：上・左・右"
+  ],
+  "format": "PNG",
+  "mode": "RGBA",
+  "width": 223,
+  "height": 381,
+  "has_alpha": true,
+  "target_height": 1536,
+  "margin_px": {
+   "top": 0,
+   "bottom": 1,
+   "left": 0,
+   "right": 0
+  },
+  "margin_needed_px": 19,
+  "edge_touch": {
+   "top": {
+    "pixels": 8,
+    "longest_run": 8
+   },
+   "left": {
+    "pixels": 5,
+    "longest_run": 5
+   },
+   "right": {
+    "pixels": 14,
+    "longest_run": 14
+   }
+  },
+  "inner_pixels": 42021,
+  "inner_semitransparent": 69,
+  "inner_semitransparent_ratio": 0.00164,
+  "edge_antialias_ratio": 0.413,
+  "white_rim_ratio": 0.097,
+  "hole_pixels": 0,
+  "foot_row": 379,
+  "foot_margin_px": 1,
+  "content_box": [
+   0,
+   0,
+   222,
+   379
+  ],
+  "content_height_px": 380,
+  "status": "要対応"
+ },
+ {
+  "file": "characters2/mock.png",
+  "issues": [
+   "高さ不足：382px（目標 1536px、25%）",
+   "余白不足：上 0px・下 0px・左 0px・右 0px（必要 19px）",
+   "端に長く接している（切り落としの疑い・要目視）：右 28px",
+   "内側に半透明の画素：237px（内側の 0.38%）"
+  ],
+  "notes": [
+   "端に少し接している（切り抜きが詰めすぎの可能性・要目視）：上・下・左"
+  ],
+  "format": "PNG",
+  "mode": "RGBA",
+  "width": 270,
+  "height": 382,
+  "has_alpha": true,
+  "target_height": 1536,
+  "margin_px": {
+   "top": 0,
+   "bottom": 0,
+   "left": 0,
+   "right": 0
+  },
+  "margin_needed_px": 19,
+  "edge_touch": {
+   "top": {
+    "pixels": 9,
+    "longest_run": 9
+   },
+   "bottom": {
+    "pixels": 14,
+    "longest_run": 14
+   },
+   "left": {
+    "pixels": 6,
+    "longest_run": 4
+   },
+   "right": {
+    "pixels": 30,
+    "longest_run": 28
+   }
+  },
+  "inner_pixels": 62057,
+  "inner_semitransparent": 237,
+  "inner_semitransparent_ratio": 0.00382,
+  "edge_antialias_ratio": 0.692,
+  "white_rim_ratio": 0.017,
+  "hole_pixels": 1,
+  "foot_row": 381,
+  "foot_margin_px": 0,
+  "content_box": [
+   0,
+   0,
+   269,
+   381
+  ],
+  "content_height_px": 382,
+  "status": "要対応"
+ },
+ {
+  "file": "characters2/niko.png",
+  "issues": [
+   "高さ不足：332px（目標 1536px、22%）",
+   "余白不足：上 1px・下 0px・左 0px・右 0px（必要 17px）",
+   "端に長く接している（切り落としの疑い・要目視）：右 140px",
+   "内側に半透明の画素：125px（内側の 0.20%）"
+  ],
+  "notes": [
+   "端に少し接している（切り抜きが詰めすぎの可能性・要目視）：下・左"
+  ],
+  "format": "PNG",
+  "mode": "RGBA",
+  "width": 279,
+  "height": 332,
+  "has_alpha": true,
+  "target_height": 1536,
+  "margin_px": {
+   "top": 1,
+   "bottom": 0,
+   "left": 0,
+   "right": 0
+  },
+  "margin_needed_px": 17,
+  "edge_touch": {
+   "bottom": {
+    "pixels": 17,
+    "longest_run": 17
+   },
+   "left": {
+    "pixels": 16,
+    "longest_run": 16
+   },
+   "right": {
+    "pixels": 140,
+    "longest_run": 140
+   }
+  },
+  "inner_pixels": 61084,
+  "inner_semitransparent": 125,
+  "inner_semitransparent_ratio": 0.00205,
+  "edge_antialias_ratio": 0.484,
+  "white_rim_ratio": 0.004,
+  "hole_pixels": 0,
+  "foot_row": 331,
+  "foot_margin_px": 0,
+  "content_box": [
+   0,
+   1,
+   278,
+   331
+  ],
+  "content_height_px": 331,
+  "status": "要対応"
+ },
+ {
+  "file": "characters2/nuru.png",
+  "issues": [
+   "高さ不足：330px（目標 1536px、21%）",
+   "余白不足：上 1px・下 0px・左 0px・右 0px（必要 16px）",
+   "内側に半透明の画素：3741px（内側の 9.50%）"
+  ],
+  "notes": [
+   "端に少し接している（切り抜きが詰めすぎの可能性・要目視）：下・左・右",
+   "閉じた透明部分あり：258px（腕と体のすき間など。意図どおりか要目視）"
+  ],
+  "format": "PNG",
+  "mode": "RGBA",
+  "width": 231,
+  "height": 330,
+  "has_alpha": true,
+  "target_height": 1536,
+  "margin_px": {
+   "top": 1,
+   "bottom": 0,
+   "left": 0,
+   "right": 0
+  },
+  "margin_needed_px": 16,
+  "edge_touch": {
+   "bottom": {
+    "pixels": 8,
+    "longest_run": 8
+   },
+   "left": {
+    "pixels": 9,
+    "longest_run": 9
+   },
+   "right": {
+    "pixels": 3,
+    "longest_run": 3
+   }
+  },
+  "inner_pixels": 39389,
+  "inner_semitransparent": 3741,
+  "inner_semitransparent_ratio": 0.09498,
+  "edge_antialias_ratio": 0.784,
+  "white_rim_ratio": 0.001,
+  "hole_pixels": 258,
+  "foot_row": 329,
+  "foot_margin_px": 0,
+  "content_box": [
+   0,
+   1,
+   230,
+   329
+  ],
+  "content_height_px": 329,
+  "status": "要対応"
+ }
+]
