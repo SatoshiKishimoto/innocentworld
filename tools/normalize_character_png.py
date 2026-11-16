@@ -4,7 +4,7 @@
 
 使い方:
   python3 tools/normalize_character_png.py 受け取った画像.png characters3/hal_run.png
-  （オプション）--height 1536  --margin 0.08  --bg auto|white|none
+  （オプション）--height 1536  --margin 0.08  --bg auto|white|none|checker
 
 行うこと:
   1. 背景を抜く
@@ -31,6 +31,18 @@ def remove_background(rgba, mode='auto', tol=18):
     H, W = a.shape
     if mode == 'none':
         return rgba
+    if mode == 'checker':
+        # 透明を表すチェック柄（白と薄い灰色の市松模様）が絵として描き込まれている場合。
+        # 色みがほとんどなく（最大−最小 ≤ 10）明るい（すべて215以上）画素を背景の候補にして、
+        # 外周からつながる部分だけを透明にする（クリーム色の毛や目の白など内側は残す）
+        mx, mn = rgb.max(2), rgb.min(2)
+        bg = chk.outside_transparent((mx - mn <= 10) & (mn >= 215))
+        out = rgba.copy()
+        out[..., 3] = np.where(bg, 0, 255).astype(np.uint8)
+        rim = (~bg) & chk.dilate(bg, 1)
+        soft = np.clip(np.maximum((mx - mn) / 40.0, (215 - mn) / 60.0), 0.35, 1.0)
+        out[..., 3] = np.where(rim, (soft * 255).astype(np.uint8), out[..., 3])
+        return out
     if mode == 'auto' and (a < 250).mean() > 0.05:
         return rgba                          # すでに透明な背景がある
     # 背景色＝四隅の色の中央値
@@ -53,7 +65,7 @@ def main():
     ap.add_argument('src'); ap.add_argument('dst')
     ap.add_argument('--height', type=int, default=1536, help='仕上がりの高さ（px）')
     ap.add_argument('--margin', type=float, default=0.08, help='上下左右の余白（高さに対する割合）')
-    ap.add_argument('--bg', default='auto', choices=['auto', 'white', 'none'], help='背景の抜き方')
+    ap.add_argument('--bg', default='auto', choices=['auto', 'white', 'none', 'checker'], help='背景の抜き方（checker＝描き込まれたチェック柄）')
     ap.add_argument('--alpha-cut', type=int, default=0, help='この値以下の透明度を完全な透明にする（背景に薄い光（グロー）が付いた透過PNG用。例：40）。あわせて透明度240以上は不透明にする')
     a = ap.parse_args()
 

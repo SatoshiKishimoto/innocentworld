@@ -31,6 +31,7 @@ python3 tools/normalize_character_png.py 受け取った画像.png characters3/<
 ```
 
 - 白い（単色の）背景は、外周からつながった部分だけを透明にする（目・歯など内側の白は残す）。
+- 透明を表すチェック柄が絵として描き込まれている場合は `--bg checker`、周りに薄い光が付いた透過PNGは `--alpha-cut 40` を使う。
 - 高さ1536px・上下左右の余白（標準は高さの8%）・足もとの位置をそろえ、最後に自動検査を行う。
 - 元の絵が小さいと拡大になり画質が落ちるため、警告を出す（元の画像を大きく作ってもらうのが原則）。
 - 拡大・縮小しても、内側の透明度は元のまま（目や歯は不透明のまま、妖精の羽など元から半透明の部分はそのまま）。
@@ -72,4 +73,4 @@ python3 tools/check_character_png.py characters3/ --out characters3/_check
 3. 体の内側に半透明の画素がない（元の絵で半透明の表現は除く）。白い縁取り・影・地面・文字なし。
 4. 自動検査（`check_character_png.py`）が「問題なし」。
 5. 元の絵・公式三面図と並べた比較画像で目視確認し、確認記録（`requests/<名前>/review.md`）に、同じ点・直った点・変わった点を残す。
-6. ChatGPTの画像はチェック柄の背景や薄い光が付くことがある → `normalize_character_png.py`（`--alpha-cut`）で取り除く。
+6. ChatGPTの画像はチェック柄の背景や薄い光が付くことがある → `normalize_character_png.py`（`--bg checker`、`--alpha-cut`）で取り除く。
