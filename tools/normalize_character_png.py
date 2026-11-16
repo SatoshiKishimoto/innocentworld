@@ -80,7 +80,7 @@ def main():
     # 背景から3px以上内側は、元の透明度（最近傍で拡大したもの）を使う。
     # こうすると、目や歯は不透明のまま、元から半透明の部分（妖精の羽など）はそのまま残る
     na = np.array(new); near_a = np.array(crop.resize(size, Image.NEAREST))[..., 3]
-    bgm = chk.outside_transparent(na[..., 3] < chk.ALPHA_VISIBLE)
+    bgm = na[..., 3] < chk.ALPHA_VISIBLE   # 外の背景と閉じた透明部分の両方
     inner = ~chk.dilate(bgm, chk.EDGE_BAND)
     na[..., 3] = np.where(inner, near_a, na[..., 3])
     new = Image.fromarray(na, 'RGBA')

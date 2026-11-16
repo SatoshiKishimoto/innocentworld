@@ -113,7 +113,8 @@ def check(path, target=1536, min_margin_px=16, min_margin_ratio=0.05):
     # 5. 内側の半透明
     transparent = a < ALPHA_VISIBLE
     bg = outside_transparent(transparent)
-    near_bg = dilate(bg, EDGE_BAND)
+    # 輪郭＝外の背景だけでなく、閉じた透明部分（髪のすき間など）のふちも含める
+    near_bg = dilate(transparent, EDGE_BAND)
     inner = vis & ~near_bg
     semi = inner & (a < ALPHA_OPAQUE)
     r['inner_pixels'] = int(inner.sum()); r['inner_semitransparent'] = int(semi.sum())
