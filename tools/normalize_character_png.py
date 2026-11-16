@@ -58,6 +58,11 @@ def main():
     a = ap.parse_args()
 
     im = Image.open(a.src).convert('RGBA'); rgba = np.array(im)
+    # ChatGPTの透過PNGは、体の内側がほぼ不透明（透明度252〜253）のことがある。240以上は完全な不透明にそろえる
+    al0 = rgba[..., 3]
+    if ((al0 >= 240) & (al0 < 255)).sum() > 0.2 * max(1, (al0 >= 240).sum()):
+        rgba = rgba.copy(); rgba[..., 3] = np.where(al0 >= 240, 255, al0).astype(np.uint8)
+        print('ほぼ不透明（透明度240〜254）の画素を不透明にそろえました')
     if a.alpha_cut:
         al = rgba[..., 3].astype(int)
         al = np.where(al <= a.alpha_cut, 0, np.where(al >= 240, 255, (al - a.alpha_cut) * 255 // (240 - a.alpha_cut)))
