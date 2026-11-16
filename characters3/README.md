@@ -50,3 +50,12 @@ python3 tools/check_character_png.py characters3/ --out characters3/_check
 - 診断画像（`_check/*_check.png`）の見方：右半分の **赤い辺**＝端に長く接している、**オレンジの辺**＝少し接している、**ピンク**＝内側の半透明、**水色**＝閉じた透明部分、**緑の枠**＝必要な余白の線、**青い横線**＝足もと。
 
 現在の `characters2/` の検査結果は [`docs/characters3-inspection.md`](../docs/characters3-inspection.md)。
+
+## 素材の一覧と状態
+
+| ファイル | キャラクター・向き | 状態 | 記録 |
+|---|---|---|---|
+| `hal_run.png` | ハル・走る姿（左向き） | 正式採用（2026-11-16） | `requests/hal_run/review.md` |
+| `hal_stand.png` | ハル・立つ姿（左向きの斜め） | 正式採用（2026-11-16） | `requests/hal_stand/review.md` |
+
+正式採用は素材としての判断。既存パレード・本番（main）への反映は、別途承認を得てから行う。
