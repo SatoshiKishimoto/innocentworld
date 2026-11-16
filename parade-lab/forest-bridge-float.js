@@ -606,13 +606,18 @@ function createForestBridgeFloat(opts){
   const bridgePool = (()=>{ const m = new T.Mesh(new T.PlaneGeometry(1, 1), new T.MeshBasicMaterial({map:glowTexture, transparent:true, depthWrite:false, blending:T.AdditiveBlending, opacity:0.5}));
     m.rotation.x = -Math.PI/2; m.scale.set(1.6, 3.0, 1); m.position.set(BX, WATER + 0.004, BC); m.userData.dynamic = true; m.renderOrder = 3; g.add(m); disposables.push(m.material); return m; })();
 
+  // 二人の足もとの温かい光（距離が縮まると広がる）
+  const pairPool = (()=>{ const m = new T.Mesh(new T.PlaneGeometry(1, 1), new T.MeshBasicMaterial({map:glowTexture, transparent:true, depthWrite:false, blending:T.AdditiveBlending, opacity:0, color:0xffc070}));
+    m.rotation.x = -Math.PI/2; m.userData.dynamic = true; m.renderOrder = 4; g.add(m); disposables.push(m.material); return m; })();
+
   /* ---- 5. 木：ねじれた幹と、花の咲く茂み。茂みは遠くでは粗い形に切りかえる（LOD） ---- */
   const canopies = [];
-  const tree = (x, z, s, seed, flowers)=>{
+  const tree = (x, z, s, seed, flowers, tall)=>{   // tall：幹の高さの倍率（茂みを頭より上に持ち上げる）
+    tall = tall || 1;
     const R = rng(seed), tg = new T.Group(), y0 = surfaceY(x, z) - 0.03;
     tg.position.set(x, y0, z); g.add(tg);
     const lean = (R() - 0.5)*0.25;
-    const trunk = new T.CatmullRomCurve3([V3(0, 0, 0), V3(lean*0.4*s, 0.35*s, 0.05*s), V3(lean*s - 0.05*s, 0.75*s, -0.04*s), V3(lean*1.2*s, 1.05*s, 0.03*s)]);
+    const trunk = new T.CatmullRomCurve3([V3(0, 0, 0), V3(lean*0.4*s, 0.35*s*tall, 0.05*s), V3(lean*s - 0.05*s, 0.75*s*tall, -0.04*s), V3(lean*1.2*s, 1.05*s*tall, 0.03*s)]);
     add(tg, taperTube(trunk, 18, 12, 10, 0.12*s, 0.055*s, 0.35), M.bark);
     for(let k=0;k<4;k++){   // 根
       const a = k/4*Math.PI*2 + R(), c = new T.CatmullRomCurve3([V3(0, 0.18*s, 0), V3(Math.cos(a)*0.14*s, 0.06*s, Math.sin(a)*0.14*s), V3(Math.cos(a)*0.28*s, -0.02, Math.sin(a)*0.28*s)]);
@@ -674,8 +679,9 @@ function createForestBridgeFloat(opts){
     return {tg, top, branchEnds, trunk};
   };
   const hero = tree(-0.66, 2.1, 1.25, 9, Q ? 70 : 34);
-  tree(-0.86, -2.15, 0.9, 13, Q ? 30 : 14);
-  tree(-0.9, -0.55, 0.62, 17, Q ? 18 : 8);
+  // 二人の後ろ（観客と反対の側）の木：幹を高くして茂みを頭より上へ、立ち位置からずらす。代わりに低い茂みで森らしさを保つ
+  tree(-0.92, -2.42, 0.86, 13, Q ? 30 : 14, 1.75);
+  tree(-1.02, 1.72, 0.5, 17, Q ? 14 : 6, 1.0);
   // 大きな木の枝に下がるランタンと、茂みの中の電球
   const treeLans = [];
   hero.branchEnds.slice(0, 2).forEach((e, k)=>{
@@ -869,87 +875,147 @@ function createForestBridgeFloat(opts){
     const l2 = new T.PointLight(0xffc878, 1.1, 3.2, 2); l2.position.set(1.0, YD + 1.25, -1.45); g.add(l2); lights.push({l:l2, base:1.1});
   }
 
-  /* ---- 10. 住人：公式画像をそのまま使い、板の変形で動かす ----
-     台本（direct）が決めるのは「姿勢」だけ：pos（立つ場所）・face（向き +1=進む向き）・lean（かたむき）・nod（うなずき）・
-     squash（つぶれ／ふるえ）・bob（はずみ）・sway（風にそよぐ）・turn（向き直り）。
-     見た目を作るのは poseChar だけなので、将来 3D モデルにするときは、台本はそのままで poseChar（と mkChar）を差しかえる。 */
+  /* ---- 10. 住人：公式画像をそのまま使う平面キャラクター ----
+     ・絵はいつも観客（カメラ）の方を向く。裏側は見せない。
+     ・物語の中で「ふり向く」ときも左右反転しない。気持ちは、位置・かたむき・はずみ・ふるえ・記号（汗や！）・照明で見せる。
+     ・左右反転は、カメラがフロートの反対側へ回ったときだけ（向きの意味を保つため）。そのときも板を細くせず、絵を重ねて入れ替える。
+     台本（direct）が決めるのは：pos（立つ場所）・lz（+z＝橋の方へのかたむき）・nod（うなずき）・squash（つぶれ／ふるえ）・
+     bob（はずみ）・sway（風）・emo（記号）・tint（色味）。 */
   const chars = {};
+  const EMO = {};
+  // 記号（漫符）の絵：線と形だけで描く
+  (()=>{
+    const mk = (draw)=>{ const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d'); x.lineCap = x.lineJoin = 'round'; draw(x); const t = new T.CanvasTexture(c); t.encoding = T.sRGBEncoding; disposables.push(t); return t; };
+    const outline = (x, path, fill, stroke)=>{ x.fillStyle = fill; x.strokeStyle = stroke || '#ffffff'; x.lineWidth = 9; path(); x.stroke(); path(); x.fill(); };
+    EMO.sweat = mk(x=>{ [[44, 30, 1], [86, 58, 0.7]].forEach(([cx, cy, s])=>outline(x, ()=>{ x.beginPath(); x.moveTo(cx, cy - 26*s); x.bezierCurveTo(cx + 22*s, cy + 4*s, cx + 18*s, cy + 30*s, cx, cy + 30*s); x.bezierCurveTo(cx - 18*s, cy + 30*s, cx - 22*s, cy + 4*s, cx, cy - 26*s); }, '#7fc8ff')); });
+    EMO.shiver = mk(x=>{ x.strokeStyle = '#ffffff'; x.lineWidth = 12; [[30, 1], [64, 0.8], [98, 1]].forEach(([cx, s])=>{ x.beginPath(); x.moveTo(cx - 8, 40); x.lineTo(cx + 8, 56); x.lineTo(cx - 8, 72); x.lineTo(cx + 8, 88); x.stroke(); }); x.strokeStyle = '#4a7bd0'; x.lineWidth = 5; [[30, 1], [64, 0.8], [98, 1]].forEach(([cx])=>{ x.beginPath(); x.moveTo(cx - 8, 40); x.lineTo(cx + 8, 56); x.lineTo(cx - 8, 72); x.lineTo(cx + 8, 88); x.stroke(); }); });
+    EMO.bang = mk(x=>{ x.save(); x.translate(64, 64); x.fillStyle = '#fff6c8'; x.beginPath(); for(let i=0;i<16;i++){ const r = i % 2 ? 34 : 58, a = i/16*Math.PI*2; x.lineTo(Math.cos(a)*r, Math.sin(a)*r); } x.closePath(); x.fill(); x.strokeStyle = '#ffb02e'; x.lineWidth = 5; x.stroke();
+      x.fillStyle = '#e8541e'; x.beginPath(); x.roundRect ? x.roundRect(-8, -34, 16, 42, 7) : x.rect(-8, -34, 16, 42); x.fill(); x.beginPath(); x.arc(0, 22, 9, 0, Math.PI*2); x.fill(); x.restore(); });
+    EMO.dots = mk(x=>{ x.fillStyle = 'rgba(255,255,255,0.92)'; x.beginPath(); x.ellipse(64, 64, 58, 36, 0, 0, Math.PI*2); x.fill(); x.beginPath(); x.moveTo(40, 92); x.lineTo(30, 116); x.lineTo(58, 98); x.fill(); x.fillStyle = '#5a5f78'; [40, 64, 88].forEach(cx=>{ x.beginPath(); x.arc(cx, 64, 7, 0, Math.PI*2); x.fill(); }); });
+    EMO.heart = mk(x=>outline(x, ()=>{ x.beginPath(); x.moveTo(64, 104); x.bezierCurveTo(10, 66, 22, 18, 64, 42); x.bezierCurveTo(106, 18, 118, 66, 64, 104); }, '#ff7a9c'));
+    EMO.note = mk(x=>{ const d = (col, w)=>{ x.strokeStyle = col; x.fillStyle = col; x.lineWidth = w; x.beginPath(); x.ellipse(42, 92, 17, 13, -0.4, 0, Math.PI*2); x.fill(); x.stroke(); x.beginPath(); x.ellipse(92, 80, 17, 13, -0.4, 0, Math.PI*2); x.fill(); x.stroke();
+      x.lineWidth = w*0.6 + 4; x.beginPath(); x.moveTo(56, 88); x.lineTo(56, 26); x.lineTo(106, 14); x.lineTo(106, 76); x.stroke(); }; d('#ffffff', 10); d('#ffb02e', 3); });
+    EMO.spark = mk(x=>{ const star = (cx, cy, r, col)=>{ x.fillStyle = col; x.beginPath(); for(let i=0;i<8;i++){ const rr = i % 2 ? r*0.3 : r, a = i/8*Math.PI*2 - Math.PI/2; x.lineTo(cx + Math.cos(a)*rr, cy + Math.sin(a)*rr); } x.closePath(); x.fill(); };
+      star(56, 60, 46, '#ffffff'); star(56, 60, 38, '#ffd94a'); star(100, 26, 20, '#ffffff'); star(100, 26, 15, '#ffd94a'); star(104, 100, 14, '#ffffff'); star(104, 100, 10, '#ffd94a'); });
+  })();
   const mkChar = (key, h, a, o)=>{
     const loader = new T.TextureLoader(), t = loader.load(base + 'characters2/' + key + '.png'); t.encoding = T.sRGBEncoding; t.anisotropy = 4; disposables.push(t);
     const SX = 6, SY = 12, geo = new T.PlaneGeometry(h*a, h, SX, SY); geo.translate(0, h/2, 0);
-    const mat = new T.MeshBasicMaterial({map:t, transparent:true, alphaTest:0.25, side:T.DoubleSide, color:0xffffff}); disposables.push(mat, geo);
-    const mesh = new T.Mesh(geo, mat); mesh.renderOrder = 5;
-    const holder = new T.Group(); holder.userData.dynamic = true; holder.add(mesh); g.add(holder);
+    // 2枚の板：ふだんの絵（mesh）と左右反転した絵（meshM）。反転が必要なときだけ、重ねて入れ替える（板を細くして裏返す見え方にしない）
+    const mat = new T.MeshBasicMaterial({map:t, transparent:true, alphaTest:0.05, side:T.FrontSide, color:0xffffff, depthWrite:true}); disposables.push(mat, geo);
+    const matM = mat.clone(); matM.opacity = 0; disposables.push(matM);
+    const mesh = new T.Mesh(geo, mat), meshM = new T.Mesh(geo, matM); mesh.renderOrder = 5; meshM.renderOrder = 6; meshM.scale.x = -1; meshM.visible = false;
+    const holder = new T.Group(); holder.userData.dynamic = true; holder.add(mesh, meshM); g.add(holder);
     const sh = new T.Mesh(new T.PlaneGeometry(1, 1), new T.MeshBasicMaterial({map:shadowTex, transparent:true, depthWrite:false})); sh.rotation.x = -Math.PI/2; sh.scale.set(h*a*0.75, h*0.32, 1); holder.add(sh); disposables.push(sh.material);
     const rim = new T.Sprite(new T.SpriteMaterial({map:glowTexture, blending:T.AdditiveBlending, depthWrite:false, transparent:true, opacity:0.35})); rim.scale.set(h*1.3, h*1.3, 1); rim.position.y = h*0.5; holder.add(rim); disposables.push(rim.material);
+    // 記号（汗・ふるえ・！・…・ハート・音符・きらきら）
+    const emo = new T.Sprite(new T.SpriteMaterial({map:EMO.spark, transparent:true, depthWrite:false, depthTest:true, opacity:0})); emo.renderOrder = 9; emo.visible = false; holder.add(emo); disposables.push(emo.material);
     const basePos = Float32Array.from(geo.attributes.position.array);
-    const C = {key, h, a, mesh, holder, geo, basePos, sh, rim, pos:V3(0, 0, 0), face:o.face || 1, faceCur:o.face || 1, flipW:0, lean:0, bend:0, nod:0, squash:0, turn:0, bob:0};
+    const C = {key, h, a, mesh, meshM, holder, geo, basePos, sh, rim, emo, pos:V3(0, 0, 0), side:1, mir:0, lz:0, nod:0, squash:0, bob:0, sway:0,
+               emoKind:null, emoK:0, emoT:0, emoSide:1, tint:[1, 1, 1], glow:0, artFacesLeft:!!o.artFacesLeft};
     chars[key] = C; return C;
   };
-  const mock = mkChar('mock', 1.6, 270/382, {face:1});
-  const hal = mkChar('hal', 1.15, 273/302, {face:1});
-  // 絵の向き：ハルの絵は左向き（-x方向が顔）、モックは正面。face=+1 は「進む向き(+z)を見る」
-  hal.artFacesLeft = true; mock.artFacesLeft = false;
+  // 絵の向き：ハルの絵は左向き、モックは正面。ハルは観客側から見て「橋（+z）の方」を向く絵になる
+  const mock = mkChar('mock', 1.6, 270/382, {});
+  const hal = mkChar('hal', 1.15, 273/302, {artFacesLeft:true});
 
   /* ---- 演出の台本：A ためらい → B 気づき → C 一緒にいる（24秒でくり返す）
-     二人とも最初から最後まで、橋の手前の同じ岸にいる。橋を渡らせる場面は作らない。 ---- */
+     二人とも最初から最後まで、橋の手前の同じ岸にいる。橋を渡らせる場面は作らない。
+     気持ちは「動き（位置・距離・かたむき・はずみ・ふるえ）」と「舞台（橋の揺れ・風）」と「照明」で見せる。記号は小さく、短く、補助として使う。 ---- */
   const LOOP = 24;
   const P = {
-    halA:V3(BX + 0.2, 0, BZ0 - 0.14), halBack:V3(BX + 0.26, 0, BZ0 - 0.48),
-    mockA:V3(BX - 0.1, 0, BZ0 - 1.26), mockB:V3(BX - 0.02, 0, BZ0 - 1.08),
-    halC:V3(0.8, 0, -1.02), mockC:V3(0.72, 0, -2.08)   // 橋のたもとの、観客に近い川辺。橋のまん中は隠さない
+    halA:V3(BX + 0.2, 0, BZ0 - 0.14), halStep:V3(BX + 0.16, 0, BZ0 + 0.06),        // 橋のたもと → 片足を橋へ
+    // 二人は観客から見てほぼ同じ奥行き（x）に立ち、左右（z）の距離で気持ちの近さを見せる（反対側から見ても重なりにくい）
+    halBack:V3(BX + 0.3, 0, BZ0 - 0.46),                                          // 橋が大きく揺れて、二歩とびのく（片足の位置から約0.5m）
+    halNear:V3(BX + 0.3, 0, BZ0 - 0.5),                                           // B：最後に、モックの方へ自分から寄る
+    // モックは初め離れて立ち（二人の間 約1.1m）、Bで二段階に近づく（約0.8m → 約0.6m）。最後は寄りそう距離
+    mockA:V3(BX - 0.04, 0, BZ0 - 1.44), mockB1:V3(BX + 0.14, 0, BZ0 - 1.2), mockB2:V3(BX + 0.22, 0, BZ0 - 1.12),
+    halC:V3(0.8, 0, -1.02), mockC:V3(0.74, 0, -1.86)   // 橋のたもとの、観客に近い川辺。橋のまん中は隠さない
   };
   const ease = t=>t < 0.5 ? 2*t*t : 1 - Math.pow(-2*t + 2, 2)/2;
   const seg = (t, a, b)=>ease(clamp((t - a)/(b - a), 0, 1));
-  const story = {phase:'A', wind:0, glow:0.4, bloom:0};
+  const win = (t, a, b, f)=>clamp(Math.min((t - a)/f, (b - t)/f), 0, 1);           // a〜b の間だけ 1（前後 f 秒で出入り）
+  const pulse = (t, a, b)=>seg(t, a, (a + b)/2) - seg(t, (a + b)/2, b);              // a〜b で 0→1→0
+  const story = {phase:'A', wind:0, glow:0.4, bloom:0, fear:0, notice:0, shake:0, pair:0, pairPos:V3(0, 0, 0)};
+  function emote(C, kind, k, side){ if(k > 0.001){ C.emoKind = kind; C.emoK = Math.max(C.emoK, k); if(side) C.emoSide = side; } }
   function direct(time, forced){
     let t = time % LOOP; if(forced === 'A') t = 1.0 + (time % 7); else if(forced === 'B') t = 8 + (time % 6); else if(forced === 'C') t = 14 + (time % 7);
     story.phase = t < 8 ? 'A' : t < 14 ? 'B' : t < 21 ? 'C' : 'R';
-    mock.squash = 0;
-    // 風：Aで強まり、Bで弱まり、Cでおさまる
+    [hal, mock].forEach(C=>{ C.emoK = 0; C.emoKind = null; C.lz = 0; C.bob = 0; C.squash = 0; C.nod = 0; C.glow = 0; });
+    // 風：Aで強まり、Bで弱まり、Cでおさまる。橋の大揺れ（shake）は、ハルが片足をのせた瞬間の突風
     story.wind = sstep(0.8, 2.6, t)*(1 - sstep(8.5, 12.5, t)) * (0.75 + 0.25*Math.sin(t*2.3));
+    story.shake = sstep(3.7, 4.0, t)*(1 - sstep(5.6, 7.4, t));
     story.glow = 0.4 + 0.6*seg(t, 16.0, 18.0) - 0.6*seg(t, 21.5, 23.8);
     story.bloom = seg(t, 16.5, 19.0) - seg(t, 22.5, 23.9);
+    const fear = sstep(3.8, 4.2, t)*(1 - sstep(11.6, 13.0, t));                     // こわさ：橋の光が青白く暗くなる
+    story.fear = fear; story.notice = seg(t, 11.6, 12.4)*(1 - seg(t, 13.6, 14.6));  // 気づき：二人のまわりが温かくなる
     const toC = seg(t, 14.2, 16.6), back = seg(t, 21.2, 23.8);
-    // 位置
-    const hp = P.halA.clone().lerp(P.halBack, seg(t, 5.0, 6.2));            // A：こわくて一歩あとずさる（モックの方へ）
+
+    /* 位置 */
+    const hp = P.halA.clone()
+      .lerp(P.halStep, seg(t, 2.6, 3.5))                                            // 勇気を出して、片足を橋へ
+      .lerp(P.halA, seg(t, 4.0, 4.35))                                              // 橋が揺れて、とびのく（一歩目）
+      .lerp(P.halBack, seg(t, 4.7, 5.15))                                           // 二歩目
+      .lerp(P.halNear, seg(t, 12.0, 12.7));                                         // B：モックの方へ自分から寄る
     hp.lerp(P.halC, toC); hp.lerp(P.halA, back);
-    const mp = P.mockA.clone().lerp(P.mockB, seg(t, 8.2, 9.2));             // B：モックがハルのそばへ寄る
+    const mp = P.mockA.clone().lerp(P.mockB1, seg(t, 8.4, 9.4)).lerp(P.mockB2, seg(t, 10.6, 11.6));   // B：二段階で、ゆっくりハルに近づく
     mp.lerp(P.mockC, toC); mp.lerp(P.mockA, back);
     hal.pos.copy(hp); mock.pos.copy(mp);
-    // 向き：Aは橋（+z）を見る。Bでモックの方（-z）へふり返る。Cは川の方（+z）。もどる道は -z
-    hal.face = (t > 9.0 && t < 14.3) || (t > 21.2 && t < 23.8) ? -1 : 1;
-    mock.face = (t > 21.2 && t < 23.8) ? -1 : 1;
-    // A：モックは「約束したよね」と橋の方へ身を乗り出して、2回はずむ
-    const urge = seg(t, 1.4, 2.2)*(1 - seg(t, 4.0, 5.0));
-    mock.lean = urge*0.14 + (1 - seg(t, 4.0, 5.0))*0.0;
-    mock.bob = (t > 2.0 && t < 3.6) ? Math.abs(Math.sin((t - 2.0)*Math.PI/0.8))*0.05 : 0;
-    // A：ハルは橋をのぞき込み、こわくてふるえ、あとずさる
-    const peek = seg(t, 2.0, 3.0) - seg(t, 4.2, 5.0);
-    const fear = sstep(3.0, 4.0, t)*(1 - sstep(8.2, 9.5, t));
-    hal.lean = peek*0.24 - seg(t, 5.0, 5.6)*0.2 + seg(t, 5.6, 6.6)*0.14 - fear*0.04;
-    hal.squash = fear*0.045*Math.sin(t*38) + (seg(t, 5.0, 5.3) - seg(t, 5.3, 5.8))*0.12 + fear*0.03;
-    hal.bob = (seg(t, 5.0, 5.4) - seg(t, 5.4, 6.0))*0.1;
-    // B：モックがハルの方を向き、ハルが気持ちを伝え（2回はねる）、モックがうなずく
-    mock.turn = seg(t, 8.2, 9.0)*(1 - seg(t, 14.0, 14.6));
-    mock.lean += seg(t, 8.2, 9.0)*0.1*(1 - toC);
-    const tell = (t > 9.6 && t < 11.4) ? Math.abs(Math.sin((t - 9.6)*Math.PI/0.9)) : 0;
-    hal.bob += tell*0.08; hal.lean += (t > 9.6 && t < 11.6 ? 0.12 : 0)*(1 - seg(t, 11.4, 11.8));
-    const nodT = t - 11.6; mock.nod = (nodT > 0 && nodT < 2.0) ? Math.max(0, Math.sin(nodT*Math.PI*2/1.0))*0.9 : 0;
-    hal.squash -= seg(t, 12.6, 13.4)*(1 - toC)*0.02;                       // ほっとして、少し背がのびる
-    // 歩くときのはずみ
+
+    /* A ためらい（0〜8秒）：橋の揺れと、ハルのあとずさりが主役 */
+    // モック：「行こう」と橋の方へ身を乗り出し、2回はずむ
+    const urge = seg(t, 1.2, 2.0)*(1 - seg(t, 3.9, 4.6));
+    mock.lz += urge*0.15; mock.bob += (t > 1.6 && t < 3.2) ? Math.abs(Math.sin((t - 1.6)*Math.PI/0.8))*0.05 : 0;
+    mock.lz -= pulse(t, 3.9, 4.8)*0.06;                                              // 橋が揺れて、モックも思わず身を引く
+    // ハル：橋をじっと見る → そっと片足 → 突風で橋が大きく揺れる → 二歩とびのき、身をすくめてふるえる
+    hal.lz += seg(t, 1.6, 2.6)*0.12*(1 - seg(t, 3.9, 4.1));                          // のぞき込む
+    hal.lz += seg(t, 2.6, 3.5)*0.08*(1 - seg(t, 3.9, 4.1));                          // 片足をのせて、前のめり
+    hal.bob += pulse(t, 4.0, 4.4)*0.2 + pulse(t, 4.7, 5.15)*0.12;                    // 大きく一回、小さく一回とびのく
+    hal.lz -= seg(t, 3.95, 4.15)*0.26*(1 - seg(t, 5.4, 6.6)*0.6);                    // 体ごと橋からのけぞる
+    hal.squash += fear*(0.04*Math.sin(t*40)*(1 - sstep(7.0, 9.0, t)*0.6) + 0.07*(1 - seg(t, 12.4, 13.2)));   // 小さく丸まって、ふるえる
+    emote(hal, 'sweat', win(t, 4.3, 6.2, 0.25)*0.85, -1);
+
+    /* B 気づき（8〜14秒）：二人の距離が縮まっていく */
+    // モックは橋から目を離し、ハルの方へ体を向けて（かたむき）、二段階でゆっくり近づく
+    mock.lz += seg(t, 8.0, 8.6)*0.08*(1 - toC);                                     // ハルのいる側（+z）へ体を向ける
+    // 立ち止まって、ハルの様子を見る（1回目の接近のあと）→ もう一歩
+    // ハル：最初は丸まったまま。モックが近づくと、少しずつ体を起こし、モックの方へかたむく
+    hal.lz -= seg(t, 9.4, 10.4)*0.1*(1 - toC);                                      // モックの方（-z）へ、そっと体を向ける
+    hal.squash -= seg(t, 9.6, 10.6)*0.025*(1 - toC);
+    // モックがすぐそばで、ゆっくり身をかがめて（うなずき）「こわかったね」
+    const nodT = t - 11.8; mock.nod = (nodT > 0 && nodT < 1.8) ? Math.max(0, Math.sin(nodT*Math.PI*2/0.9))*0.85 : 0;
+    mock.squash += win(t, 11.7, 13.4, 0.4)*0.04;                                     // 目線を合わせるように、少し低く
+    emote(mock, 'bang', win(t, 11.55, 12.05, 0.1)*0.7, 1);                           // 気づきの「！」は小さく一瞬だけ
+    // ハル：自分からモックへ寄り、うれしくて小さく2回はねる。背がのびる
+    hal.lz -= seg(t, 12.0, 12.6)*0.06*(1 - toC);
+    hal.bob += (t > 12.7 && t < 13.7) ? Math.abs(Math.sin((t - 12.7)*Math.PI/0.5))*0.06 : 0;
+    hal.squash -= seg(t, 12.7, 13.2)*0.03*(1 - toC);
+    mock.glow = story.notice*0.7; hal.glow = story.notice*0.5;
+
+    /* C 一緒にいる（14〜21秒）：川辺に並び、観客の方を向いたまま、息を合わせてはずむ */
     const walking = (t > 14.2 && t < 16.6) || (t > 21.2 && t < 23.8);
     const wk = walking ? Math.abs(Math.sin(t*9)) : 0;
-    hal.bob += wk*0.05; mock.bob += wk*0.04 + ((t > 8.2 && t < 9.2) ? Math.abs(Math.sin(t*9))*0.03 : 0);
-    // C：同じ岸に並んで、いっしょに笑う（息の合ったはずみ）。モックはハルの方へ体を寄せる
-    const joy = sstep(17.6, 18.2, t)*(1 - sstep(20.6, 21.2, t));
-    const jb = joy*Math.abs(Math.sin((t - 17.6)*Math.PI/0.55));
-    hal.bob += jb*0.09; mock.bob += jb*0.06; hal.squash += joy*0.04*Math.cos((t - 17.6)*Math.PI/0.55*2);
-    hal.lean += joy*0.06; mock.lean += toC*(1 - back)*0.08 + joy*0.04;
+    hal.bob += wk*0.05; mock.bob += wk*0.04 + ((t > 8.4 && t < 9.4) || (t > 10.6 && t < 11.6) ? Math.abs(Math.sin(t*7))*0.03 : 0);
+    const joy = sstep(17.4, 18.0, t)*(1 - sstep(20.6, 21.2, t));
+    const jb = joy*Math.abs(Math.sin((t - 17.4)*Math.PI/0.55));
+    hal.bob += jb*0.09; mock.bob += jb*0.06; hal.squash += joy*0.035*Math.cos((t - 17.4)*Math.PI/0.55*2);
+    const close = toC*(1 - back);
+    hal.lz -= close*0.07; mock.lz += close*0.09;                                     // 二人とも相手の方へ寄りかかる
+    emote(hal, 'heart', win(t, 18.2, 19.8, 0.3)*0.75, 1);
+    hal.glow = Math.max(hal.glow, joy*0.6); mock.glow = Math.max(mock.glow, joy*0.6);
+    // 二人の足もとの温かい光：距離が縮まるほど大きく明るく（B〜C）
+    const gap = Math.hypot(hal.pos.x - mock.pos.x, hal.pos.z - mock.pos.z);
+    story.pair = clamp((1.1 - gap)/0.7, 0, 1)*Math.max(story.notice, close)*(1 - back*0.8);
+    story.pairPos.set((hal.pos.x + mock.pos.x)/2, 0, (hal.pos.z + mock.pos.z)/2);
+    // 色味：こわい場面のハルは少し青白く、Cでは二人とも温かく
+    const warm = joy*0.06 + story.notice*0.05;
+    hal.tint = [1 - fear*0.12 + warm, 1 - fear*0.05 + warm*0.6, 1 + fear*0.02];
+    mock.tint = [1 + warm, 1 + warm*0.7, 1 - story.notice*0.03];
     // 待機中の呼吸と、木の体のモックが風にそよぐ動き
     hal.squash += Math.sin(time*2.3)*0.012; mock.squash += Math.sin(time*1.9 + 1)*0.01;
-    mock.sway = Math.sin(time*2.6)*story.wind*0.05 + Math.sin(time*1.1)*0.01;
+    mock.sway = Math.sin(time*2.6)*story.wind*0.05 + Math.sin(time*1.1)*0.01 + story.shake*Math.sin(time*7)*0.03;
     hal.sway = 0;
+    [hal, mock].forEach(C=>{ C.emoT = t; });
     return t;
   }
 
@@ -957,40 +1023,55 @@ function createForestBridgeFloat(opts){
   function poseChar(C, cam, dt){
     const y = surfaceY(C.pos.x, C.pos.z) + 0.005;
     C.holder.position.set(C.pos.x, y, C.pos.z);
-    // カメラの方へ板を向ける（縦軸だけ回す）。板の +x が画面の右になる
-    let sideSign = 1;   // +1：フロートの進む向き(+z)が画面の左に見えている（観客の側から見ている）
+    // 板をカメラの方へ向ける（縦軸だけ回す）。板の +x が画面の右になる
+    let rx = 1, rz = 0;
     if(cam){
       g.updateMatrixWorld(); _inv.copy(g.matrixWorld).invert();
       cam.getWorldPosition(wv); camLocal.copy(wv).applyMatrix4(_inv);
-      const dx = camLocal.x - C.pos.x, dz = camLocal.z - C.pos.z;
-      C.mesh.rotation.y = Math.atan2(dx, dz);
-      sideSign = dx >= 0 ? 1 : -1;
+      const dx = camLocal.x - C.pos.x, dz = camLocal.z - C.pos.z, L = Math.hypot(dx, dz) || 1;
+      const ry = Math.atan2(dx, dz); C.mesh.rotation.y = C.meshM.rotation.y = ry;
+      rx = dz/L; rz = -dx/L;                                                     // 画面の右向き（フロートの座標）
+      // 観客がどちら側にいるか：+1 なら、橋（+z）が画面の左に見える。境目で行ったり来たりしないよう余裕を持たせる
+      const s = -rz;                                                             // 画面の右が -z なら +1
+      if(s > 0.25) C.side = 1; else if(s < -0.25) C.side = -1;
     }
-    C.faceCur += (C.face - C.faceCur)*Math.min(1, dt*8);
-    let sx, leanDir;
-    if(C.artFacesLeft){
-      // ハル：絵は左向き。見たい向きが画面の左なら、そのまま。右なら左右反転（くるっと回るときは横幅が細くなる）
-      const wantLeft = C.faceCur*sideSign;
-      sx = (wantLeft >= 0 ? 1 : -1)*Math.max(0.12, Math.abs(wantLeft));
-      leanDir = -1;                                   // 絵の中の「前」は左
-    } else {
-      // モック：正面の絵。ハルの方へ体をかたむける（向きを変えた感じは、横幅を少し細くして出す）
-      const toHal = Math.sign(hal.pos.z - C.pos.z) || 1;
-      leanDir = -sideSign*toHal;
-      sx = 1 - C.turn*0.1;
-    }
-    C.mesh.scale.set(sx, 1, 1);
+    // ハルだけ：反対側から見たときは左右反転して、橋の方を向いたままにする。入れ替えは 0.3 秒の重ね合わせ
+    const want = C.artFacesLeft && C.side < 0 ? 1 : 0;
+    C.mir += clamp(want - C.mir, -dt/0.3, dt/0.3);
+    const m = C.mir;
+    C.mesh.material.opacity = clamp(1 - m, 0, 1); C.meshM.material.opacity = clamp(m, 0, 1);
+    C.mesh.visible = m < 0.999; C.meshM.visible = m > 0.001;
+    C.meshM.position.set(rz*0.0, 0, 0);
+    // 変形：+z 方向へのかたむき lz を、画面の左右に直す（+z が画面の左なら、左へかたむく）
+    const zScreen = -C.side;                                                     // +z は画面の左(-1)／右(+1)
     const p = C.geo.attributes.position, b = C.basePos, h = C.h, w = C.h*C.a, sq = 1 + C.squash;
+    // 反転して見せている板は x が逆になるので、かたむきの向きも逆にする（重ね合わせ中は、多く見えている方に合わせる）
+    const flip = m > 0.5 ? -1 : 1;
+    const leanX = C.lz*zScreen*flip, swayX = (C.sway || 0)*(-zScreen)*flip;     // sway は風（-z へ）
     for(let i=0;i<p.count;i++){
       const x0 = b[i*3], y0 = b[i*3+1], v = y0/h;
       let x = x0 + x0*(sq - 1)*0.6, yy = y0/sq;
-      x += leanDir*C.lean*h*v*v + (C.sway || 0)*h*v*v*sideSign;   // 上ほど大きくかたむく。sway は風（-z へ）
-      if(C.nod > 0 && v > 0.45){ const k = (v - 0.45)/0.55; yy -= C.nod*k*k*h*0.07; x += leanDir*C.nod*k*k*h*0.04; }
+      x += (leanX + swayX)*h*v*v;
+      if(C.nod > 0 && v > 0.45){ const k = (v - 0.45)/0.55; yy -= C.nod*k*k*h*0.07; x += Math.sign(leanX || 1)*C.nod*k*k*h*0.03; }
       p.setXY(i, x, yy);
     }
     p.needsUpdate = true;
-    C.mesh.position.y = C.bob*h;
+    C.mesh.position.y = C.meshM.position.y = C.bob*h;
     const sk = 1 - C.bob*1.5; C.sh.scale.set(w*0.8*sk, h*0.3*sk, 1);
+    // 記号：頭の上、絵の前の側（ハル）／体を寄せる側（モック）。ぽんと出て、ゆれながら消える
+    const e = C.emo;
+    if(C.emoKind && C.emoK > 0.01){
+      if(e.material.map !== EMO[C.emoKind]){ e.material.map = EMO[C.emoKind]; e.material.needsUpdate = true; }
+      const k = C.emoK, pop = 1 + 0.25*Math.max(0, 1 - k*3)*0 + 0.12*Math.sin(Math.min(1, k)*Math.PI);
+      // 画面の左右のどちら寄りに出すか：emoSide=-1 は絵の前の側、+1 は相手（もう一人）の側
+      const toOther = (C.artFacesLeft ? -1 : 1)*zScreen;                       // ハルから見てモックは -z、モックから見てハルは +z
+      const sideScreen = C.artFacesLeft ? (C.emoSide < 0 ? (m > 0.5 ? 1 : -1) : toOther)*0.55 : toOther*0.45;
+      const lift = C.emoKind === 'note' || C.emoKind === 'heart' ? (C.emoT*0.35 % 1)*0.12 : 0;
+      const shake = C.emoKind === 'shiver' ? Math.sin(C.emoT*40)*0.01 : 0;
+      const sz = h*(C.emoKind === 'bang' ? 0.22 : 0.17)*pop*(0.6 + 0.4*k);   // 記号は補助：小さめ
+      e.position.set((rx*sideScreen*w*0.62) + rx*shake, h*(1.0 + lift) + C.bob*h, (rz*sideScreen*w*0.62) + rz*shake);
+      e.scale.set(sz, sz, 1); e.material.opacity = Math.min(0.9, k); e.visible = true;
+    } else { e.visible = false; }
   }
 
   /* ---- まとめ：動かない部品を1つにまとめる ---- */
@@ -1012,11 +1093,13 @@ function createForestBridgeFloat(opts){
       const w = story.wind, k = story.glow, cam = opts.camera || global.camera;
       // 橋：風で左右にゆれ、板が波打つ
       // 橋：いつもわずかに、風が吹くと目に見えて揺れる（危険に見えるほどは揺らさない）
-      bridge.rotation.z = Math.sin(t*1.9)*0.005 + Math.sin(t*3.1)*w*0.02;
-      bridge.rotation.x = Math.sin(t*1.3)*w*0.004;
-      plankU.uTime.value = t; plankU.uWind.value = 0.15 + w;
-      ropes.forEach(r=>{ r.rg.quaternion.setFromAxisAngle(r.axis, Math.sin(t*2.6 + r.ph)*(0.08 + w*0.42)); });
-      bridgePool.material.opacity = (0.28 + k*0.3)*(night ? 1 : 0);
+      const sk = story.shake;
+      bridge.rotation.z = Math.sin(t*1.9)*0.005 + Math.sin(t*3.1)*w*0.02 + Math.sin(t*6.3)*sk*0.035;   // 突風：橋が大きく左右に揺れる（こわさ）。壊れそうには見せない
+      bridge.rotation.x = Math.sin(t*1.3)*w*0.004 + Math.sin(t*4.7)*sk*0.008;
+      plankU.uTime.value = t; plankU.uWind.value = 0.15 + w + sk*1.4;
+      ropes.forEach(r=>{ r.rg.quaternion.setFromAxisAngle(r.axis, Math.sin(t*2.6 + r.ph)*(0.08 + w*0.42) + Math.sin(t*5.2 + r.ph)*sk*0.5); });
+      bridgePool.material.opacity = (0.28 + k*0.3)*(night ? 1 : 0)*(1 - story.fear*0.5);
+      pairPool.position.set(story.pairPos.x, surfaceY(story.pairPos.x, story.pairPos.z) + 0.012, story.pairPos.z); pairPool.material.opacity = story.pair*(night ? 0.55 : 0.25); pairPool.scale.set(0.9 + story.pair*0.6, 1.2 + story.pair*0.9, 1);
       // 木：茂みがゆれる
       canopies.forEach(c=>{ c.cg.rotation.z = Math.sin(t*1.1 + c.ph)*0.015 + Math.sin(t*2.6 + c.ph)*w*0.05; c.cg.rotation.x = Math.sin(t*0.9 + c.ph)*0.01 + w*0.03; });
       treeLans.forEach((L, i)=>{ L.rotation.z = Math.sin(t*1.7 + i)*0.05 + Math.sin(t*3.1 + i)*w*0.18; });
@@ -1024,7 +1107,9 @@ function createForestBridgeFloat(opts){
       const flick = 0.92 + 0.08*Math.sin(t*13) * Math.sin(t*7.3);
       glassMats.forEach(m=>{ m.emissiveIntensity = (0.5 + k*1.9)*flick*(night ? 1 : 0.35); });
       glows.forEach(o=>{ const s = o.base*(0.55 + k*0.75*o.k)*(night ? 1 : 0.4); o.s.scale.set(s, s, 1); o.s.material.opacity = night ? 0.9 : 0.4; });
-      lights.forEach(o=>{ o.l.intensity = o.base*(0.35 + k*1.1)*flick*(night ? 1 : 0.2); });
+      const fe = story.fear, no = story.notice, shk = story.shake*(0.5 + 0.5*Math.sin(t*23)*Math.sin(t*9));
+      lights.forEach((o, i)=>{ o.l.intensity = o.base*(0.35 + k*1.1)*flick*(night ? 1 : 0.2)*(1 - fe*0.45*(i === 0 ? 1 : 0.5) - shk*0.35*(i === 0 ? 1 : 0) + no*0.9*(i === 1 ? 1 : 0));
+        if(i === 0) o.l.color.setRGB(1 - fe*0.4, 0.72 + fe*0.08, 0.41 + fe*0.5); else o.l.color.setRGB(1, 0.78 + no*0.1, 0.47 - no*0.05); });
       water.uni.uTime.value = t; water.uni.uGlow.value = k;
       // 向こう岸の花がひらく
       if(bloom.length){
@@ -1039,8 +1124,8 @@ function createForestBridgeFloat(opts){
       // 住人
       poseChar(hal, cam, dt); poseChar(mock, cam, dt);
       const tint = night ? 0.8 + k*0.18 : 1;
-      hal.mesh.material.color.setRGB(tint, tint*0.97, tint*0.92); mock.mesh.material.color.setRGB(tint, tint*0.97, tint*0.92);
-      hal.rim.material.opacity = mock.rim.material.opacity = night ? 0.18 + k*0.3 : 0;
+      [hal, mock].forEach(C=>{ const c = C.tint; [C.mesh, C.meshM].forEach(ms=>ms.material.color.setRGB(Math.min(1.15, tint*c[0]), Math.min(1.15, tint*0.97*c[1]), Math.min(1.15, tint*0.92*c[2])));
+        C.rim.material.opacity = night ? 0.18 + k*0.3 + C.glow*0.45 : C.glow*0.25; C.rim.material.color.setRGB(1, 0.92 + 0.08*(1 - C.glow), 0.8 + 0.2*(1 - C.glow)); });
       if(cheer > 0){ hal.mesh.position.y += Math.sin(cheer*Math.PI)*0.15; mock.mesh.position.y += Math.sin(cheer*Math.PI)*0.12; }
       return tt;
     },

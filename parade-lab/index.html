@@ -398,7 +398,7 @@ function loop(){
     if(gotOri && ori){ oriToQuat(targetQ); camera.quaternion.slerp(targetQ, 0.35); } else camera.rotation.set(pitch, yaw, 0, 'YXZ');
     updateMarch(t);
   }
-  if(F){ F.update(t, dt, 0); showPhase(F.story.phase); }
+  if(F){ F.update(window.__tFix != null ? window.__tFix : t, dt, 0); showPhase(F.story.phase); }   // __tFix：確認用に物語の時刻を止める
   renderer.render(scene, camera);
   // fps
   stats.frames++; stats.acc += raw; stats.worst = Math.max(stats.worst, raw*1000);
@@ -412,6 +412,7 @@ requestAnimationFrame(()=>{
   if(PUBLIC || window.innerHeight < 560 || params.get('dev') === '0') setDev(false);
   resize(); setView(params.get('view') || 'side'); orbit.yaw = orbit.tYaw; orbit.pitch = orbit.tPitch; orbit.dist = orbit.tDist; orbit.c.copy(orbit.tc); orbit.off = {...orbit.toff};
   if(params.get('act')){ act = params.get('act'); F.setScene(act); document.querySelectorAll('[data-act]').forEach(x=>x.setAttribute('aria-pressed', x.dataset.act === act)); }
+  if(params.get('t')) window.__tFix = +params.get('t');
   if(params.get('perf')){ $('perf').hidden = false; $('btnPerf').setAttribute('aria-pressed', 'true'); }
   if(params.get('night') === '0'){ night = false; $('btnNight').setAttribute('aria-pressed', 'false'); applyLight(); }
   setSpeed(march.speed);
