@@ -1947,7 +1947,12 @@ function createParade(variant){
       floats.push({name, at:U.u.back, pass});
       if(U.u.minView && pass < U.u.minView) warn.push(name + 'が画面を通る時間は約' + pass.toFixed(1) + '秒で、演出（' + U.u.minView + '秒）より短くなります（画面の向き：' + (camera.aspect < 1 ? '縦' : '横') + '）');
     });
-    return {theme:THEME, el:state.el, song:state.song, measured:!!(_tSpan[THEME] && !THEMES[THEME].loop), speed:v, cycle:state.cycle, total, width:2*H, floats, warn};
+    const sp = _tSpan[THEME];
+    if(sp){
+      if(Math.abs(sp.file - state.song) > 1) warn.push('曲のファイル全体は' + sp.file.toFixed(1) + '秒ですが、パレード1周は' + state.song.toFixed(1) + '秒で計算しています（頭の無音' + sp.head.toFixed(1) + '秒・最後の無音' + sp.tail.toFixed(1) + '秒を除外）');
+      if(sp.gap >= 2) warn.push('曲の途中に約' + sp.gap.toFixed(1) + '秒の無音があります（パレードは無音のあいだも進みます）');
+    }
+    return {theme:THEME, el:state.el, span:sp || null, song:state.song, measured:!!(_tSpan[THEME] && !THEMES[THEME].loop), speed:v, cycle:state.cycle, total, width:2*H, floats, warn};
   }
   function checkTiming(){
     const r = timingReport();
@@ -2101,16 +2106,20 @@ function playStep(i, time){
 const THEMES = {parade:{url:'music/parade.mp3', fallback:152}, xmas:{url:'music/xmas.mp3?v=2', fallback:68*4*60/132}};
 let themeName = 'parade', themeBytes = null, themeBuf = null, themeSrc = null, wantTheme = false;
 const _tBytes = {}, _tBuf = {}, _tSpan = {};
-// 曲の音のある範囲を測る：{ls:音の始まり(秒), len:ループの長さ(秒)}
+// 曲の音のある範囲を測る：{ls:音の始まり(秒), len:ループの長さ(秒), file:ファイル全体の長さ, head/tail:頭と最後の無音, gap:途中のいちばん長い無音}
+// 頭の無音は1秒まで、最後の無音は3秒までを除く（それより長い無音は曲の一部として残す）
 function measureSpan(buf){
   const d = buf.getChannelData(0), sr = buf.sampleRate, TH = 1e-3;
-  let a = 0; const lim = Math.min(d.length, sr);   // 頭の無音は1秒まで
+  let a = 0; const lim = Math.min(d.length, sr);
   while(a < lim && Math.abs(d[a]) < TH) a++;
   if(a >= lim) a = 0;
-  let b = d.length - 1; const lim2 = Math.max(a, d.length - sr*3);   // 最後の無音は3秒まで
+  let b = d.length - 1; const lim2 = Math.max(a, d.length - sr*3);
   while(b > lim2 && Math.abs(d[b]) < TH) b--;
   if(b <= lim2) b = d.length - 1;
-  return {ls:a/sr, len:(b + 1 - a)/sr};
+  // 途中の無音（0.1秒ごとに、音の大きさがしきい値未満の区間が続く長さ）
+  let gap = 0, run = 0; const W = Math.round(sr*0.1);
+  for(let i=a;i<=b;i+=W){ let m = 0; for(let j=i;j<Math.min(i+W, b+1);j+=4){ const v = Math.abs(d[j]); if(v > m) m = v; } if(m < TH){ run += W/sr; if(run > gap) gap = run; } else run = 0; }
+  return {ls:a/sr, len:(b + 1 - a)/sr, file:buf.duration, head:a/sr, tail:(d.length - 1 - b)/sr, gap};
 }
 // 1曲（パレード1周）の長さ。測れていればその値、まだなら手で書いた loop、なければ fallback
 function songLength(k){ const T = THEMES[k]; return T.loop || (_tSpan[k] && _tSpan[k].len) || T.fallback; }
@@ -3830,7 +3839,8 @@ function showTiming(r){
   if(!el){ el = document.createElement('pre'); el.id = 'timingCheck';
     el.style.cssText = 'position:fixed;left:8px;top:56px;z-index:50;max-width:min(92vw,520px);max-height:60vh;overflow:auto;margin:0;padding:8px 10px;font:11px/1.45 ui-monospace,monospace;color:#fff;background:rgba(10,12,30,.82);border-radius:8px;white-space:pre-wrap;pointer-events:none';
     document.body.appendChild(el); }
-  el.textContent = '曲：' + r.theme + '  長さ ' + r.song.toFixed(2) + '秒（' + (r.measured ? '音声ファイルから測定' : '測定前・代わりの値') + '）\n'
+  el.textContent = '曲：' + r.theme + '  パレード1周 ' + r.song.toFixed(2) + '秒（' + (r.measured ? '音声ファイルから測定' : '測定前・代わりの値') + '）\n'
+    + (r.span ? '  ファイル全体 ' + r.span.file.toFixed(2) + '秒／音のある長さ ' + r.span.len.toFixed(2) + '秒（頭の無音 ' + r.span.head.toFixed(2) + '・最後の無音 ' + r.span.tail.toFixed(2) + '・途中の最長の無音 ' + r.span.gap.toFixed(1) + '秒）\n' : '')
     + '行列 ' + r.total.toFixed(1) + 'm／1周 ' + r.cycle.toFixed(1) + 'm／速さ ' + r.speed.toFixed(3) + ' m/秒／画面の幅 ' + r.width.toFixed(1) + 'm\n'
     + (r.warn.length ? '⚠ ' + r.warn.join('\n⚠ ') : '警告なし') + '\n'
     + r.floats.map(f=>'  ' + f.at.toFixed(1) + 'm  ' + f.name + '  通過 ' + f.pass.toFixed(1) + '秒').join('\n');
