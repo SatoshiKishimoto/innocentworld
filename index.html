@@ -1510,7 +1510,7 @@ const CHARS = {   // a＝絵の横÷縦（characters2/*.png）
   hal:{h:1.6, a:0.904}, arika:{h:1.55, a:0.725, fly:true}, nuru:{h:1.4, a:0.7, fly:true}, mock:{h:1.9, a:0.707}, jiiji:{h:1.75, a:0.797}
 };
 // 住人の絵：characters3 の標準素材（表示用に高さ1024pxへ縮小した characters3/display/）。上下左右に高さの8%の透明な余白があり、足もとは下の余白の線。
-// a＝画像全体の横÷縦。ハルは、動いているあいだは走る姿（run）、止まっているときは立つ姿。
+// a＝画像全体の横÷縦。ハルは、山車の上では立つ姿。自分で動く場面では、動いているあいだ走る姿（run）、止まっているときは立つ姿。
 // ?chars=old で、これまでの絵（characters2/）に戻して表示できる（素材の切りもどし用）
 const CHAR_ART = (()=>{ try{ return new URLSearchParams(location.search).get('chars') === 'old' ? 'old' : 'new'; }catch(e){ return 'new'; } })();
 const CHAR_MARGIN = 0.08;
@@ -1541,7 +1541,9 @@ function character(k, o){
   glowSprite(g, 'rgba(255,240,210,.28)', info.h*1.7, [0, baseY + info.h*0.5, -0.05]);
   if(!o.noShadow && !(o.y > 0.5)) blobShadow(g, info.h*0.7, info.h*0.5);
   const C = {g, sp, k, info, baseY, phase:Math.random()*6, trail:!!o.trail, onFloat:!!o.onFloat, sw, sh, art:N3 ? 'new' : 'old'};
-  if(N3 && N3.run){   // ハル：立つ姿と走る姿。同じ板のまま絵を入れかえ、横幅だけ合わせる
+  // ハル：自分で動く場面では、立つ姿と走る姿を動きで切りかえる（同じ板のまま絵を入れかえ、横幅だけ合わせる）。
+  // 山車に乗っているあいだは、山車が動いているだけなので立つ姿のまま
+  if(N3 && N3.run && !o.onFloat){
     C.pose = {stand:{map:sp.material.map, sw}, run:{map:charTex('characters3/display/' + N3.run.f + '.png'), sw:sh*N3.run.a}, running:false, hold:0, last:null};
   }
   return C;
