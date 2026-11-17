@@ -1929,7 +1929,7 @@ function createParade(variant){
       floats.push({name, at:U.u.back, pass});
       if(U.u.minView && pass < U.u.minView) warn.push(name + 'が画面を通る時間は約' + pass.toFixed(1) + '秒で、演出（' + U.u.minView + '秒）より短くなります（画面の向き：' + (camera.aspect < 1 ? '縦' : '横') + '）');
     });
-    return {theme:THEME, song:state.song, measured:!!(_tSpan[THEME] && !THEMES[THEME].loop), speed:v, cycle:state.cycle, total, width:2*H, floats, warn};
+    return {theme:THEME, el:state.el, song:state.song, measured:!!(_tSpan[THEME] && !THEMES[THEME].loop), speed:v, cycle:state.cycle, total, width:2*H, floats, warn};
   }
   function checkTiming(){
     const r = timingReport();
@@ -1990,6 +1990,7 @@ function createParade(variant){
       checkTiming();
     },
     visible(){ return root.visible; },
+    elapsed(){ return state.el; },
     timing(){ return timingReport(); },
     hide(){ root.visible = false; Object.values(flyers).forEach(c=>{ c.root.visible = false; }); if(XMAS) xmasSky.show(false); },
     tap(){
@@ -2117,9 +2118,11 @@ function playTheme(){
     // MP3 は頭に無音が入ることがあるので、音の始まりから、ちょうど1曲分（songLength）でループさせる
     const sp = _tSpan[themeName] || measureSpan(buf), ls = sp.ls, LOOP_SEC = songLength(themeName);
     if(ls + LOOP_SEC <= buf.duration + 0.01){ themeSrc.loopStart = ls; themeSrc.loopEnd = Math.min(buf.duration, ls + LOOP_SEC); }
-    themeSrc.connect(Music.gain); themeSrc.start(0, ls);
+    // 曲の読み込みが遅れて、パレードが先に（簡易BGMで）進んでいたときは、パレードの今の位置から曲を始める（パレードを巻き戻さない）
+    const P = typeof PARADES !== 'undefined' && PARADES[themeName], ahead = P && P.visible() ? P.elapsed() : 0;
+    themeSrc.connect(Music.gain); themeSrc.start(0, ls + (ahead % LOOP_SEC));
     // パレードは、この時刻からの曲の経過時間（audio.currentTime − startAt）に合わせて進む
-    Music.startAt = audio.currentTime; Music.theme = themeName;
+    Music.startAt = audio.currentTime - ahead; Music.theme = themeName;
   });
 }
 function restartTheme(){
