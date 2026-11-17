@@ -370,6 +370,7 @@ html,body{margin:0;height:100%;background:#0d1030;color:var(--ink);font-family:v
 </section>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="floats/forest-bridge-float.js"></script>
 <script>
 /* ===== 設定：イベントに合わせてここを書き換えてください ===== */
 const CONFIG = {
@@ -1680,6 +1681,19 @@ function libraryFloat(){
   W.update = (t)=>{ fly.forEach(o=>{ const a = t*0.9 + o.ph; o.b.position.set(0.2 + Math.cos(a)*0.4, 3.5 + Math.sin(t*1.7 + o.ph)*0.25, Math.sin(a)*1.4); o.b.children[0].rotation.x = 0.5 + Math.sin(t*8 + o.ph)*0.4; o.b.children[1].rotation.x = -0.5 - Math.sin(t*8 + o.ph)*0.4; }); };
   return W;
 }
+// 森の古い橋（floats/forest-bridge-float.js）：ハルとモックの24秒の物語をのせた山車。
+// 山車はほかと同じ速さで進み、物語は「二人が画面に入ったとき」から始まる（物語の時刻は行進の位置から決める）
+function forestBridgeFloat(){
+  if(!window.IWForestBridge) return null;
+  const F = IWForestBridge.create({renderer, camera, base:'', quality:'high', night:true, chars:CHAR_ART,
+                                   charDir:'characters3/display/', oldHal:'floats/assets/hal_full.png'});
+  lightPool(F.g, 5.4, 9.0, 'rgba(255,220,120,.5)');   // ほかの山車と同じ、足もとの温かい光
+  // 物語の基準点：二人が立つ場所（フロートの座標で、中心より後ろ）。ここが画面の右端から少し入ったときに物語の0秒
+  F.storyZ = (F.focus.stage.min.z + F.focus.stage.max.z)/2;
+  F.storyIn = 0.8;
+  F.g.userData.float = F;   // 点検用（物語の場面を調べる）
+  return F;
+}
 function clockFloat(){
   const W = wagon(3.8, 2.2, 0x10a040, 0xffe000), g = W.g, pts = W.pts;
   add(g, BOXG, mat(0xfff1d6, 0.2), [1.0, 2.5, 1.0], [0, 2.15, 0]);
@@ -1885,6 +1899,9 @@ function createParade(variant){
   row(3.8, {float:forestFloat, riders:[{k:'mock', at:[0.95,0.9,-0.3]}]});
   row(4.2, {float:clockFloat});
   // 第3幕：やさしさがつながるフィナーレ
+  // 森の古い橋：ハルとモックの物語（24秒）。長さ約6.2mの大きな山車なので、前後に少し広く間をあける
+  row(6.8, {float:forestBridgeFloat, title:'森の古い橋', minView:24});
+  row(1.6);
   row(4.0, ...pair(DRUM)); row(1.3, ...pair(DRUM));
   row(3.6, {float:swanFloat, riders:[{k:'arika', at:[0.85,1.25,1.5]}]});
   row(4.4, {float:libraryFloat, riders:[{k:'jiiji', at:[0.8,0.9,0.4]}]});
@@ -1904,8 +1921,9 @@ function createParade(variant){
     if(u.fly) return;
     const wrap = new THREE.Group(); root.add(wrap);
     if(u.float){
-      const F = u.float(); wrap.add(F.g); const bl0 = F.pts.length ? bulbs(F.g, F.pts, F.ptsOpt) : ()=>{};
-      const bl1 = lightUp(F); const bl = (t, f)=>{ bl0(t, f); bl1(t, f); };
+      const F = u.float(); if(!F){ root.remove(wrap); return; }
+      wrap.add(F.g); const bl0 = F.pts.length ? bulbs(F.g, F.pts, F.ptsOpt) : ()=>{};
+      const bl1 = F.noLightUp ? ()=>{} : lightUp(F); const bl = (t, f)=>{ bl0(t, f); bl1(t, f); };
       const chars = [];
       if(u.riders){   // 住人が乗るときは、もとの乗り手と入れかえる
         F.people.forEach(p=>F.g.remove(p.g)); F.people.length = 0;
@@ -2026,7 +2044,10 @@ function createParade(variant){
         if(U.F){
           U.F.wheels.forEach(w=>{ w.p.rotation.x = dist / w.r; });
           U.bulbs(t, cheerT);
-          if(U.F.update) U.F.update(t, dt, cheerT);
+          // 物語をもつ山車（森の古い橋）：二人が画面の右端から storyIn m 入ったときを0秒として、行進の位置から物語の時刻を決める
+          // （曲の再生位置に合わせて進み、一時停止中は止まる。画面に入る前は0秒のまま）
+          if(U.F.storyZ != null) U.F.update(Math.max(0, (s + U.F.storyZ - (state.L - H) - U.F.storyIn)/state.speed), dt, cheerT);
+          else if(U.F.update) U.F.update(t, dt, cheerT);
         }
       });
     }
