@@ -1509,10 +1509,20 @@ const CHARS = {   // a＝絵の横÷縦（characters2/*.png）
   esper:{h:1.75, a:0.735}, mimi:{h:1.35, a:0.585}, lily:{h:1.7, a:0.711}, luke:{h:1.75, a:0.721}, niko:{h:1.45, a:0.84},
   hal:{h:1.6, a:0.904}, arika:{h:1.55, a:0.725, fly:true}, nuru:{h:1.4, a:0.7, fly:true}, mock:{h:1.9, a:0.707}, jiiji:{h:1.75, a:0.797}
 };
+// 住人の絵：characters3 の標準素材（表示用に高さ1024pxへ縮小した characters3/display/）。上下左右に高さの8%の透明な余白があり、足もとは下の余白の線。
+// a＝画像全体の横÷縦。ハルは、動いているあいだは走る姿（run）、止まっているときは立つ姿。
+// ?chars=old で、これまでの絵（characters2/）に戻して表示できる（素材の切りもどし用）
+const CHAR_ART = (()=>{ try{ return new URLSearchParams(location.search).get('chars') === 'old' ? 'old' : 'new'; }catch(e){ return 'new'; } })();
+const CHAR_MARGIN = 0.08;
+const CHARS3 = {
+  esper:{f:'esper_run', a:755/1024}, mimi:{f:'mimi_jump', a:679/1024}, lily:{f:'lily_run', a:758/1024}, luke:{f:'luke_run', a:806/1024},
+  niko:{f:'niko_run', a:903/1024}, hal:{f:'hal_stand', a:945/1024, run:{f:'hal_run', a:1016/1024}}, arika:{f:'arika_fly', a:741/1024},
+  nuru:{f:'nuru_fly', a:729/1024}, mock:{f:'mock_walk', a:794/1024}, jiiji:{f:'jiiji_walk', a:794/1024}
+};
 const _charTex = {};
 function charTex(k){
   if(!_charTex[k]){
-    const t = new THREE.TextureLoader().load('characters2/' + k + '.png');
+    const t = new THREE.TextureLoader().load(k.indexOf('/') >= 0 ? k : 'characters2/' + k + '.png');
     t.encoding = THREE.sRGBEncoding; t.anisotropy = 4;
     t.wrapS = THREE.RepeatWrapping; t.repeat.x = -1; t.offset.x = 1;   // 進む向き（左）を向くように左右反転
     _charTex[k] = t;
@@ -1521,14 +1531,34 @@ function charTex(k){
 }
 function character(k, o){
   o = o || {};
-  const info = CHARS[k], g = new THREE.Group();
-  const sp = new THREE.Sprite(new THREE.SpriteMaterial({map:charTex(ARMS[k] && o.onFloat ? k + '_body' : k), transparent:true, alphaTest:0.12, depthTest:false}));
+  const info = CHARS[k], g = new THREE.Group(), N3 = CHAR_ART === 'new' && CHARS3[k];
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({map:N3 ? charTex('characters3/display/' + N3.f + '.png') : charTex(ARMS[k] && o.onFloat ? k + '_body' : k), transparent:true, alphaTest:0.12, depthTest:false}));
   sp.renderOrder = 10;   // 住人はいつも手前に描く（山車の飾りや人の陰に隠れない）
-  sp.center.set(0.5, 0); sp.scale.set(info.h*info.a, info.h, 1);
+  // 板の大きさ（sw×sh）：これまでの絵は余白なし。新しい絵は、見た目の高さが info.h になるよう余白の分だけ板を大きくし、足もと（下の余白の線）を地面に合わせる
+  const sh = N3 ? info.h/(1 - 2*CHAR_MARGIN) : info.h, sw = N3 ? sh*N3.a : info.h*info.a;
+  sp.center.set(0.5, N3 ? CHAR_MARGIN : 0); sp.scale.set(sw, sh, 1);
   const baseY = o.y || 0; sp.position.y = baseY; g.add(sp);
   glowSprite(g, 'rgba(255,240,210,.28)', info.h*1.7, [0, baseY + info.h*0.5, -0.05]);
   if(!o.noShadow && !(o.y > 0.5)) blobShadow(g, info.h*0.7, info.h*0.5);
-  return {g, sp, k, info, baseY, phase:Math.random()*6, trail:!!o.trail, onFloat:!!o.onFloat};
+  const C = {g, sp, k, info, baseY, phase:Math.random()*6, trail:!!o.trail, onFloat:!!o.onFloat, sw, sh, art:N3 ? 'new' : 'old'};
+  if(N3 && N3.run){   // ハル：立つ姿と走る姿。同じ板のまま絵を入れかえ、横幅だけ合わせる
+    C.pose = {stand:{map:sp.material.map, sw}, run:{map:charTex('characters3/display/' + N3.run.f + '.png'), sw:sh*N3.run.a}, running:false, hold:0, last:null};
+  }
+  return C;
+}
+// ハルの絵の切りかえ：住人の実際の動き（世界での速さ）で判断する。0.35m/秒を超えたら走る姿、0.12m/秒未満が0.25秒続いたら立つ姿（境目で行き来しない）
+const _pw = new THREE.Vector3();
+function updatePose(C, dt){
+  const P = C.pose; if(!P || !(dt > 0)) return;
+  C.g.getWorldPosition(_pw);
+  const v = P.last ? Math.hypot(_pw.x - P.last.x, _pw.z - P.last.z)/dt : 0;
+  if(!P.last) P.last = new THREE.Vector3(); P.last.copy(_pw);
+  let run = P.running;
+  if(v > 0.35){ P.hold = 0.25; run = true; }
+  else if(v < 0.12){ P.hold -= dt; if(P.hold <= 0) run = false; }
+  if(run === P.running) return;
+  P.running = run; const S = run ? P.run : P.stand;
+  C.sp.material.map = S.map; C.sp.material.needsUpdate = true; C.sw = S.sw;
 }
 const _cw = new THREE.Vector3(), _TRAIL = {arika:[col(0x6aa8ff), col(0xffffff), col(0xffc8f0)], nuru:[col(0xffb0d8), col(0x20d050), col(0xfff0a0)], hal:[col(0x20d050), col(0xffe080)]};
 // 手を振る腕：元の絵から腕を切り取った部品（characters/*_arm.png）を、肩を支点に動かす。体は腕を抜いた絵（*_body.png）
@@ -1542,13 +1572,13 @@ function addWave(C){
   s.center.set((x1 - px)/(x1 - x0), (y1 - py)/(y1 - y0));   // 左右反転して表示するので、肩の位置も反転
   C.g.add(s); C.arm = s; C.armInfo = A;
 }
-function animChar(C, t, dist, cheer, dt){ _animChar(C, t, dist, cheer, dt); if(C.hat) placeHat(C); }
+function animChar(C, t, dist, cheer, dt){ if(C.pose) updatePose(C, dt); _animChar(C, t, dist, cheer, dt); if(C.hat) placeHat(C); }
 function _animChar(C, t, dist, cheer, dt){
-  const h = C.info.h;
+  const h = C.info.h, sw = C.sw, sh = C.sh;
   if(C.info.fly){
     C.sp.position.y = C.baseY + Math.sin(t*1.7 + C.phase)*0.28 + cheer*0.5;
     C.sp.material.rotation = Math.sin(t*1.3 + C.phase)*0.1;
-    const fl = 1 + Math.sin(t*9 + C.phase)*0.03; C.sp.scale.set(h*C.info.a*fl, h/fl, 1);
+    const fl = 1 + Math.sin(t*9 + C.phase)*0.03; C.sp.scale.set(sw*fl, sh/fl, 1);
     if(Math.random() < dt*18){ C.sp.getWorldPosition(_cw); _cw.y += h*0.45; const pal = _TRAIL[C.k] || _TRAIL.arika;
       spawn(_cw, (Math.random()-.5)*0.4 + 0.5, -0.3 - Math.random()*0.3, (Math.random()-.5)*0.4, 1.4, pal[(Math.random()*pal.length)|0], 0.4, 0); }
   } else {
@@ -1556,7 +1586,7 @@ function _animChar(C, t, dist, cheer, dt){
     const hop = Math.abs(Math.sin(w))*(C.onFloat ? 0.05 : 0.1) + cheer*0.45;
     C.sp.position.y = C.baseY + hop;
     C.sp.material.rotation = Math.sin(w)*(C.onFloat ? 0.05 : 0.07);
-    const sq = 1 - Math.max(0, Math.cos(w*2))*0.03; C.sp.scale.set(h*C.info.a/sq, h*sq, 1);
+    const sq = 1 - Math.max(0, Math.cos(w*2))*0.03; C.sp.scale.set(sw/sq, sh*sq, 1);
   }
   if(C.arm){   // 切り取った腕を、肩の位置に合わせて置き、振る
     const A = C.armInfo, sx = C.sp.scale.x / A.w, sy = C.sp.scale.y / A.h;
@@ -3617,6 +3647,9 @@ function xmasPlan(row, pair, P){
 // サンタ帽（キャラクターの頭の位置：絵の左右・上下の割合、帽子の幅）
 const SANTA_HAT = {esper:{x:.56,y:.05,s:.5,r:-.25}, mimi:{x:.52,y:.27,s:.5,r:.15}, lily:{x:.5,y:.07,s:.55,r:-.15}, hal:{x:.3,y:.1,s:.38,r:.2},
   arika:{x:.45,y:.06,s:.5,r:.2}, nuru:{x:.5,y:.07,s:.5,r:-.2}, jiiji:{x:.56,y:.08,s:.52,r:-.2}};
+// 新しい絵（characters3/display/）用の帽子の位置。画像全体（余白をふくむ）に対する割合。ハルは立つ姿・走る姿で同じ値
+const SANTA_HAT3 = {esper:{x:.546,y:.14,s:.39,r:-.25}, mimi:{x:.514,y:.315,s:.38,r:.15}, lily:{x:.5,y:.15,s:.43,r:-.15}, hal:{x:.333,y:.164,s:.316,r:.2},
+  arika:{x:.46,y:.14,s:.39,r:.2}, nuru:{x:.499,y:.139,s:.387,r:-.2}, jiiji:{x:.547,y:.147,s:.41,r:-.2}};
 let _hatTex = null;
 function hatTex(){ if(_hatTex) return _hatTex; _hatTex = canvasTex(256, 256, (x,w,h)=>{
   x.fillStyle = '#e8101e'; x.beginPath(); x.moveTo(40,196); x.quadraticCurveTo(70,70,150,38); x.quadraticCurveTo(205,30,214,96); x.quadraticCurveTo(190,70,176,92); x.quadraticCurveTo(200,140,214,196); x.closePath(); x.fill();
@@ -3625,13 +3658,13 @@ function hatTex(){ if(_hatTex) return _hatTex; _hatTex = canvasTex(256, 256, (x,
   x.beginPath(); x.ellipse(127, 200, 98, 26, 0, 0, Math.PI*2); x.fill(); fur(127, 200, 90, 30);
   x.beginPath(); x.arc(212, 104, 26, 0, Math.PI*2); x.fill(); fur(212, 104, 18, 30); }); return _hatTex; }
 function addSantaHat(C){
-  const H = SANTA_HAT[C.k]; if(!H) return;
+  const H = (C.art === 'new' ? SANTA_HAT3 : SANTA_HAT)[C.k]; if(!H) return;
   const s = new THREE.Sprite(new THREE.SpriteMaterial({map:hatTex(), transparent:true, alphaTest:0.2, depthTest:false}));
   s.renderOrder = 12; s.center.set(0.5, 0.18); C.g.add(s); C.hat = s; C.hatInfo = H;
 }
 function placeHat(C){
   const H = C.hatInfo, W = C.sp.scale.x, h = C.sp.scale.y, th = C.sp.material.rotation;
-  const r = ((1 - H.x) - 0.5)*W, u = (1 - H.y)*h, rr = r*Math.cos(th) - u*Math.sin(th), uu = r*Math.sin(th) + u*Math.cos(th);
+  const r = ((1 - H.x) - 0.5)*W, u = (1 - H.y - C.sp.center.y)*h, rr = r*Math.cos(th) - u*Math.sin(th), uu = r*Math.sin(th) + u*Math.cos(th);
   C.hat.position.set(C.sp.position.x, C.sp.position.y + uu, -rr); const sz = H.s*W; C.hat.scale.set(sz, sz, 1); C.hat.material.rotation = th + H.r;
 }
 
