@@ -594,7 +594,8 @@ function flyerMarch(f, path){
 }
 // 行進：右端から左端へまっすぐ進み、抜けたらまた右から
 function marchPos(path, t, lift, bob, bobF, out){
-  const sp = (((t - path.t0)*path.speed + path.offset) % path.cycle + path.cycle) % path.cycle;
+  const el = path.time ? path.time() : t - path.t0;   // パレードの行進では、曲の経過時間
+  const sp = ((el*path.speed + path.offset) % path.cycle + path.cycle) % path.cycle;
   out.copy(path.start).addScaledVector(path.dir, sp);
   out.y += lift + Math.sin(t*bobF + path.offset)*bob;
   out.addScaledVector(path.fwd, Math.sin(t*0.45 + path.offset)*0.6);
@@ -1916,10 +1917,46 @@ function createParade(variant){
     else { const p = u.make(); wrap.add(p.g); units.push({u, wrap, people:[p], chars:[]}); }
   });
   let LEAD = 0, H = 0;
-  const state = {start:V(0,0,0), dir:V(0,0,0), fwd:V(0,0,0), right:V(1,0,0), t0:0, cycle:1, groundY:0, speed:1, L:0};
+  // 進行の点検：速さが極端なとき、見せたい時間（minView 秒）より早く通り過ぎる山車があるときに警告する。
+  // 警告を出すだけで、速さや演出は変えない。?check=1 で開くと画面にも表示する
+  function timingReport(){
+    const v = state.speed, [vMin, vMax] = PARADE.speedRange, warn = [], floats = [];
+    if(v < vMin) warn.push('進行が遅すぎます：' + v.toFixed(2) + ' m/秒（目安 ' + vMin + '〜' + vMax + ' m/秒）。曲が長すぎる可能性があります');
+    if(v > vMax) warn.push('進行が速すぎます：' + v.toFixed(2) + ' m/秒（目安 ' + vMin + '〜' + vMax + ' m/秒）。曲が短すぎる可能性があります');
+    units.forEach(U=>{
+      if(!U.F) return;
+      const pass = 2*H/v, name = U.u.title || (U.u.float && U.u.float.name) || '山車';   // 山車の中心が画面の右端から左端まで動くあいだ
+      floats.push({name, at:U.u.back, pass});
+      if(U.u.minView && pass < U.u.minView) warn.push(name + 'が画面を通る時間は約' + pass.toFixed(1) + '秒で、演出（' + U.u.minView + '秒）より短くなります（画面の向き：' + (camera.aspect < 1 ? '縦' : '横') + '）');
+    });
+    return {theme:THEME, song:state.song, measured:!!(_tSpan[THEME] && !THEMES[THEME].loop), speed:v, cycle:state.cycle, total, width:2*H, floats, warn};
+  }
+  function checkTiming(){
+    const r = timingReport();
+    r.warn.forEach(w=>console.warn('[パレード] ' + w));
+    if(PARADE.check) showTiming(r);
+  }
+  const state = {start:V(0,0,0), dir:V(0,0,0), fwd:V(0,0,0), right:V(1,0,0), t0:0, cycle:1, groundY:0, speed:1, L:0, el:0, wait:0, song:0};
+  const THEME = XMAS ? 'xmas' : 'parade';
+  // 曲の経過時間（秒）。行進の位置はこれだけで決まる（曲の再生位置に合わせる）
+  //  ・曲が鳴っている：AudioContext の時刻から求める。一時停止中（画面を離れた・音が止まった）は進まない
+  //  ・曲の読み込み中：先頭が画面に入る手前で待つ（最大 MUSIC_WAIT 秒）
+  //  ・曲が使えない（合成の簡易BGM・音なし）：画面の時計で進む
+  const MUSIC_WAIT = 6;
+  function songElapsed(dt){
+    const playing = audio && themeSrc && Music.startAt != null && Music.theme === THEME;
+    if(playing){
+      if(audio.state !== 'running') return state.el;                         // 一時停止中
+      const target = audio.currentTime - Music.startAt;
+      const e = state.el + dt, diff = target - e;
+      return Math.abs(diff) > 0.25 ? target : e + diff*0.15;                // 音の時刻は飛び飛びに進むので、なめらかに追いかける
+    }
+    if(wantTheme && !Music.timer && state.wait < MUSIC_WAIT){ state.wait += dt; return state.el; }   // 曲の読み込みを待つ
+    return document.hidden ? state.el : state.el + dt;
+  }
   let cheerT = 0;
   const tmp = V(0,0,0), proj = V(0,0,0), wp = V(0,0,0), CONF = [col(0xffe000), col(0xff1e3c), col(0x2a8cff), col(0xffffff)];
-  const sAt = (u, t)=>((((t - state.t0)*state.speed + LEAD - u.back) % state.cycle) + state.cycle) % state.cycle;
+  const sAt = (u)=>(((state.el*state.speed + LEAD - u.back) % state.cycle) + state.cycle) % state.cycle;
   return {
     total,
     relayout(){ if(root.visible) this.start(state.fwd.clone(), state.right.clone(), true); },
@@ -1930,10 +1967,12 @@ function createParade(variant){
       const Hmax = (CONFIG.paradeDistance + 5)*tanH + 3;
       const L = Hmax + 1; state.L = L;
       state.cycle = 2*H + total + PARADE.gap;
-      state.speed = state.cycle / THEMES[XMAS ? 'xmas' : 'parade'].loop;
+      // 行列全体が、ちょうど1曲で1周する速さ。曲の長さが変わっても、山車の順番と間隔はそのまま
+      state.song = songLength(THEME);
+      state.speed = state.cycle / state.song;
       LEAD = L - H;
       state.dir.copy(right).negate(); state.fwd.copy(f); state.right.copy(right);
-      if(!keep) state.t0 = clock.elapsedTime;   // keep のときは同じ時刻を基準にする＝曲の何秒目かに対応した位置のまま
+      if(!keep){ state.t0 = clock.elapsedTime; state.el = 0; state.wait = 0; }   // keep のときは曲の経過時間をそのまま使う＝曲の何秒目かに対応した位置のまま
       state.groundY = camera.position.y - CONFIG.eyeHeight;
       state.start.copy(camera.position).addScaledVector(f, CONFIG.paradeDistance).addScaledVector(right, L);
       root.visible = true;
@@ -1944,11 +1983,14 @@ function createParade(variant){
         const start = camera.position.clone().addScaledVector(f, CONFIG.paradeDistance + u.d).addScaledVector(right, L);
         start.y += u.lift - base;
         if(u.fly === 'whale') c.root.scale.setScalar(1.0);
-        c.place(start, f, 0, {start, dir:state.dir.clone(), fwd:f.clone(), speed:state.speed, offset:LEAD - u.back, cycle:state.cycle, t0:state.t0});
+        c.place(start, f, 0, {start, dir:state.dir.clone(), fwd:f.clone(), speed:state.speed, offset:LEAD - u.back, cycle:state.cycle, t0:state.t0, time:()=>state.el});
       });
       if(!keep) restartTheme();   // 先頭の登場と曲のイントロをそろえる
       if(XMAS) xmasSky.show(true);
+      checkTiming();
     },
+    visible(){ return root.visible; },
+    timing(){ return timingReport(); },
     hide(){ root.visible = false; Object.values(flyers).forEach(c=>{ c.root.visible = false; }); if(XMAS) xmasSky.show(false); },
     tap(){
       cheerT = 1.0; soundChime();
@@ -1964,12 +2006,13 @@ function createParade(variant){
     },
     update(t, dt){
       if(!root.visible) return;
+      state.el = songElapsed(dt);
       Object.values(flyers).forEach(c=>c.update(t, dt));
       cheerT = Math.max(0, cheerT - dt);
       const cheer = cheerT > 0 ? Math.sin(Math.PI*(1 - cheerT)) : 0;
-      const dist = (t - state.t0)*state.speed;
+      const dist = state.el*state.speed;
       units.forEach(U=>{
-        const s = sAt(U.u, t);
+        const s = sAt(U.u);
         // 画面から遠いものは描かない（軽くするため）
         const near = Math.abs(s - state.L) < H + 5;
         U.wrap.visible = near; if(!near) return;
@@ -1990,7 +2033,7 @@ function createParade(variant){
 }
 
 /* ---------- パレードの音楽（オリジナル） ---------- */
-const Music = {gain:null, timer:null, next:0, step:0};
+const Music = {gain:null, timer:null, next:0, step:0, startAt:null, theme:null};
 const mf = m => 440*Math.pow(2, (m-69)/12);
 const CHORDS = [[48,52,55],[45,48,52],[41,45,48],[43,47,50]];   // C, Am, F, G
 const MELODY = [
@@ -2028,16 +2071,37 @@ function playStep(i, time){
   if(m){ note('triangle', mf(m), time, 0.32, 0.22, out); note('sine', mf(m+12), time, 0.25, 0.05, out); }
 }
 // パレードのテーマ（music/parade.mp3）。読み込めないときは下の簡易BGMで代用する
-// 曲の一覧：パレード（parade.mp3）とクリスマスパレード（xmas.mp3）。loop はちょうど1曲分の秒数
-const THEMES = {parade:{url:'music/parade.mp3', loop:152}, xmas:{url:'music/xmas.mp3?v=2', loop:68*4*60/132}};
+// 曲の一覧：パレード（parade.mp3）とクリスマスパレード（xmas.mp3）。
+// 1曲の長さ（ループの長さ）は、音声ファイルを読み込んだときに実際の音から測る（頭と最後の無音は除く）。
+// 曲を差し替えるときは、ファイルを置きかえるだけでよい（パレードの速さは曲の長さに合わせて自動で決まる）。
+// fallback は、曲を読み込めなかったとき（合成の簡易BGMで代用するとき）だけ使う長さ。
+// loop を書くと、測った長さの代わりにその秒数でループする（ふつうは書かない）
+const THEMES = {parade:{url:'music/parade.mp3', fallback:152}, xmas:{url:'music/xmas.mp3?v=2', fallback:68*4*60/132}};
 let themeName = 'parade', themeBytes = null, themeBuf = null, themeSrc = null, wantTheme = false;
-const _tBytes = {}, _tBuf = {};
+const _tBytes = {}, _tBuf = {}, _tSpan = {};
+// 曲の音のある範囲を測る：{ls:音の始まり(秒), len:ループの長さ(秒)}
+function measureSpan(buf){
+  const d = buf.getChannelData(0), sr = buf.sampleRate, TH = 1e-3;
+  let a = 0; const lim = Math.min(d.length, sr);   // 頭の無音は1秒まで
+  while(a < lim && Math.abs(d[a]) < TH) a++;
+  if(a >= lim) a = 0;
+  let b = d.length - 1; const lim2 = Math.max(a, d.length - sr*3);   // 最後の無音は3秒まで
+  while(b > lim2 && Math.abs(d[b]) < TH) b--;
+  if(b <= lim2) b = d.length - 1;
+  return {ls:a/sr, len:(b + 1 - a)/sr};
+}
+// 1曲（パレード1周）の長さ。測れていればその値、まだなら手で書いた loop、なければ fallback
+function songLength(k){ const T = THEMES[k]; return T.loop || (_tSpan[k] && _tSpan[k].len) || T.fallback; }
 Object.entries(THEMES).forEach(([k,o])=>fetch(o.url).then(r=>r.ok ? r.arrayBuffer() : null).then(b=>{ _tBytes[k] = b; if(k === themeName){ themeBytes = b; if(wantTheme) playTheme(); } }).catch(()=>{}));
 function useTheme(k){ themeName = k; themeBytes = _tBytes[k] || null; themeBuf = _tBuf[k] || null; }
 function decodeTheme(){
   if(themeBuf || !themeBytes || !audio) return Promise.resolve(themeBuf);
   const k = themeName;
-  return new Promise(res=>{ audio.decodeAudioData(themeBytes.slice(0), b=>{ _tBuf[k] = b; if(themeName === k) themeBuf = b; res(b); }, ()=>res(null)); });
+  return new Promise(res=>{ audio.decodeAudioData(themeBytes.slice(0), b=>{
+    _tBuf[k] = b; _tSpan[k] = measureSpan(b); if(themeName === k) themeBuf = b;
+    // 長さが分かったので、表示中のパレードの速さを曲に合わせ直す（位置は曲の再生位置のまま）
+    const P = PARADES[k]; if(P && P.visible()) P.relayout();
+    res(b); }, ()=>res(null)); });
 }
 function playTheme(){
   if(!wantTheme || themeSrc || !audio) return;
@@ -2050,14 +2114,12 @@ function playTheme(){
     const gp = Music.gain.gain, now = audio.currentTime;
     gp.cancelScheduledValues(now); gp.setValueAtTime(0.0001, now); gp.linearRampToValueAtTime(muted ? 0.0001 : 0.9, now + 4);
     themeSrc = audio.createBufferSource(); themeSrc.buffer = buf; themeSrc.loop = true; ALL_SRC.add(themeSrc);
-    // MP3 は頭に無音が入ることがあるので、音の始まりを探してちょうど1曲分でループさせる
-    const LOOP_SEC = THEMES[themeName].loop, d = buf.getChannelData(0);
-    let start = 0; const lim = Math.min(d.length, buf.sampleRate);
-    while(start < lim && Math.abs(d[start]) < 1e-3) start++;
-    if(start >= lim) start = 0;
-    const ls = start / buf.sampleRate;
+    // MP3 は頭に無音が入ることがあるので、音の始まりから、ちょうど1曲分（songLength）でループさせる
+    const sp = _tSpan[themeName] || measureSpan(buf), ls = sp.ls, LOOP_SEC = songLength(themeName);
     if(ls + LOOP_SEC <= buf.duration + 0.01){ themeSrc.loopStart = ls; themeSrc.loopEnd = Math.min(buf.duration, ls + LOOP_SEC); }
     themeSrc.connect(Music.gain); themeSrc.start(0, ls);
+    // パレードは、この時刻からの曲の経過時間（audio.currentTime − startAt）に合わせて進む
+    Music.startAt = audio.currentTime; Music.theme = themeName;
   });
 }
 function restartTheme(){
@@ -2102,7 +2164,7 @@ function silenceAll(){
   if(mediaEl && !mediaEl.paused) mediaEl.pause();
 }
 function stopMusic(){
-  wantTheme = false; fwToken++;
+  wantTheme = false; fwToken++; Music.startAt = null;
   if(typeof stopHalloweenMusic === 'function') stopHalloweenMusic();
   if(fwSrc){ try{ fwSrc.stop(); }catch(e){} fwSrc = null; }
   if(themeSrc){ try{ themeSrc.stop(); }catch(e){} themeSrc = null; }
@@ -3735,7 +3797,20 @@ const MODES = {
 };
 let mode = 'phoenix';
 // gap＝最後尾が画面から抜けてから先頭が入ってくるまでの距離(m)。進む速さは曲の長さに合わせて自動で決まる
-const PARADE = {gap:1};
+const PARADE = {gap:1,
+  speedRange:[0.45, 1.4],                       // 進行の速さの目安（m/秒）。外れたら警告だけ出す（今の曲：横向き約0.84・縦向き約0.74）
+  check:/[?&]check=1/.test(location.search)};   // 検証用：進行の点検結果を画面に出す
+// 検証用の表示（?check=1）
+function showTiming(r){
+  let el = document.getElementById('timingCheck');
+  if(!el){ el = document.createElement('pre'); el.id = 'timingCheck';
+    el.style.cssText = 'position:fixed;left:8px;top:56px;z-index:50;max-width:min(92vw,520px);max-height:60vh;overflow:auto;margin:0;padding:8px 10px;font:11px/1.45 ui-monospace,monospace;color:#fff;background:rgba(10,12,30,.82);border-radius:8px;white-space:pre-wrap;pointer-events:none';
+    document.body.appendChild(el); }
+  el.textContent = '曲：' + r.theme + '  長さ ' + r.song.toFixed(2) + '秒（' + (r.measured ? '音声ファイルから測定' : '測定前・代わりの値') + '）\n'
+    + '行列 ' + r.total.toFixed(1) + 'm／1周 ' + r.cycle.toFixed(1) + 'm／速さ ' + r.speed.toFixed(3) + ' m/秒／画面の幅 ' + r.width.toFixed(1) + 'm\n'
+    + (r.warn.length ? '⚠ ' + r.warn.join('\n⚠ ') : '警告なし') + '\n'
+    + r.floats.map(f=>'  ' + f.at.toFixed(1) + 'm  ' + f.name + '  通過 ' + f.pass.toFixed(1) + '秒').join('\n');
+}
 let Parade = null; const PARADES = {};
 
 /* ---------- 端末の向き → カメラの向き ---------- */
